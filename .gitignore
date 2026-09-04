@@ -29,3 +29,5 @@ Thumbs.db
 *.sqlite
 *.sqlite-journal.deptrac.cache
 dc.bat
+.deptrac.cache
+/.phpunit.cache
