@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
+use App\Modules\Donor\Domain\Events\DonationCompleted;
+use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +22,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Event::listen(DonationCompleted::class, CreateQuarantinedUnit::class);
     }
 }

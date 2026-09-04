@@ -1,0 +1,62 @@
+deptrac:
+  paths:
+    - ./app/Modules
+
+  layers:
+    - name: DomIdentity
+      collectors:
+        - type: directory
+          value: app/Modules/Identity/Domain/.*
+    - name: ModIdentity
+      collectors:
+        - type: directory
+          value: app/Modules/Identity/(Application|Http|Infrastructure|Database|Tests)/.*
+
+    - name: DomDonor
+      collectors:
+        - type: directory
+          value: app/Modules/Donor/Domain/.*
+    - name: ModDonor
+      collectors:
+        - type: directory
+          value: app/Modules/Donor/(Application|Http|Infrastructure|Database|Tests)/.*
+
+    - name: DomInventory
+      collectors:
+        - type: directory
+          value: app/Modules/Inventory/Domain/.*
+    - name: ModInventory
+      collectors:
+        - type: directory
+          value: app/Modules/Inventory/(Application|Http|Infrastructure|Database|Tests)/.*
+
+    - name: DomRequest
+      collectors:
+        - type: directory
+          value: app/Modules/Request/Domain/.*
+    - name: ModRequest
+      collectors:
+        - type: directory
+          value: app/Modules/Request/(Application|Http|Infrastructure|Database|Tests)/.*
+
+    - name: DomNotification
+      collectors:
+        - type: directory
+          value: app/Modules/Notification/Domain/.*
+    - name: ModNotification
+      collectors:
+        - type: directory
+          value: app/Modules/Notification/(Application|Http|Infrastructure|Database|Tests)/.*
+
+  ruleset:
+    ModIdentity:     [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
+    ModDonor:        [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
+    ModInventory:    [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
+    ModRequest:      [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
+    ModNotification: [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
+
+    DomIdentity: ~
+    DomDonor: ~
+    DomInventory: ~
+    DomRequest: ~
+    DomNotification: ~
