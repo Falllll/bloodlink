@@ -10,19 +10,17 @@ use Throwable;
 
 class ReadinessController
 {
-    private const WORKER_STATE_AFTER = 120;
-    /**
-     * Handle the incoming request.
-     */
-    public function __invoke(Request $request)
+    private const WORKER_STALE_AFTER = 120;
+
+    public function __invoke(): JsonResponse
     {
         $checks = [
-            'database' => $this->probe(fn () => DB::select('SELECT 1')),
+            'database' => $this->probe(fn () => DB::select('select 1')),
             'redis' => $this->probe(fn () => Redis::ping()),
-            'workers' => $this->workerAlive(),
+            'worker' => $this->workerAlive(),
         ];
 
-        $ready = ! in_array(false, $check, true);
+        $ready = ! in_array(false, $checks, true);
 
         return response()->json([
             'status' => $ready ? 'ready' : 'degraded',
@@ -30,17 +28,15 @@ class ReadinessController
         ], $ready ? 200 : 503);
     }
 
-    /**
-     * Tiap probe dibungkus sendiri supaya satu kegagalan
-     * tidak menjatuhkan seluruh response.
-     */
-    private function probe(callable $callback): bool
+    private function probe(callable $check): bool
     {
         try {
-            $callback();
+            $check();
+
             return true;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             report($e);
+
             return false;
         }
     }
@@ -49,11 +45,13 @@ class ReadinessController
     {
         try {
             $beat = Cache::get('worker:heartbeat');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             report($e);
+
             return false;
         }
 
-        return $beat !== null && (time() - (int) $beat) < self::WORKER_STATE_AFTER;
+        return $beat !== null
+            && (time() - (int) $beat) < self::WORKER_STALE_AFTER;
     }
 }

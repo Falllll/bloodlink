@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 class LivenessController
 {
     public function __invoke(): JsonResponse
-{
-    return response()->json(['status' => 'ok']);
-}
+    {
+        return response()->json(['status' => 'ok']);
+    }
 }
