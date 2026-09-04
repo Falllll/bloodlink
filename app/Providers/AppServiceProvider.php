@@ -23,5 +23,18 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(DonationCompleted::class, CreateQuarantinedUnit::class);
+
+        Event::listen(Looping::class, function () {
+            static $last = 0;
+
+            if (time() - $last < 30) {
+                return;               
+            }
+
+            $last = time();
+            Cache::put('worker:heartbeat', time(), 120);
+        });
     }
+
+    
 }
