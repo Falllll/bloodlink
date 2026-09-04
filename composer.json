@@ -36,6 +36,16 @@
         }
     },
     "scripts": {
+        "check": [
+            "vendor/bin/pint --test",
+            "vendor/bin/phpstan analyse --memory-limit=512M",
+            "vendor/bin/deptrac analyse",
+            "@php artisan test"
+        ],
+        "fix": "vendor/bin/pint",
+        "analyse": "phpstan analyse --memory-limit=512M",
+        "lint": "pint --test",
+        "arch": "deptrac analyse",
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
