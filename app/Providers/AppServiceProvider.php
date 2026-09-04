@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Event;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
+use Illuminate\Queue\Events\Looping;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,13 +30,11 @@ class AppServiceProvider extends ServiceProvider
             static $last = 0;
 
             if (time() - $last < 30) {
-                return;               
+                return;
             }
 
             $last = time();
             Cache::put('worker:heartbeat', time(), 120);
         });
     }
-
-    
 }

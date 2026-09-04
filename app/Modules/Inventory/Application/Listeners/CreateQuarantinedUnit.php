@@ -3,7 +3,6 @@
 namespace App\Modules\Inventory\Application\Listeners;
 
 use App\Modules\Donor\Domain\Events\DonationCompleted;
-use App\Modules\Donor\Infrastructure\Models\DonorModel;
 
 final class CreateQuarantinedUnit
 {
