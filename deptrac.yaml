@@ -1,62 +1,114 @@
+yaml
 deptrac:
   paths:
     - ./app/Modules
 
   layers:
-    - name: DomIdentity
+    - name: EvtIdentity
       collectors:
         - type: directory
-          value: app/Modules/Identity/Domain/.*
+          value: app/Modules/Identity/Domain/Events/.*
+    - name: DomIdentity
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Modules/Identity/Domain/.*
+          must_not:
+            - type: directory
+              value: app/Modules/Identity/Domain/Events/.*
     - name: ModIdentity
       collectors:
         - type: directory
           value: app/Modules/Identity/(Application|Http|Infrastructure|Database|Tests)/.*
 
-    - name: DomDonor
+    - name: EvtDonor
       collectors:
         - type: directory
-          value: app/Modules/Donor/Domain/.*
+          value: app/Modules/Donor/Domain/Events/.*
+    - name: DomDonor
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Modules/Donor/Domain/.*
+          must_not:
+            - type: directory
+              value: app/Modules/Donor/Domain/Events/.*
     - name: ModDonor
       collectors:
         - type: directory
           value: app/Modules/Donor/(Application|Http|Infrastructure|Database|Tests)/.*
 
-    - name: DomInventory
+    - name: EvtInventory
       collectors:
         - type: directory
-          value: app/Modules/Inventory/Domain/.*
+          value: app/Modules/Inventory/Domain/Events/.*
+    - name: DomInventory
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Modules/Inventory/Domain/.*
+          must_not:
+            - type: directory
+              value: app/Modules/Inventory/Domain/Events/.*
     - name: ModInventory
       collectors:
         - type: directory
           value: app/Modules/Inventory/(Application|Http|Infrastructure|Database|Tests)/.*
 
-    - name: DomRequest
+    - name: EvtRequest
       collectors:
         - type: directory
-          value: app/Modules/Request/Domain/.*
+          value: app/Modules/Request/Domain/Events/.*
+    - name: DomRequest
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Modules/Request/Domain/.*
+          must_not:
+            - type: directory
+              value: app/Modules/Request/Domain/Events/.*
     - name: ModRequest
       collectors:
         - type: directory
           value: app/Modules/Request/(Application|Http|Infrastructure|Database|Tests)/.*
 
-    - name: DomNotification
+    - name: EvtNotification
       collectors:
         - type: directory
-          value: app/Modules/Notification/Domain/.*
+          value: app/Modules/Notification/Domain/Events/.*
+    - name: DomNotification
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Modules/Notification/Domain/.*
+          must_not:
+            - type: directory
+              value: app/Modules/Notification/Domain/Events/.*
     - name: ModNotification
       collectors:
         - type: directory
           value: app/Modules/Notification/(Application|Http|Infrastructure|Database|Tests)/.*
 
   ruleset:
-    ModIdentity:     [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
-    ModDonor:        [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
-    ModInventory:    [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
-    ModRequest:      [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
-    ModNotification: [DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
+    ModIdentity:     [DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModDonor:        [DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModInventory:    [DomInventory, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModRequest:      [DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModNotification: [DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
 
     DomIdentity: ~
     DomDonor: ~
     DomInventory: ~
     DomRequest: ~
     DomNotification: ~
+
+    EvtIdentity: ~
+    EvtDonor: ~
+    EvtInventory: ~
+    EvtRequest: ~
+    EvtNotification: ~
