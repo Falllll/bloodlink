@@ -59,6 +59,13 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
+      - name: No duplicate env keys
+        run: |
+          dupes=$(grep -oE '^[A-Z_][A-Z0-9_]*=' .env.example | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "Keys yang duplikat di .env.example:"; echo "$dupes"; exit 1
+          fi
+
       - name: Format check
         run: ./vendor/bin/pint --test
 
