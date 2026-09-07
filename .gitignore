@@ -27,7 +27,7 @@ Homestead.yaml
 Thumbs.db
 /docker/data
 *.sqlite
-*.sqlite-journal.deptrac.cache
+*.sqlite-journal
 dc.bat
 .deptrac.cache
-/.phpunit.cache
+/.phpunit.cache 
