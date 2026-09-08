@@ -1,8 +1,14 @@
 deptrac:
   paths:
     - ./app/Modules
+    - ./app/Shared
 
   layers:
+    - name: Shared
+      collectors:
+        - type: directory
+          value: app/Shared/.*
+
     - name: EvtIdentity
       collectors:
         - type: directory
@@ -94,11 +100,13 @@ deptrac:
           value: app/Modules/Notification/(Application|Http|Infrastructure|Database|Tests)/.*
 
   ruleset:
-    ModIdentity:     [DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModDonor:        [DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModInventory:    [DomInventory, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModRequest:      [DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModNotification: [DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    Shared: ~
+
+    ModIdentity:     [Shared, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModDonor:        [Shared, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModInventory:    [Shared, DomInventory, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModRequest:      [Shared, DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModNotification: [Shared, DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
 
     DomIdentity: ~
     DomDonor: ~
