@@ -1,4 +1,3 @@
-yaml
 deptrac:
   paths:
     - ./app/Modules
