@@ -1,6 +1,7 @@
 <?php
 
 use App\Shared\Errors\ErrorCode;
+use App\Shared\Exceptions\DomainException;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\AssignTraceId;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -99,12 +100,12 @@ return Application::configure(basePath: dirname(__DIR__))
             );
         });
 
-        $exceptions->render(function (\Throwable $e, Request $request) {
+        $exceptions->render(function (Throwable $e, Request $request) {
             if (! $request->expectsJson() && ! $request->is('api/*')) {
                 return null;
             }
 
-            if ($e instanceof \App\Shared\Exceptions\DomainException) {
+            if ($e instanceof DomainException) {
                 return ApiResponse::error(
                     $e->errorCode(),
                     $e->getMessage() ?: 'Request failed.',
@@ -131,7 +132,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 );
             }
 
-            if ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500){
+            if ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500) {
                 $status = $e->getStatusCode();
 
                 return ApiResponse::error(

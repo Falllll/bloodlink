@@ -34,7 +34,7 @@ class ApiErrorFormatTest extends TestCase
 
             Route::get('/api/v1/_test/unauthenticated', function () {
                 throw new AuthenticationException('Unauthenticated.');
-            }); 
+            });
 
             Route::get('/api/v1/_test/forbidden', function () {
                 throw new AuthorizationException('Forbidden.');
@@ -47,6 +47,10 @@ class ApiErrorFormatTest extends TestCase
             Route::get('/api/v1/_test/throttled', function () {
                 return ApiResponse::success(['ok' => true]);
             })->middleware('throttle:1,1');
+
+            Route::get('/api/v1/_test/internal', function () {
+                throw new \RuntimeException('Something broke.');
+            });
         });
     }
 
