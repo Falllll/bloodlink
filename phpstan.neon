@@ -8,3 +8,10 @@ parameters:
         - database
 
     level: 5
+
+    ignoreErrors:
+        -
+            # Shared building block for future list-endpoint controllers; no
+            # consumer exists in app/routes/database yet (tests/ isn't analysed).
+            identifier: trait.unused
+            path: app/Shared/Http/AppliesListQuery.php

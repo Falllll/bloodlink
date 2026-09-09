@@ -6,12 +6,11 @@ use Database\Factories\BloodBatchFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class BloodBatch extends Model
 {
     /** @use HasFactory<BloodBatchFactory> */
-    use HasFactory, softDeletes;
+    use HasFactory;
 
     protected $fillable = [
         'blood_type',

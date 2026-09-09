@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Donor;
 use App\Models\Facility;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Donor>
@@ -19,7 +20,15 @@ class DonorFactory extends Factory
     public function definition(): array
     {
         return [
+            'public_id' => (string) Str::uuid(),
+            'donor_number' => fake()->unique()->bothify('D-########'),
             'registered_facility_id' => Facility::factory(),
+            'full_name' => fake()->name(),
+            'date_of_birth' => fake()->dateTimeBetween('-60 years', '-18 years')->format('Y-m-d'),
+            'sex' => fake()->randomElement(['male', 'female']),
+            'phone' => fake()->numerify('08##########'),
+            'address' => fake()->streetAddress(),
+            'city' => fake()->city(),
         ];
     }
 
