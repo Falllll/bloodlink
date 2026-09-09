@@ -3,8 +3,8 @@
 namespace Database\Factories;
 
 use App\Models\Donor;
-use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\Facility;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends Factory<Donor>

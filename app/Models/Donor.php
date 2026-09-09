@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use Database\Factories\DonorFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Donor extends Model
 {
-    /** @use HasFactory<\Database\Factories\DonorFactory> */
+    /** @use HasFactory<DonorFactory> */
     use HasFactory, softDeletes;
 
     protected $fillable = [

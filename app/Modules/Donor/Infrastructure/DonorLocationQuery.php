@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\DB;
 final class DonorLocationQuery
 {
     /**
-     * @param  float  $latitude      Latitude in degrees, -90..90
-     * @param  float  $longitude     Longitude in degrees, -180..180
-     * @param  int    $radiusMeters  Radius in meters
+     * @param  float  $latitude  Latitude in degrees, -90..90
+     * @param  float  $longitude  Longitude in degrees, -180..180
+     * @param  int  $radiusMeters  Radius in meters
      */
     public function withinRadius(float $latitude, float $longitude, int $radiusMeters): Builder
     {

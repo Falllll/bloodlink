@@ -3,9 +3,9 @@
 namespace Database\Factories;
 
 use App\Models\BloodBatch;
-use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\Donor;
 use App\Models\Facility;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
@@ -21,7 +21,7 @@ class BloodBatchFactory extends Factory
     public function definition(): array
     {
         $component = fake()->randomElement([
-            'whole_blood', 'packed_red_cells', 'fresh_frozen_plasma', 
+            'whole_blood', 'packed_red_cells', 'fresh_frozen_plasma',
             'platelet_concentrate', 'cryoprecipitate']);
 
         $shelflifeDays = match ($component) {
@@ -35,16 +35,16 @@ class BloodBatchFactory extends Factory
         $bloodGroup = fake()->randomElement(['A', 'B', 'AB', 'O']);
 
         return [
-            'public_id'    => (string) Str::uuid(),
+            'public_id' => (string) Str::uuid(),
             'batch_number' => fake()->unique()->bothify('BB-########'),
-            'donor_id'     => Donor::factory(),
-            'facility_id'  => Facility::factory(),
-            'component'    => $component,
-            'blood_group'  => $bloodGroup,
-            'rh_factor'    => fake()->randomElement(['positive', 'negative']),
-            'volume_ml'    => fake()->numberBetween(200, 500),
+            'donor_id' => Donor::factory(),
+            'facility_id' => Facility::factory(),
+            'component' => $component,
+            'blood_group' => $bloodGroup,
+            'rh_factor' => fake()->randomElement(['positive', 'negative']),
+            'volume_ml' => fake()->numberBetween(200, 500),
             'collected_at' => $collectedAt,
-            'expires_at'   => (clone $collectedAt)->modify("+{$shelflifeDays} days"),
+            'expires_at' => (clone $collectedAt)->modify("+{$shelflifeDays} days"),
         ];
     }
 
