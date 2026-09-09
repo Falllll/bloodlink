@@ -1,5 +1,6 @@
 <?php
 
+use App\Logging\RedactSensitive;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -104,6 +105,7 @@ return [
 
         'stderr' => [
             'driver' => 'monolog',
+            'tap' => [RedactSensitive::class],
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,
             'handler_with' => [
