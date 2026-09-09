@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException as SymfonyNotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -127,6 +128,21 @@ return Application::configure(basePath: dirname(__DIR__))
                     'Resource not found.',
                     [],
                     404,
+                );
+            }
+
+            if ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500){
+                $status = $e->getStatusCode();
+
+                return ApiResponse::error(
+                    match ($status) {
+                        405 => ErrorCode::METHOD_NOT_ALLOWED,
+                        429 => ErrorCode::TOO_MANY_REQUESTS,
+                        default => ErrorCode::HTTP_ERROR,
+                    },
+                    $e->getMessage() ?: 'Request failed.',
+                    [],
+                    $status,
                 );
             }
 

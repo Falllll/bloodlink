@@ -44,9 +44,9 @@ class ApiErrorFormatTest extends TestCase
                 throw new ModelNotFoundException('User not found.');
             });
 
-            Route::get('/api/v1/_test/internal', function () {
-                throw new \RuntimeException('Internal secret message.');
-            });
+            Route::get('/api/v1/_test/throttled', function () {
+                return ApiResponse::success(['ok' => true]);
+            })->middleware('throttle:1,1');
         });
     }
 
