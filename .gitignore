@@ -31,3 +31,4 @@ Thumbs.db
 dc.bat
 .deptrac.cache
 /.phpunit.cache 
+.claude

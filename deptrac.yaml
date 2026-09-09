@@ -8,6 +8,8 @@ deptrac:
       collectors:
         - type: classNameRegex
           value: /^Illuminate\\.*/
+        - type: classNameRegex
+          value: /^Symfony\\.*/
 
     - name: Shared
       collectors:
