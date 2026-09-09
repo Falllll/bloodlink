@@ -21,7 +21,14 @@ class FacilityFactory extends Factory
         return [
             'public_id' => (string) Str::uuid(),
             'code' => fake()->unique()->bothify('FAC-####'),
-            'type' => fake()->randomElement(['hospital', 'clinic', 'blood bank']),
+            'name' => fake()->company(),
+            'type' => fake()->randomElement(['hospital', 'blood_bank', 'donation_unit', 'mobile_unit']),
+            'address' => fake()->streetAddress(),
+            'city' => fake()->city(),
+            'province' => fake()->randomElement(['DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'Bali']),
+            'phone' => fake()->numerify('021########'),
+            'email' => fake()->unique()->safeEmail(),
+            'is_active' => true,
         ];
     }
 
