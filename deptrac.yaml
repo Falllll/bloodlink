@@ -4,6 +4,11 @@ deptrac:
     - ./app/Shared
 
   layers:
+    - name: Framework
+      collectors:
+        - type: classNameRegex
+          value: /^Illuminate\\.*/
+
     - name: Shared
       collectors:
         - type: directory
@@ -100,13 +105,13 @@ deptrac:
           value: app/Modules/Notification/(Application|Http|Infrastructure|Database|Tests)/.*
 
   ruleset:
-    Shared: ~
+    Shared: [Framework]
 
-    ModIdentity:     [Shared, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModDonor:        [Shared, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModInventory:    [Shared, DomInventory, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModRequest:      [Shared, DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModNotification: [Shared, DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModIdentity:     [Framework, Shared, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModDonor:        [Framework, Shared, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModInventory:    [Framework, Shared, DomInventory, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModRequest:      [Framework, Shared, DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModNotification: [Framework, Shared, DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
 
     DomIdentity: ~
     DomDonor: ~
