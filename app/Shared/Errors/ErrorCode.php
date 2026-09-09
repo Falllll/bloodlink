@@ -9,4 +9,7 @@ enum ErrorCode: string
     case FORBIDDEN = 'FORBIDDEN';
     case NOT_FOUND = 'NOT_FOUND';
     case INTERNAL_ERROR = 'INTERNAL_ERROR';
+    case METHOD_NOT_ALLOWED = 'METHOD_NOT_ALLOWED';
+    case TOO_MANY_REQUESTS = 'TOO_MANY_REQUESTS';
+    case HTTP_ERROR = 'HTTP_ERROR';
 }

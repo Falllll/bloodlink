@@ -34,7 +34,7 @@ class ApiErrorFormatTest extends TestCase
 
             Route::get('/api/v1/_test/unauthenticated', function () {
                 throw new AuthenticationException('Unauthenticated.');
-            });
+            }); 
 
             Route::get('/api/v1/_test/forbidden', function () {
                 throw new AuthorizationException('Forbidden.');
