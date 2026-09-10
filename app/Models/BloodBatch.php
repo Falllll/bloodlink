@@ -30,6 +30,9 @@ class BloodBatch extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Donor, $this>
+     */
     public function donor(): BelongsTo
     {
         return $this->belongsTo(Donor::class);

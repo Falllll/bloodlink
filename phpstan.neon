@@ -7,7 +7,7 @@ parameters:
         - routes
         - database
 
-    level: 5
+    level: 6
 
     ignoreErrors:
         -

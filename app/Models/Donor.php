@@ -32,6 +32,9 @@ class Donor extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Facility, $this>
+     */
     public function facility(): BelongsTo
     {
         return $this->belongsTo(Facility::class, 'registered_facility_id');

@@ -1,16 +1,11 @@
 <?php
 
-namespace Tests\Unit;
+declare(strict_types=1);
 
-use PHPUnit\Framework\TestCase;
+use App\Shared\Errors\ErrorCode;
 
-class ExampleTest extends TestCase
-{
-    /**
-     * A basic test example.
-     */
-    public function test_that_true_is_true(): void
-    {
-        $this->assertTrue(true);
+it('keeps every error code value identical to its case name', function (): void {
+    foreach (ErrorCode::cases() as $case) {
+        expect($case->value)->toBe($case->name);
     }
-}
+});

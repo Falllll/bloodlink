@@ -20,6 +20,9 @@ abstract class ListRequest extends FormRequest
      */
     protected array $sortable = [];
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
