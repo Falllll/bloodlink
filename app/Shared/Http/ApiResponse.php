@@ -21,6 +21,7 @@ final class ApiResponse
     {
         return response()->json([
             'data' => $page->items(),
+            'links' => ['next' => $page->nextPageUrl(), 'prev' => $page->previousPageUrl()],
             'meta' => array_merge([
                 'per_page' => $page->perPage(),
                 'next_cursor' => $page->nextCursor()?->encode(),
