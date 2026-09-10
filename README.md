@@ -1,5 +1,7 @@
 # BloodLink
 
+[![CI](https://github.com/Falllll/bloodlink/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Falllll/bloodlink/actions/workflows/ci.yml)
+
 Blood bank management API for Indonesian blood services: donor registry, eligibility screening, inventory tracking with expiry-aware allocation, and hospital blood requests.
 
 This repository is the backend only. It is headless — there are no Blade views and `routes/web.php` is intentionally empty. The web client (Next.js) and the mobile app live in separate repositories and consume this API over `/api/v1`.
@@ -106,5 +108,3 @@ git config core.hooksPath .githooks
 ```
 
 The hook scans staged changes with gitleaks and requires Docker to be running. It is pinned to the same image version CI uses, so a commit that passes locally passes in CI. Rules and the allowlist live in `.gitleaks.toml`.
-
-Full history scan (2026-09-10, 55 commits): no findings.
