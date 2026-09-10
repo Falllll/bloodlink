@@ -13,6 +13,7 @@
     },
     "require-dev": {
         "deptrac/deptrac": "^4.7",
+        "devizzent/cebe-php-openapi": "^1.1",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.11",
         "laravel/boost": "^2.7",

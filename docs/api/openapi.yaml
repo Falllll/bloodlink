@@ -1,0 +1,230 @@
+openapi: 3.0.3
+info:
+  title: BloodLink API
+  version: 1.0.0
+  description: |
+    API headless untuk sistem manajemen bank darah BloodLink. Setiap respons
+    error mengikuti amplop `Error` di bawah, dengan `error.code` sebagai
+    satu-satunya nilai yang boleh dipakai klien untuk bercabang logika.
+    `error.message` hanya untuk keperluan baca manusia (log, debugging) dan
+    isinya bisa berubah kapan saja tanpa dianggap breaking change.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local
+  - url: http://localhost:8000
+    description: Local (health check, di luar prefix /api/v1)
+paths:
+  /health/live:
+    get:
+      summary: Liveness probe
+      description: Endpoint di luar prefix /api/v1. Menandakan proses aplikasi hidup.
+      servers:
+        - url: http://localhost:8000
+          description: Local (health check, di luar prefix /api/v1)
+      responses:
+        '200':
+          description: Aplikasi hidup.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                required: [status]
+  /health/ready:
+    get:
+      summary: Readiness probe
+      description: >-
+        Endpoint di luar prefix /api/v1. Memeriksa database, redis, dan
+        heartbeat worker. Mengembalikan 503 saat salah satu pemeriksaan gagal
+        (degraded), bukan hanya saat semuanya gagal.
+      servers:
+        - url: http://localhost:8000
+          description: Local (health check, di luar prefix /api/v1)
+      responses:
+        '200':
+          description: Semua pemeriksaan lolos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessReport'
+        '503':
+          description: Satu atau lebih pemeriksaan gagal (degraded).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessReport'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Token Sanctum, dikirim lewat header `Authorization: Bearer <token>`.'
+  parameters:
+    Cursor:
+      in: query
+      name: cursor
+      required: false
+      schema:
+        type: string
+      description: Cursor buram dari `meta.next_cursor` atau `meta.prev_cursor` halaman sebelumnya.
+    PerPage:
+      in: query
+      name: per_page
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+      description: Jumlah item per halaman. Nilai di luar rentang di-clamp, bukan ditolak.
+    Sort:
+      in: query
+      name: sort
+      required: false
+      schema:
+        type: string
+      description: >-
+        Nama kolom untuk mengurutkan hasil. Awali dengan `-` untuk urutan
+        descending, mis. `-created_at`. Hanya kolom di allowlist endpoint yang
+        diterima; kolom lain menghasilkan `VALIDATION_FAILED`.
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: >-
+        Wajib untuk setiap POST/PUT/PATCH. Request dengan key yang sama dan
+        body yang sama akan me-replay respons pertama; key yang sama dengan
+        body berbeda ditolak dengan `IDEMPOTENCY_KEY_REUSED`.
+    RequestId:
+      in: header
+      name: X-Request-Id
+      required: false
+      schema:
+        type: string
+        maxLength: 64
+      description: >-
+        ID korelasi request pilihan klien. Kalau tidak dikirim, server
+        membuatnya sendiri dan mengembalikannya di header respons serta di
+        `error.trace_id`.
+  schemas:
+    ErrorCode:
+      type: string
+      enum:
+        - VALIDATION_FAILED
+        - UNAUTHENTICATED
+        - FORBIDDEN
+        - NOT_FOUND
+        - INTERNAL_ERROR
+        - METHOD_NOT_ALLOWED
+        - TOO_MANY_REQUESTS
+        - HTTP_ERROR
+        - IDEMPOTENCY_KEY_REQUIRED
+        - IDEMPOTENCY_KEY_REUSED
+        - REQUEST_IN_PROGRESS
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              $ref: '#/components/schemas/ErrorCode'
+            message:
+              type: string
+            details:
+              type: object
+            trace_id:
+              type: string
+              format: uuid
+          required: [code, message, details, trace_id]
+      required: [error]
+    PaginationMeta:
+      type: object
+      properties:
+        per_page:
+          type: integer
+        next_cursor:
+          type: string
+          nullable: true
+        prev_cursor:
+          type: string
+          nullable: true
+        has_more:
+          type: boolean
+      required: [per_page, next_cursor, prev_cursor, has_more]
+    PaginationLinks:
+      type: object
+      properties:
+        next:
+          type: string
+          nullable: true
+        prev:
+          type: string
+          nullable: true
+      required: [next, prev]
+    ReadinessReport:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, degraded]
+        checks:
+          type: object
+          properties:
+            database:
+              type: boolean
+            redis:
+              type: boolean
+            worker:
+              type: boolean
+          required: [database, redis, worker]
+      required: [status, checks]
+  responses:
+    ValidationFailed:
+      description: Validasi input gagal.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthenticated:
+      description: Token tidak ada atau tidak valid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Token valid tapi tidak berhak atas resource ini.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource tidak ditemukan.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Request bertabrakan dengan state yang sedang berjalan (mis. Idempotency-Key yang sama masih diproses).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TooManyRequests:
+      description: Rate limit terlampaui.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Kesalahan tak terduga di server. `details` selalu kosong di sini agar tidak membocorkan internal.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
