@@ -32,3 +32,4 @@ dc.bat
 .deptrac.cache
 /.phpunit.cache 
 .claude
+gitleaks-history.json

@@ -1,0 +1,14 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Nilai contoh non-rahasia di file template & konfigurasi test"
+paths = [
+    '''\.env\.example''',
+    '''phpunit\.xml''',
+    '''docker-compose\.yml''',
+]
+regexes = [
+    '''DB_PASSWORD=secret''',
+    '''value="secret"''',
+]
