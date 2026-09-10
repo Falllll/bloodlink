@@ -66,6 +66,9 @@ jobs:
             echo "Keys yang duplikat di .env.example:"; echo "$dupes"; exit 1
           fi
 
+      - name: Create test database
+        run: PGPASSWORD=secret createdb -h 127.0.0.1 -U bloodlink bloodlink_test
+
       - name: Format check
         run: ./vendor/bin/pint --test
 

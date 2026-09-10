@@ -9,6 +9,9 @@ use Illuminate\Support\Str;
 
 final class ApiResponse
 {
+    /**
+     * @param  array<string, mixed>  $meta
+     */
     public static function success(mixed $data, array $meta = []): JsonResponse
     {
         return response()->json([
@@ -17,6 +20,10 @@ final class ApiResponse
         ]);
     }
 
+    /**
+     * @param  CursorPaginator<int, mixed>  $page
+     * @param  array<string, mixed>  $meta
+     */
     public static function paginated(CursorPaginator $page, array $meta = []): JsonResponse
     {
         return response()->json([
@@ -31,6 +38,9 @@ final class ApiResponse
         ]);
     }
 
+    /**
+     * @param  array<string, mixed>  $details
+     */
     public static function error(ErrorCode $code, string $message, array $details = [], int $status = 400): JsonResponse
     {
         $traceId = request()->attributes->get('trace_id', (string) Str::uuid());
