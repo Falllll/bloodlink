@@ -93,7 +93,8 @@ class ListPaginationTest extends TestCase
 
         $this->getJson('/api/v1/_test/blood-batches?per_page=1000')
             ->assertOk()
-            ->assertJsonPath('meta.per_page', 100);
+            ->assertJsonPath('meta.per_page', 100)
+            ->assertJsonStructure(['data', 'meta', 'links' => ['next', 'prev']]);
     }
 }
 
