@@ -41,6 +41,11 @@ final class RedactSensitive
         $redacted = [];
 
         foreach ($context as $key => $value) {
+            if (in_array(strtolower((string) $key), self::SENSITIVE_KEYS, true)) {
+                $redacted[$key] = self::REDACTED;
+
+                continue;
+            }
             if (is_array($value)) {
                 $redacted[$key] = $this->redact($value);
 
