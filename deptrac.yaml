@@ -116,7 +116,7 @@ deptrac:
 
   ruleset:
     Shared: [Framework]
-    Models: [Framework]
+    Models: [Framework, Shared, DomIdentity]
 
     ModIdentity:     [Framework, Shared, Models, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
     ModDonor:        [Framework, Shared, Models, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
