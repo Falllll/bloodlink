@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Tests;
 
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -14,6 +15,13 @@ use Tests\TestCase;
 final class AuthTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(RolePermissionSeeder::class);
+    }
 
     public function test_it_registers_a_donor_and_returns_a_bearer_token(): void
     {
@@ -36,10 +44,12 @@ final class AuthTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'budi@example.com',
-            'role' => 'donor',
             'facility_id' => null,
             'is_active' => true,
         ]);
+
+        $user = User::where('email', 'budi@example.com')->first();
+        $this->assertTrue($user->hasRole('donor'));
     }
 
     public function test_it_rejects_a_duplicate_email(): void

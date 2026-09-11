@@ -11,6 +11,8 @@ deptrac:
           value: /^Illuminate\\.*/
         - type: classNameRegex
           value: /^Symfony\\.*/
+        - type: classNameRegex
+          value: /^Spatie\\.*/
 
     - name: Shared
       collectors:

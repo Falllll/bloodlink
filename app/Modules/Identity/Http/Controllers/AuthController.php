@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Models\User;
+use App\Modules\Identity\Domain\Role as RoleEnum;
 use App\Modules\Identity\Http\Requests\LoginRequest;
 use App\Modules\Identity\Http\Requests\RegisterRequest;
+use App\Shared\Auth\FacilityScope;
 use App\Shared\Errors\ErrorCode;
 use App\Shared\Http\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Spatie\Permission\PermissionRegistrar;
 
 final class AuthController
 {
@@ -26,10 +29,15 @@ final class AuthController
 
         $user->forceFill([
             'public_id' => Str::uuid(),
-            'role' => 'donor',
             'facility_id' => null,
             'is_active' => true,
         ])->save();
+
+        app(PermissionRegistrar::class)->setPermissionsTeamId(
+            FacilityScope::of($user->facility_id)
+        );
+
+        $user->assignRole(RoleEnum::DONOR->value);
 
         $token = $user->createToken('api')->plainTextToken;
 
@@ -40,19 +48,10 @@ final class AuthController
     {
         $user = User::where('email', $request->validated('email'))->first();
 
-        if (!$user || !Hash::check($request->validated('password'), $user->password) || !$user->is_active) {
+        if (! $user || ! Hash::check($request->validated('password'), $user->password) || ! $user->is_active) {
             return ApiResponse::error(
                 ErrorCode::UNAUTHENTICATED,
                 'Invalid email or password',
-                [],
-                401
-            );
-        }
-
-        if (!$user->is_active) {
-            return ApiResponse::error(
-                ErrorCode::ACCOUNT_NOT_ACTIVE,
-                'Account is not active',
                 [],
                 401
             );
@@ -83,7 +82,7 @@ final class AuthController
                 'id' => $user->public_id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->role,
+                'role' => $user->getRoleNames()->first(),
             ],
         ];
     }
