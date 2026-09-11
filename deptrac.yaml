@@ -13,6 +13,12 @@ deptrac:
           value: /^Symfony\\.*/
         - type: classNameRegex
           value: /^Spatie\\.*/
+        - type: classNameRegex
+          value: /^Laravel\\Sanctum\\.*/
+        - type: classNameRegex
+          value: /^Tests\\.*/
+        - type: classNameRegex
+          value: /^Database\\Seeders\\.*/
 
     - name: Shared
       collectors:
