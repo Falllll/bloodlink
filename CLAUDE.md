@@ -49,6 +49,9 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   mengedit `Kernel.php`.
 - Kolom uang dan kuantitas tidak boleh `float`. Index wajib di kolom foreign
   key dan kolom yang sering di-query.
+- Queue job tidak mewarisi konteks fasilitas dari request. Job yang perlu
+  memeriksa izin harus memanggil `setPermissionsTeamId()` sendiri dari data
+  di payload-nya.
 
 ## Perintah yang sering dipakai
 

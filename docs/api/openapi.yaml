@@ -8,6 +8,8 @@ info:
     satu-satunya nilai yang boleh dipakai klien untuk bercabang logika.
     `error.message` hanya untuk keperluan baca manusia (log, debugging) dan
     isinya bisa berubah kapan saja tanpa dianggap breaking change.
+    Setiap endpoint daftar tersaring otomatis ke fasilitas pemegang token, dan
+    akses lintas fasilitas dibalas `FORBIDDEN` 403.
 servers:
   - url: http://localhost:8000/api/v1
     description: Local

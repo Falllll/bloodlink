@@ -4,6 +4,7 @@ use App\Shared\Errors\ErrorCode;
 use App\Shared\Exceptions\DomainException;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\AssignTraceId;
+use App\Shared\Http\BindFacilityContext;
 use App\Shared\Http\EnsureIdempotency;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(append: [AssignTraceId::class, EnsureIdempotency::class]);
+        $middleware->alias(['facility.context' => BindFacilityContext::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
