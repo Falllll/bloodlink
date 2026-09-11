@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
 final class LoginRequest extends FormRequest
 {
@@ -19,7 +18,7 @@ final class LoginRequest extends FormRequest
      */
     public function rules(): array
     {
-        
+
         return [
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
