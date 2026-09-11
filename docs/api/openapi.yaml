@@ -56,6 +56,109 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReadinessReport'
+  /auth/register:
+    post:
+      summary: Registrasi donor baru
+      description: Membuat user baru dengan role `donor` dan langsung menerbitkan token akses.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                password:
+                  type: string
+                  minLength: 8
+                password_confirmation:
+                  type: string
+              required: [name, email, password, password_confirmation]
+      responses:
+        '200':
+          description: Registrasi berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthToken'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /auth/login:
+    post:
+      summary: Login
+      description: Menukar email dan password dengan token akses. Dibatasi 5 percobaan per menit.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required: [email, password]
+      responses:
+        '200':
+          description: Login berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthToken'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/logout:
+    post:
+      summary: Logout
+      description: Mencabut hanya token yang dipakai request ini, bukan seluruh token milik user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Logout berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    nullable: true
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
 components:
   securitySchemes:
     bearerAuth:
@@ -168,6 +271,29 @@ components:
           type: string
           nullable: true
       required: [next, prev]
+    AuthToken:
+      type: object
+      properties:
+        token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            role:
+              type: string
+          required: [id, name, email, role]
+      required: [token, token_type, user]
     ReadinessReport:
       type: object
       properties:
