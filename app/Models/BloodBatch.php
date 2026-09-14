@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Shared\Database\Auditable;
 use App\Shared\Database\FacilityScoped;
 use App\Shared\Database\ScopedToFacility;
 use Database\Factories\BloodBatchFactory;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class BloodBatch extends Model implements FacilityScoped
 {
     /** @use HasFactory<BloodBatchFactory> */
-    use HasFactory, ScopedToFacility;
+    use Auditable, HasFactory, ScopedToFacility;
 
     protected $fillable = [
         'blood_type',

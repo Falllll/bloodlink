@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Shared\Database\Auditable;
 use Database\Factories\FacilityFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Facility extends Model
 {
     /** @use HasFactory<FacilityFactory> */
-    use HasFactory, SoftDeletes;
+    use Auditable, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'code', 'name', 'type', 'address', 'city', 'province', 'phone', 'email', 'is_active',
