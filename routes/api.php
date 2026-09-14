@@ -18,7 +18,7 @@ Route::get('/openapi.yaml', function (): Response {
 
 Route::prefix('auth')->name('auth.')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth')->name('login');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('logout');
 });
 
@@ -40,9 +40,9 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::patch('/facilities/{facility}', [FacilityController::class, 'update'])->name('facilities.update');
     Route::patch('/facilities/{facility}/deactivate', [FacilityController::class, 'deactivate'])->name('facilities.deactivate');
 
-if (! app()->isProduction()) {
-    Route::get('/_test/scope', fn () => ApiResponse::success([
-        'permission_team_id' => app(PermissionRegistrar::class)->getPermissionsTeamId(),
-    ]))->name('_test.scope');
-}
+    if (! app()->isProduction()) {
+        Route::get('/_test/scope', fn () => ApiResponse::success([
+            'permission_team_id' => app(PermissionRegistrar::class)->getPermissionsTeamId(),
+        ]))->name('_test.scope');
+    }
 });

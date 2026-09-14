@@ -6,6 +6,8 @@ RUN install-php-extensions pdo_pgsql pcntl bcmath opcache redis
 
 RUN apk add --no-cache git unzip
 
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-bloodlink.ini
+
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
