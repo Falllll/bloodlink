@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Facility;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
+use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(Facility::class, FacilityPolicy::class);
+
         Event::listen(DonationCompleted::class, CreateQuarantinedUnit::class);
 
         Event::listen(Looping::class, function () {
