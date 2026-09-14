@@ -12,6 +12,11 @@ trait AppliesListQuery
      *
      * Callers that restrict columns with ->select(...) must include the sort
      * column in that select, or cursor pagination silently breaks past page 1.
+     *
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return CursorPaginator<int, TModel>
      */
     protected function listing(Builder $query, ListRequest $request): CursorPaginator
     {
