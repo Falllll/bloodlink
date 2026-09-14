@@ -40,7 +40,9 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::patch('/facilities/{facility}', [FacilityController::class, 'update'])->name('facilities.update');
     Route::patch('/facilities/{facility}/deactivate', [FacilityController::class, 'deactivate'])->name('facilities.deactivate');
 
+if (! app()->isProduction()) {
     Route::get('/_test/scope', fn () => ApiResponse::success([
         'permission_team_id' => app(PermissionRegistrar::class)->getPermissionsTeamId(),
-    ]));
+    ]))->name('_test.scope');
+}
 });
