@@ -6,6 +6,7 @@ use App\Shared\Http\ApiResponse;
 use App\Shared\Http\AssignTraceId;
 use App\Shared\Http\BindFacilityContext;
 use App\Shared\Http\EnsureIdempotency;
+use App\Shared\Http\ForceJsonRequest;
 use App\Shared\Http\SecurityHeaders;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -32,7 +33,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->throttleApi('api');
-        $middleware->api(prepend: [SecurityHeaders::class]);
+        $middleware->api(prepend: [
+            ForceJsonRequest::class,
+            SecurityHeaders::class,
+        ]);
         $middleware->api(append: [AssignTraceId::class, EnsureIdempotency::class]);
         $middleware->alias(['facility.context' => BindFacilityContext::class]);
     })

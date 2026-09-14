@@ -184,4 +184,15 @@ final class HardeningTest extends TestCase
             )
             ->assertHeader('Cross-Origin-Resource-Policy', 'same-site');
     }
+
+    public function test_an_api_request_without_accept_header_returns_json_unauthenticated_response(): void
+    {
+        $response = $this->get('/api/v1/blood-batches');
+
+        $response
+            ->assertStatus(401)
+            ->assertJsonPath('error.code', 'UNAUTHENTICATED')
+            ->assertJsonPath('error.message', 'Unauthenticated.')
+            ->assertJsonPath('error.trace_id', fn ($traceId) => filled($traceId));
+    }
 }
