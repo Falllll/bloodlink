@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Shared\Database\Auditable;
 use App\Shared\Database\FacilityScoped;
 use App\Shared\Database\ScopedToFacility;
 use Database\Factories\DonorFactory;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Donor extends Model implements FacilityScoped
 {
     /** @use HasFactory<DonorFactory> */
-    use HasFactory, ScopedToFacility, SoftDeletes;
+    use Auditable, HasFactory, ScopedToFacility, SoftDeletes;
 
     protected $fillable = [
         'name',

@@ -4,27 +4,12 @@ declare(strict_types=1);
 
 namespace App\Logging;
 
+use App\Shared\Logging\SensitiveKeys;
 use Illuminate\Log\Logger;
 use Monolog\LogRecord;
 
 final class RedactSensitive
 {
-    private const REDACTED = '[REDACTED]';
-
-    /** @var list<string> */
-    private const SENSITIVE_KEYS = [
-        'password',
-        'password_confirmation',
-        'token',
-        'access_token',
-        'refresh_token',
-        'authorization',
-        'secret',
-        'nik',
-        'hemoglobin',
-        'lab_result',
-    ];
-
     public function __invoke(Logger $logger): void
     {
         $logger->pushProcessor(fn (LogRecord $record): LogRecord => $record->with(
@@ -41,8 +26,8 @@ final class RedactSensitive
         $redacted = [];
 
         foreach ($context as $key => $value) {
-            if (in_array(strtolower((string) $key), self::SENSITIVE_KEYS, true)) {
-                $redacted[$key] = self::REDACTED;
+            if (SensitiveKeys::isSensitive((string) $key)) {
+                $redacted[$key] = SensitiveKeys::REDACTED;
 
                 continue;
             }
@@ -52,9 +37,7 @@ final class RedactSensitive
                 continue;
             }
 
-            $redacted[$key] = in_array(strtolower((string) $key), self::SENSITIVE_KEYS, true)
-                ? self::REDACTED
-                : $value;
+            $redacted[$key] = $value;
         }
 
         return $redacted;

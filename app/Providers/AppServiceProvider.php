@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\BloodBatch;
+use App\Models\Donor;
 use App\Models\Facility;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
+use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
 use Illuminate\Queue\Events\Looping;
@@ -28,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Facility::class, FacilityPolicy::class);
+
+        foreach ([Facility::class, Donor::class, BloodBatch::class] as $model) {
+            $model::observe(AuditObserver::class);
+        }
 
         Event::listen(DonationCompleted::class, CreateQuarantinedUnit::class);
 
