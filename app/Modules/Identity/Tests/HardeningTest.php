@@ -183,6 +183,13 @@ final class HardeningTest extends TestCase
                 'geolocation=(), microphone=(), camera=()'
             )
             ->assertHeader('Cross-Origin-Resource-Policy', 'same-site');
+
+        $response->assertHeader('X-Request-Id');
+
+        $this->assertSame(
+            $response->headers->get('X-Request-Id'),
+            $response->json('error.trace_id'),
+        );
     }
 
     public function test_an_api_request_without_accept_header_returns_json_unauthenticated_response(): void
@@ -194,5 +201,38 @@ final class HardeningTest extends TestCase
             ->assertJsonPath('error.code', 'UNAUTHENTICATED')
             ->assertJsonPath('error.message', 'Unauthenticated.')
             ->assertJsonPath('error.trace_id', fn ($traceId) => filled($traceId));
+    }
+
+    public function test_a_429_response_preserves_retry_after_header(): void
+    {
+        Route::middleware('api')->get('/api/v1/_test/hardening/retry-after', function () {
+            return ['ok' => true];
+        });
+
+        config()->set('security.rate_limit.per_minute', 1);
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum');
+
+        $this->getJson('/api/v1/_test/hardening/retry-after')
+            ->assertOk();
+
+        $response = $this->getJson('/api/v1/_test/hardening/retry-after')
+            ->assertStatus(429);
+
+        $response->assertHeader('Retry-After');
+    }
+
+    public function test_a_405_response_preserves_allow_header(): void
+    {
+        Route::middleware('api')->get('/api/v1/_test/hardening/method-not-allowed', function () {
+            return ['ok' => true];
+        });
+
+        $response = $this->postJson('/api/v1/_test/hardening/method-not-allowed')
+            ->assertStatus(405);
+
+        $response->assertHeader('Allow');
     }
 }

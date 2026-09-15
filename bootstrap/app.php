@@ -34,10 +34,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->throttleApi('api');
         $middleware->api(prepend: [
+            AssignTraceId::class,
             ForceJsonRequest::class,
             SecurityHeaders::class,
         ]);
-        $middleware->api(append: [AssignTraceId::class, EnsureIdempotency::class]);
+        $middleware->api(append: [EnsureIdempotency::class]);
         $middleware->alias(['facility.context' => BindFacilityContext::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -154,7 +155,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     $e->getMessage() ?: 'Request failed.',
                     [],
                     $status,
-                );
+                )->withHeaders($e->getHeaders());
             }
 
             if (config('app.debug')) {
