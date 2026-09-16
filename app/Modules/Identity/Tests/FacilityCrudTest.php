@@ -185,6 +185,41 @@ final class FacilityCrudTest extends TestCase
             ->assertJsonPath('error.code', 'VALIDATION_FAILED');
     }
 
+    public function test_updating_a_facility_without_changing_its_code_is_accepted(): void
+    {
+        $facility = Facility::factory()->create(['code' => 'RSUD-10']);
+
+        $admin = User::factory()->create(['facility_id' => null]);
+        $this->assignRole($admin, RoleEnum::ADMIN);
+
+        $response = $this->patchJson(
+            "/api/v1/facilities/{$facility->public_id}",
+            ['code' => 'RSUD-10'],
+            $this->withIdempotencyKey($this->bearer($admin))
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.code', 'RSUD-10');
+    }
+
+    public function test_updating_a_facility_to_another_facilitys_code_is_rejected(): void
+    {
+        Facility::factory()->create(['code' => 'RSUD-11']);
+        $facility = Facility::factory()->create(['code' => 'RSUD-12']);
+
+        $admin = User::factory()->create(['facility_id' => null]);
+        $this->assignRole($admin, RoleEnum::ADMIN);
+
+        $response = $this->patchJson(
+            "/api/v1/facilities/{$facility->public_id}",
+            ['code' => 'RSUD-11'],
+            $this->withIdempotencyKey($this->bearer($admin))
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error.code', 'VALIDATION_FAILED');
+    }
+
     public function test_nearby_uses_the_gist_index(): void
     {
         // Planner sudah memilih index scan secara alami di sini (dibuktikan

@@ -9,7 +9,9 @@ info:
     `error.message` hanya untuk keperluan baca manusia (log, debugging) dan
     isinya bisa berubah kapan saja tanpa dianggap breaking change.
     Setiap endpoint daftar tersaring otomatis ke fasilitas pemegang token, dan
-    akses lintas fasilitas dibalas `FORBIDDEN` 403.
+    akses lintas fasilitas dibalas `FORBIDDEN` 403 — kecuali endpoint master
+    data `/facilities`, yang menampilkan seluruh fasilitas ke semua pengguna
+    terautentikasi dan membatasi hanya operasi tulis lewat role `admin`.
 servers:
   - url: http://localhost:8000/api/v1
     description: Local
@@ -161,6 +163,159 @@ paths:
                 required: [data, meta]
         '401':
           $ref: '#/components/responses/Unauthenticated'
+  /facilities:
+    get:
+      summary: Daftar fasilitas
+      description: Master data seluruh fasilitas, tidak tersaring ke fasilitas pemegang token.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Daftar fasilitas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Facility'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      summary: Daftarkan fasilitas baru
+      description: Hanya role `admin`. `code` di-uppercase otomatis dan wajib unik.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacilityWrite'
+      responses:
+        '201':
+          description: Fasilitas dibuat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Facility'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /facilities/{facility}:
+    get:
+      summary: Detail fasilitas
+      description: >-
+        Admin bisa melihat fasilitas mana pun; peran lain hanya fasilitas
+        aktif atau fasilitas miliknya sendiri.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/FacilityId'
+      responses:
+        '200':
+          description: Detail fasilitas berikut koordinat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FacilityWithCoordinates'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Perbarui fasilitas
+      description: Hanya role `admin`. Semua field opsional; hanya yang dikirim yang diperbarui.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/FacilityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacilityWrite'
+      responses:
+        '200':
+          description: Fasilitas diperbarui.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Facility'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /facilities/{facility}/deactivate:
+    patch:
+      summary: Nonaktifkan fasilitas
+      description: Mengubah `is_active` menjadi `false`. Baris tidak dihapus.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/FacilityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Fasilitas dinonaktifkan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Facility'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -206,6 +361,14 @@ components:
         Wajib untuk setiap POST/PUT/PATCH. Request dengan key yang sama dan
         body yang sama akan me-replay respons pertama; key yang sama dengan
         body berbeda ditolak dengan `IDEMPOTENCY_KEY_REUSED`.
+    FacilityId:
+      in: path
+      name: facility
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: 'Public ID fasilitas (`public_id`). ID numerik internal tidak pernah keluar ke API.'
     RequestId:
       in: header
       name: X-Request-Id
@@ -296,6 +459,90 @@ components:
               type: string
           required: [id, name, email, role]
       required: [token, token_type, user]
+    Facility:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [hospital, blood_bank, donation_unit, mobile_unit]
+        address:
+          type: string
+        city:
+          type: string
+        province:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+        is_active:
+          type: boolean
+      required: [id, code, name, type, address, city, province, phone, email, is_active]
+    FacilityWithCoordinates:
+      allOf:
+        - $ref: '#/components/schemas/Facility'
+        - type: object
+          properties:
+            latitude:
+              type: number
+              format: double
+              nullable: true
+            longitude:
+              type: number
+              format: double
+              nullable: true
+    FacilityWrite:
+      type: object
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Z0-9-]{3,32}$'
+          description: Otomatis di-uppercase sebelum divalidasi.
+        name:
+          type: string
+          maxLength: 255
+        type:
+          type: string
+          enum: [hospital, blood_bank, donation_unit, mobile_unit]
+        address:
+          type: string
+          maxLength: 255
+        city:
+          type: string
+          maxLength: 100
+        province:
+          type: string
+          maxLength: 100
+        phone:
+          type: string
+          maxLength: 32
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: Wajib untuk tipe `hospital` dan `blood_bank`.
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: Wajib untuk tipe `hospital` dan `blood_bank`.
+      required: [code, name, type, address, city, province, phone]
     ReadinessReport:
       type: object
       properties:
