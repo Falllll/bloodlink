@@ -17,7 +17,7 @@ Route::get('/openapi.yaml', function (): Response {
 })->name('openapi.spec');
 
 Route::prefix('auth')->name('auth.')->group(function (): void {
-    Route::post('/register', [AuthController::class, 'register'])->name('register');
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth')->name('register');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth')->name('login');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('logout');
 });

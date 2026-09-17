@@ -173,4 +173,26 @@ final class AuthTest extends TestCase
             ->postJson('/api/v1/auth/logout', [], ['Idempotency-Key' => (string) Str::uuid()])
             ->assertStatus(401);
     }
+
+    public function test_it_rate_limits_login_attempts(): void
+    {
+        config()->set('security.rate_limit.auth_per_minute', 1);
+
+        $payload = [
+            'email' => 'unknown@example.com',
+            'password' => 'wrong-password',
+        ];
+
+        $this->withServerVariables([
+            'REMOTE_ADDR' => '192.0.2.123',
+        ])->postJson('/api/v1/auth/login', $payload, [
+            'Idempotency-Key' => (string) Str::uuid(),
+        ])->assertStatus(401);
+
+        $this->withServerVariables([
+            'REMOTE_ADDR' => '192.0.2.123',
+        ])->postJson('/api/v1/auth/login', $payload, [
+            'Idempotency-Key' => (string) Str::uuid(),
+        ])->assertStatus(429);
+    }
 }

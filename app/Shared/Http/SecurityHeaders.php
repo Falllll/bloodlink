@@ -29,7 +29,7 @@ final class SecurityHeaders
         }
 
         if ($request->isSecure()) {
-            $response->headers->set('Strict-Transport-Security', 'max-age='.config('security.hsts_max_age')
+            $response->headers->set('Strict-Transport-Security', 'max-age='.config('security.hsts_max_age').'; includeSubDomains'
             );
         }
 

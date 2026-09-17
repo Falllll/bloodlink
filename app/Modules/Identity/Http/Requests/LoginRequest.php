@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Shared\Http\StrictRequest;
 
-final class LoginRequest extends FormRequest
+final class LoginRequest extends StrictRequest
 {
     public function authorize(): bool
     {

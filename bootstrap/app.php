@@ -30,16 +30,28 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function () {
             Route::middleware([])->group(base_path('routes/health.php'));
         },
-    )
-    ->withMiddleware(function (Middleware $middleware): void {
+    )->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(
+            at: array_filter(
+                explode(',', (string) env('TRUSTED_PROXIES', ''))
+            )
+        );
+
         $middleware->throttleApi('api');
+
         $middleware->api(prepend: [
             AssignTraceId::class,
             ForceJsonRequest::class,
             SecurityHeaders::class,
         ]);
-        $middleware->api(append: [EnsureIdempotency::class]);
-        $middleware->alias(['facility.context' => BindFacilityContext::class]);
+
+        $middleware->api(append: [
+            EnsureIdempotency::class,
+        ]);
+
+        $middleware->alias([
+            'facility.context' => BindFacilityContext::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Shared\Http\StrictRequest;
 use Illuminate\Validation\Rules\Password;
 
-final class RegisterRequest extends FormRequest
+final class RegisterRequest extends StrictRequest
 {
     public function authorize(): bool
     {
