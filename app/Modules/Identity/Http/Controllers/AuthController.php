@@ -15,7 +15,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Spatie\Permission\PermissionRegistrar;
 
 final class AuthController
 {
@@ -33,9 +32,7 @@ final class AuthController
             'is_active' => true,
         ])->save();
 
-        app(PermissionRegistrar::class)->setPermissionsTeamId(
-            FacilityScope::of($user->facility_id)
-        );
+        FacilityScope::bind($user->facility_id);
 
         $user->assignRole(RoleEnum::DONOR->value);
 
@@ -56,6 +53,8 @@ final class AuthController
                 401
             );
         }
+
+        FacilityScope::bind($user->facility_id);
 
         $token = $user->createToken('api')->plainTextToken;
 

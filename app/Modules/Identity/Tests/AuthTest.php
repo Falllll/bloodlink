@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Tests;
 
 use App\Models\User;
+use App\Modules\Identity\Domain\Role;
+use App\Shared\Auth\FacilityScope;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -90,6 +92,29 @@ final class AuthTest extends TestCase
         $wrongPassword->assertStatus(401)->assertJsonPath('error.code', 'UNAUTHENTICATED');
 
         $this->assertSame($unknownEmail->json('error.message'), $wrongPassword->json('error.message'));
+    }
+
+    public function test_it_returns_the_user_role_when_logging_in(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password123'),
+            'facility_id' => null,
+            'is_active' => true,
+        ]);
+
+        FacilityScope::bind($user->facility_id);
+
+        $user->assignRole(Role::ADMIN->value);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => 'admin@example.com',
+            'password' => 'password123',
+        ], ['Idempotency-Key' => (string) Str::uuid()]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.user.email', 'admin@example.com')
+            ->assertJsonPath('data.user.role', 'admin');
     }
 
     public function test_it_refuses_to_log_in_an_inactive_account(): void

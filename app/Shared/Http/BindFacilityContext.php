@@ -9,7 +9,6 @@ use App\Shared\Auth\FacilityScope;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Context;
-use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\HttpFoundation\Response;
 
 final class BindFacilityContext
@@ -19,7 +18,8 @@ final class BindFacilityContext
         $user = $request->user();
         $facilityId = $user instanceof FacilityMember ? $user->facilityId() : null;
 
-        app(PermissionRegistrar::class)->setPermissionsTeamId(FacilityScope::of($facilityId));
+        FacilityScope::bind($facilityId);
+
         Context::add('facility_id', $facilityId);
 
         return $next($request);

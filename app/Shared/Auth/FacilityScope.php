@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Shared\Auth;
 
+use Spatie\Permission\PermissionRegistrar;
+
 final class FacilityScope
 {
     /**
@@ -15,5 +17,12 @@ final class FacilityScope
     public static function of(?int $facilityId): int
     {
         return $facilityId ?? self::GLOBAL_SCOPE;
+    }
+
+    public static function bind(?int $facilityId): void
+    {
+        app(PermissionRegistrar::class)->setPermissionsTeamId(
+            self::of($facilityId)
+        );
     }
 }
