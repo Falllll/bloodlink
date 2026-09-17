@@ -93,8 +93,8 @@ final class FacilityController
 
     private function writeLocation(Facility $facility, float $latitude, float $longitude): void
     {
-        DB::table('facilities')->where('id', $facility->id)->update([
-            'location' => DB::raw("ST_SetSRID(ST_MakePoint({$longitude}, {$latitude}), 4326)::geography"),
-        ]);
+        $facility->forceFill([
+            'location' => DB::raw(sprintf('ST_SetSRID(ST_MakePoint(%F, %F), 4326)::geography', $longitude, $latitude)),
+        ])->save();
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Tests;
 
 use App\Models\AuditLog;
+use App\Models\BloodBatch;
 use App\Models\Facility;
 use App\Models\User;
 use App\Modules\Identity\Domain\Role as RoleEnum;
@@ -187,5 +188,116 @@ final class AuditLogTest extends TestCase
         $this->expectException(QueryException::class);
 
         DB::table('audit_logs')->where('id', $log->id)->delete();
+    }
+
+    public function test_updating_a_user_writes_an_audit_row(): void
+    {
+        $user = User::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $user->forceFill([
+            'is_active' => false,
+        ])->save();
+
+        $log = AuditLog::where('auditable_type', User::class)
+            ->where('auditable_id', $user->id)
+            ->where('action', 'updated')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($log);
+        $this->assertArrayHasKey('is_active', $log->changes['after']);
+        $this->assertSame(true, $log->changes['before']['is_active']);
+        $this->assertSame(false, $log->changes['after']['is_active']);
+    }
+
+    public function test_user_remember_token_is_redacted_in_audit(): void
+    {
+        $user = User::factory()->create([
+            'remember_token' => null,
+        ]);
+
+        $user->forceFill([
+            'remember_token' => 'sensitive-token-value',
+        ])->save();
+
+        $log = AuditLog::where('auditable_type', User::class)
+            ->where('auditable_id', $user->id)
+            ->where('action', 'updated')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($log);
+        $this->assertArrayHasKey('remember_token', $log->changes['after']);
+        $this->assertSame(
+            SensitiveKeys::REDACTED,
+            $log->changes['after']['remember_token']
+        );
+    }
+
+    public function test_hemoglobin_value_is_redacted_in_audit(): void
+    {
+        $bloodBatch = BloodBatch::factory()->create([
+            'hemoglobin_g_dl' => 10.5,
+        ]);
+
+        $bloodBatch->forceFill([
+            'hemoglobin_g_dl' => 12.0,
+        ])->save();
+
+        $log = AuditLog::where('auditable_type', BloodBatch::class)
+            ->where('auditable_id', $bloodBatch->id)
+            ->where('action', 'updated')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($log);
+        $this->assertArrayHasKey('hemoglobin_g_dl', $log->changes['after']);
+        $this->assertSame(
+            SensitiveKeys::REDACTED,
+            $log->changes['after']['hemoglobin_g_dl']
+        );
+    }
+
+    public function test_creating_a_facility_with_location_writes_a_location_audit(): void
+    {
+        $admin = User::factory()->create([
+            'facility_id' => null,
+        ]);
+
+        $this->assignRole($admin, RoleEnum::ADMIN);
+
+        $response = $this->postJson('/api/v1/facilities', [
+            'code' => 'AUD-LOCATION',
+            'name' => 'RSUD Location Audit',
+            'type' => 'hospital',
+            'address' => 'Jl. Location No. 1',
+            'city' => 'Jakarta',
+            'province' => 'DKI Jakarta',
+            'phone' => '02112345670',
+            'latitude' => -6.2,
+            'longitude' => 106.81,
+        ], $this->withIdempotencyKey($this->bearer($admin)));
+
+        $response->assertStatus(201);
+
+        $facility = Facility::where('code', 'AUD-LOCATION')->firstOrFail();
+
+        $this->assertSame(
+            1,
+            AuditLog::where('auditable_type', Facility::class)
+                ->where('auditable_id', $facility->id)
+                ->where('action', 'created')
+                ->count()
+        );
+
+        $this->assertSame(
+            1,
+            AuditLog::where('auditable_type', Facility::class)
+                ->where('auditable_id', $facility->id)
+                ->where('action', 'updated')
+                ->count()
+        );
     }
 }

@@ -17,6 +17,14 @@ final class SensitiveKeys
 
     public static function isSensitive(string $key): bool
     {
-        return in_array(strtolower($key), self::KEYS, true);
+        $key = strtolower($key);
+
+        foreach (self::KEYS as $sensitiveKey) {
+            if (str_contains($key, $sensitiveKey)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
