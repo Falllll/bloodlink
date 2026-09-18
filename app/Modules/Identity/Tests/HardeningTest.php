@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Modules\Identity\Domain\Role as RoleEnum;
 use App\Shared\Auth\FacilityScope;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
@@ -150,6 +151,15 @@ final class HardeningTest extends TestCase
                 'error.details.facilty_id.0',
                 'The facilty_id field is not allowed.'
             );
+    }
+
+    public function test_mass_assignment_of_an_unknown_column_throws(): void
+    {
+        $this->expectException(MassAssignmentException::class);
+
+        Facility::create([
+            'tidak_ada_kolom_ini' => 1,
+        ]);
     }
 
     public function test_a_429_response_still_carries_the_security_headers(): void
