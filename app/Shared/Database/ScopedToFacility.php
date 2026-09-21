@@ -14,6 +14,15 @@ trait ScopedToFacility
         return 'facility_id';
     }
 
+    /**
+     * Setel pemilik fasilitas dari sisi server. Satu-satunya jalan yang sah.
+     * Tidak menyimpan; pemanggil yang memutuskan kapan save() (mis. dalam transaksi).
+     */
+    public function assignFacility(int $facilityId): static
+    {
+        return $this->forceFill([$this->facilityColumn() => $facilityId]);
+    }
+
     public function ownerFacilityId(): ?int
     {
         $value = $this->getAttribute($this->facilityColumn());

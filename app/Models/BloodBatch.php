@@ -16,10 +16,12 @@ class BloodBatch extends Model implements FacilityScoped
     use Auditable, HasFactory, ScopedToFacility;
 
     protected $fillable = [
-        'blood_type',
+        'component',
+        'blood_group',
+        'rh_factor',
         'volume_ml',
+        'hemoglobin_g_dl',
         'donor_id',
-        'facility_id',
         'collected_at',
         'expires_at',
     ];

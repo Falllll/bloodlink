@@ -17,11 +17,16 @@ class Donor extends Model implements FacilityScoped
     use Auditable, HasFactory, ScopedToFacility, SoftDeletes;
 
     protected $fillable = [
-        'name',
-        'address',
+        'full_name',
+        'date_of_birth',
+        'sex',
+        'blood_group',
+        'rh_factor',
         'phone',
         'email',
-        'blood_type',
+        'address',
+        'city',
+        'weight_kg',
     ];
 
     protected function casts(): array
