@@ -6,6 +6,7 @@ namespace App\Shared\Http;
 
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator as ValidationValidator;
 
 abstract class StrictRequest extends FormRequest
 {
@@ -22,7 +23,7 @@ abstract class StrictRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(function (Validator $validator): void {
+        $validator->after(function (ValidationValidator $validator): void {
             $ruleKeys = array_keys($this->rules());
 
             $allowedKeys = [];
@@ -38,10 +39,7 @@ abstract class StrictRequest extends FormRequest
 
             foreach (array_keys($this->all()) as $key) {
                 if (! in_array($key, $allowedKeys, true)) {
-                    $validator->errors()->add(
-                        $key,
-                        "The {$key} field is not allowed."
-                    );
+                    $validator->addFailure((string) $key, 'not_allowed');
                 }
             }
         });

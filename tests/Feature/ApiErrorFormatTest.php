@@ -74,6 +74,13 @@ class ApiErrorFormatTest extends TestCase
             ->assertJsonPath('error.code', 'VALIDATION_FAILED');
     }
 
+    public function test_non_validation_errors_emit_details_as_an_object(): void
+    {
+        $response = $this->getJson('/api/v1/_test/not-found')->assertStatus(404);
+
+        $this->assertTrue(str_contains((string) $response->getContent(), '"details":{}'));
+    }
+
     public function test_it_returns_unauthenticated_payload(): void
     {
         $this->getJson('/api/v1/_test/unauthenticated')

@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Shared\Errors\ErrorCode;
 use cebe\openapi\Reader;
 use cebe\openapi\spec\OpenApi;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ApiContractTest extends TestCase
@@ -26,6 +27,26 @@ class ApiContractTest extends TestCase
         $spec = $this->spec();
 
         $this->assertTrue($spec->validate(), implode("\n", $spec->getErrors()));
+    }
+
+    public function test_validation_details_carry_rule_keys_not_sentences(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'email' => '',
+            'password' => 'abc',
+        ], ['Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
+
+        $response->assertJsonPath('error.details.password', fn (array $entries) => collect($entries)
+            ->contains(fn (array $e) => $e['rule'] === 'min' && $e['params'] === ['min' => '8']));
+
+        $this->assertNotEmpty($response->json('error.details.email'));
+
+        $details = $response->json('error.details');
+
+        array_walk_recursive($details, function ($value): void {
+            $this->assertIsString($value);
+            $this->assertStringNotContainsString(' ', $value);
+        });
     }
 
     public function test_the_error_code_enum_matches_the_specification(): void

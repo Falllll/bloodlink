@@ -147,10 +147,7 @@ final class HardeningTest extends TestCase
         $response
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'VALIDATION_FAILED')
-            ->assertJsonPath(
-                'error.details.facilty_id.0',
-                'The facilty_id field is not allowed.'
-            );
+            ->assertJsonPath('error.details.facilty_id.0.rule', 'not_allowed');
     }
 
     public function test_mass_assignment_of_an_unknown_column_throws(): void

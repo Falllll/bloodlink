@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Requests;
 
 use App\Shared\Http\StrictRequest;
-use Illuminate\Validation\Rules\Password;
 
 final class RegisterRequest extends StrictRequest
 {
@@ -22,7 +21,7 @@ final class RegisterRequest extends StrictRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'confirmed', 'min:8'],
         ];
     }
 }

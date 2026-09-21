@@ -8,6 +8,7 @@ use App\Shared\Http\BindFacilityContext;
 use App\Shared\Http\EnsureIdempotency;
 use App\Shared\Http\ForceJsonRequest;
 use App\Shared\Http\SecurityHeaders;
+use App\Shared\Http\ValidationFailures;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -66,7 +67,7 @@ return Application::configure(basePath: dirname(__DIR__))
             return ApiResponse::error(
                 ErrorCode::VALIDATION_FAILED,
                 'Validation failed.',
-                $e->errors(),
+                ValidationFailures::fromFailed($e->validator->failed()),
                 422,
             );
         });

@@ -407,6 +407,22 @@ components:
               type: string
             details:
               type: object
+              description: >
+                Per field, daftar aturan yang gagal. Kosong ({}) untuk error non-validasi.
+                Klien memetakan `rule` + `params` ke kalimat lokalnya sendiri; backend
+                tidak pernah mengirim kalimat siap tampil.
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  required: [rule, params]
+                  properties:
+                    rule:
+                      type: string
+                      example: min
+                    params:
+                      description: Objek bernama untuk aturan yang dipetakan, larik posisional untuk sisanya. Nilainya selalu string.
+                      example: { min: "8" }
             trace_id:
               type: string
               format: uuid

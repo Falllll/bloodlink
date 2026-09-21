@@ -49,7 +49,7 @@ final class ApiResponse
             'error' => [
                 'code' => $code->value,
                 'message' => $message,
-                'details' => $details,
+                'details' => (object) $details,
                 'trace_id' => $traceId,
             ],
         ], $status);
