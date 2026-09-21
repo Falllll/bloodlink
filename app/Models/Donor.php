@@ -37,7 +37,46 @@ class Donor extends Model implements FacilityScoped
             'deferred_until' => 'date',
             'is_deferred' => 'boolean',
             'weight_kg' => 'decimal:2',
+            'phone' => 'encrypted',
+            'email' => 'encrypted',
+            'address' => 'encrypted',
         ];
+    }
+
+    /**
+     * Kolom terenkripsi tidak boleh masuk diff audit (ciphertext bocor ke audit_logs).
+     *
+     * @return list<string>
+     */
+    public function auditExcept(): array
+    {
+        return ['updated_at', 'remember_token', 'phone', 'email', 'address', 'phone_hash'];
+    }
+
+    /**
+     * Blind index deterministik untuk pencarian/dedup nomor HP tanpa membuka ciphertext.
+     * HMAC ber-key (bukan hash polos): ruang nomor HP kecil dan mudah di-brute force.
+     */
+    public static function phoneHash(string $phone): string
+    {
+        $normalized = preg_replace('/[^\d+]/', '', $phone) ?? '';
+
+        if (str_starts_with($normalized, '0')) {
+            $normalized = '+62'.substr($normalized, 1);
+        } elseif (str_starts_with($normalized, '62')) {
+            $normalized = '+'.$normalized;
+        }
+
+        return hash_hmac('sha256', $normalized, (string) config('app.key'));
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $donor): void {
+            if ($donor->isDirty('phone')) {
+                $donor->phone_hash = self::phoneHash($donor->phone);
+            }
+        });
     }
 
     /**
