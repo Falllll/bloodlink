@@ -7,11 +7,14 @@ namespace Tests\Feature;
 use App\Shared\Errors\ErrorCode;
 use cebe\openapi\Reader;
 use cebe\openapi\spec\OpenApi;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ApiContractTest extends TestCase
 {
+    use RefreshDatabase;
+
     private function spec(): OpenApi
     {
         $path = realpath(base_path('docs/api/openapi.yaml'));
