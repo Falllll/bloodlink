@@ -21,7 +21,7 @@ final class RegisterRequest extends StrictRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', 'min:8'],
+            'password' => ['required', 'string', 'confirmed', 'min:8'],
         ];
     }
 }

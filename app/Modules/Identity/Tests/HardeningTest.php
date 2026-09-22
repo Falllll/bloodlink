@@ -242,4 +242,18 @@ final class HardeningTest extends TestCase
 
         $response->assertHeader('Allow');
     }
+
+    public function test_register_rejects_an_array_password_with_422(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Budi Santoso',
+            'email' => 'budi@example.com',
+            'password' => [1, 2, 3, 4, 5, 6, 7, 8],
+            'password_confirmation' => [1, 2, 3, 4, 5, 6, 7, 8],
+        ], ['Idempotency-Key' => (string) Str::uuid()]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonPath('error.details.password.0.rule', 'string');
+    }
 }

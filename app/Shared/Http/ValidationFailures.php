@@ -29,6 +29,8 @@ final class ValidationFailures
         'regex' => ['pattern'],
         'date_format' => ['format'],
         'mimes' => ['values'],
+        'invalid_sort' => ['column'],
+        'unsupported_filter' => ['keys'],
     ];
 
     /**
@@ -36,7 +38,7 @@ final class ValidationFailures
      *
      * @var array<int, string>
      */
-    private const VARIADIC = ['in', 'not_in', 'mimes'];
+    private const VARIADIC = ['in', 'not_in', 'mimes', 'unsupported_filter'];
 
     /**
      * @param  array<string, array<string, array<int, mixed>>>  $failed

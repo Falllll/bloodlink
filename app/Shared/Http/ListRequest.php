@@ -3,6 +3,7 @@
 namespace App\Shared\Http;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 abstract class ListRequest extends FormRequest
 {
@@ -28,21 +29,46 @@ abstract class ListRequest extends FormRequest
         return [
             'cursor' => ['sometimes', 'string'],
             'per_page' => ['sometimes', 'integer', 'min:1'],
-            'sort' => ['sometimes', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
-                $column = ltrim((string) $value, '-');
-
-                if (! in_array($column, $this->sortable, true)) {
-                    $fail("The selected {$attribute} is invalid.");
-                }
-            }],
-            'filter' => ['sometimes', 'array', function (string $attribute, mixed $value, \Closure $fail): void {
-                $unknown = array_diff(array_keys((array) $value), $this->filterable);
-
-                if ($unknown !== []) {
-                    $fail('The filter contains unsupported keys: '.implode(', ', $unknown).'.');
-                }
-            }],
+            'sort' => ['sometimes', 'string'],
+            'filter' => ['sometimes', 'array'],
         ];
+    }
+
+    /**
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            fn (Validator $validator) => $this->rejectUnsortableColumn($validator),
+            fn (Validator $validator) => $this->rejectUnsupportedFilters($validator),
+        ];
+    }
+
+    private function rejectUnsortableColumn(Validator $validator): void
+    {
+        if (! $this->has('sort') || $validator->errors()->has('sort')) {
+            return;
+        }
+
+        $column = ltrim((string) $this->input('sort'), '-');
+
+        if (! in_array($column, $this->sortable, true)) {
+            $validator->addFailure('sort', 'invalid_sort', [$column]);
+        }
+    }
+
+    private function rejectUnsupportedFilters(Validator $validator): void
+    {
+        if (! $this->has('filter') || $validator->errors()->has('filter')) {
+            return;
+        }
+
+        $unknown = array_values(array_diff(array_keys((array) $this->input('filter')), $this->filterable));
+
+        if ($unknown !== []) {
+            $validator->addFailure('filter', 'unsupported_filter', array_map('strval', $unknown));
+        }
     }
 
     /**

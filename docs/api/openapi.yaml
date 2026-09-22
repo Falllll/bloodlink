@@ -419,9 +419,12 @@ components:
                   properties:
                     rule:
                       type: string
+                      description: Nama aturan Laravel dalam snake_case, atau kunci khusus aplikasi (not_allowed, invalid_sort, unsupported_filter).
                       example: min
                     params:
-                      description: Objek bernama untuk aturan yang dipetakan, larik posisional untuk sisanya. Nilainya selalu string.
+                      description: >
+                        Objek bernama untuk aturan yang dipetakan, larik posisional untuk sisanya.
+                        Nilai leaf selalu string; `values` (in, not_in, mimes) dan `keys` (unsupported_filter) berupa list string.
                       example: { min: "8" }
             trace_id:
               type: string

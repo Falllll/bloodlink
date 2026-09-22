@@ -74,8 +74,10 @@ class ListPaginationTest extends TestCase
     {
         BloodBatch::factory()->create();
 
-        $this->getJson('/api/v1/_test/blood-batches?sort=password')
-            ->assertStatus(422);
+        $this->getJson('/api/v1/_test/blood-batches?sort=-password')
+            ->assertStatus(422)
+            ->assertJsonPath('error.details.sort.0.rule', 'invalid_sort')
+            ->assertJsonPath('error.details.sort.0.params', ['column' => 'password']);
     }
 
     public function test_it_rejects_filter_keys_outside_the_allowlist(): void
@@ -83,8 +85,10 @@ class ListPaginationTest extends TestCase
         BloodBatch::factory()->create();
 
         $this->getJson('/api/v1/_test/blood-batches?'.http_build_query([
-            'filter' => ['donor_id' => 1],
-        ]))->assertStatus(422);
+            'filter' => ['donor_id' => 1, 'nik' => 'x', 'status' => 'y'],
+        ]))->assertStatus(422)
+            ->assertJsonPath('error.details.filter.0.rule', 'unsupported_filter')
+            ->assertJsonPath('error.details.filter.0.params', ['keys' => ['donor_id', 'nik']]);
     }
 
     public function test_it_clamps_per_page_instead_of_rejecting_it(): void
@@ -95,6 +99,28 @@ class ListPaginationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('meta.per_page', 100)
             ->assertJsonStructure(['data', 'meta', 'links' => ['next', 'prev']]);
+    }
+
+    public function test_a_non_string_sort_is_a_422_not_a_500(): void
+    {
+        BloodBatch::factory()->create();
+
+        $response = $this->getJson('/api/v1/_test/blood-batches?sort[]=expires_at')
+            ->assertStatus(422);
+
+        $response->assertJsonPath('error.details.sort.0.rule', 'string');
+
+        $this->assertFalse(
+            collect($response->json('error.details.sort'))->contains(fn (array $e) => $e['rule'] === 'invalid_sort')
+        );
+    }
+
+    public function test_a_valid_sort_and_filter_combination_is_accepted(): void
+    {
+        BloodBatch::factory()->create();
+
+        $this->getJson('/api/v1/_test/blood-batches?sort=-expires_at&filter[status]=x')
+            ->assertOk();
     }
 }
 

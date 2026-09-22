@@ -42,7 +42,7 @@ class ApiContractTest extends TestCase
         $response->assertJsonPath('error.details.password', fn (array $entries) => collect($entries)
             ->contains(fn (array $e) => $e['rule'] === 'min' && $e['params'] === ['min' => '8']));
 
-        $this->assertNotEmpty($response->json('error.details.email'));
+        $response->assertJsonPath('error.details.email.0.rule', 'required');
 
         $details = $response->json('error.details');
 
