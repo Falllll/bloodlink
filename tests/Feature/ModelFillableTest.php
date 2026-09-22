@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\BloodBatch;
+use App\Models\DeferralReason;
 use App\Models\Donor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -23,6 +24,7 @@ final class ModelFillableTest extends TestCase
         return [
             'donor' => [Donor::class, 'donors'],
             'blood batch' => [BloodBatch::class, 'blood_batches'],
+            'deferral reason' => [DeferralReason::class, 'deferral_reasons'],
         ];
     }
 
