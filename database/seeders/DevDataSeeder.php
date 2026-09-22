@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\Donor;
 use App\Models\Facility;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -49,6 +51,7 @@ class DevDataSeeder extends Seeder
         $donors = collect();
         for ($index = 0; $index < 30; $index++) {
             $facilityId = $facilities[$index % $facilities->count()];
+            $phone = fake()->numerify('08##########');
             $donorId = DB::table('donors')->insertGetId([
                 'public_id' => (string) Str::uuid(),
                 'donor_number' => sprintf('DEV-%03d', $index + 1),
@@ -58,9 +61,10 @@ class DevDataSeeder extends Seeder
                 'sex' => fake()->randomElement(['male', 'female']),
                 'blood_group' => fake()->randomElement(['A', 'B', 'AB', 'O']),
                 'rh_factor' => fake()->randomElement(['positive', 'negative']),
-                'phone' => fake()->numerify('08##########'),
-                'email' => fake()->safeEmail(),
-                'address' => fake()->address(),
+                'phone' => Crypt::encryptString($phone),
+                'phone_hash' => Donor::phoneHash($phone),
+                'email' => Crypt::encryptString(fake()->safeEmail()),
+                'address' => Crypt::encryptString(fake()->address()),
                 'city' => fake()->randomElement(['Jakarta', 'Bekasi', 'Tangerang', 'Depok', 'Bogor']),
                 'weight_kg' => fake()->randomFloat(2, 45, 110),
                 'last_donation_date' => now()->subDays(fake()->numberBetween(30, 180))->toDateString(),
