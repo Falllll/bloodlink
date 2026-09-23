@@ -47,6 +47,11 @@ class Donor extends Model implements FacilityScoped
         ];
     }
 
+    public function getRouteKeyName(): string
+    {
+        return 'public_id';
+    }
+
     /**
      * Kolom terenkripsi tidak boleh masuk diff audit (ciphertext bocor ke audit_logs).
      *

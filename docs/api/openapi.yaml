@@ -462,6 +462,73 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /donors/{donor}/consents:
+    post:
+      summary: Rekam consent donor
+      description: >-
+        Admin global, admin fasilitas donor tersebut, atau staf fasilitas
+        donor tersebut. Consent aktif sebelumnya (kalau ada) otomatis
+        dicabut sebelum baris baru dibuat.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: donor
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID donor (`public_id`). ID numerik internal tidak pernah keluar ke API.
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purposes:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    enum: [donation, health_screening, contact_for_urgent_request, data_retention]
+              required: [purposes]
+      responses:
+        '201':
+          description: Consent tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Public ID baris consent.
+                      purposes:
+                        type: array
+                        items:
+                          type: string
+                          enum: [donation, health_screening, contact_for_urgent_request, data_retention]
+                      granted_at:
+                        type: string
+                        format: date-time
+                    required: [id, purposes, granted_at]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
