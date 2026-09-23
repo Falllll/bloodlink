@@ -46,6 +46,13 @@ class User extends Authenticatable implements FacilityMember
 
     public function isGlobalOperator(): bool
     {
+        // TODO(28 Sep): verifikasi jalur non-HTTP (queue, command, tinker) --
+        // di jalur HTTP BindFacilityContext sudah mem-bind FacilityScope::GLOBAL_SCOPE
+        // untuk facility_id null, tapi itu belum diverifikasi di luar HTTP.
+        if ($this->facilityId() !== null) {
+            return false;
+        }
+
         return $this->hasRole(Role::ADMIN->value);
     }
 }

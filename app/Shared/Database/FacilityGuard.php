@@ -18,16 +18,14 @@ final class FacilityGuard
             throw new AuthorizationException;
         }
 
+        if ($user->facilityId() !== null && $record->ownerFacilityId() === $user->facilityId()) {
+            return;
+        }
+
         if ($user->isGlobalOperator()) {
             return;
         }
 
-        if ($user->facilityId() === null) {
-            throw new AuthorizationException;
-        }
-
-        if ($record->ownerFacilityId() !== $user->facilityId()) {
-            throw new AuthorizationException;
-        }
+        throw new AuthorizationException;
     }
 }

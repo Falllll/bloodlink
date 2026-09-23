@@ -142,4 +142,25 @@ final class FacilityScopeTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.permission_team_id', FacilityScope::GLOBAL_SCOPE);
     }
+
+    public function test_a_facility_bound_admin_does_not_widen_the_batch_query(): void
+    {
+        $facilityA = Facility::factory()->create();
+
+        $adminA = User::factory()->create(['facility_id' => $facilityA->id]);
+        $this->assignRole($adminA, RoleEnum::ADMIN);
+
+        $staffA = User::factory()->create(['facility_id' => $facilityA->id]);
+        $this->assignRole($staffA, RoleEnum::HOSPITAL_STAFF);
+
+        BloodBatch::factory()->count(3)->create(['facility_id' => $facilityA->id]);
+
+        $adminResponse = $this->getJson('/api/v1/blood-batches', $this->bearer($adminA));
+        $staffResponse = $this->getJson('/api/v1/blood-batches', $this->bearer($staffA));
+
+        $adminResponse->assertOk();
+        $staffResponse->assertOk();
+
+        $this->assertCount(count($staffResponse->json('data')), $adminResponse->json('data'));
+    }
 }

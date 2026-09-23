@@ -6,7 +6,6 @@ namespace App\Modules\Identity\Infrastructure\Policies;
 
 use App\Models\Facility;
 use App\Models\User;
-use App\Modules\Identity\Domain\Role;
 
 final class FacilityPolicy
 {
@@ -17,7 +16,7 @@ final class FacilityPolicy
 
     public function view(User $user, Facility $facility): bool
     {
-        if ($user->hasRole(Role::ADMIN->value)) {
+        if ($user->isGlobalOperator()) {
             return true;
         }
 
@@ -26,16 +25,24 @@ final class FacilityPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole(Role::ADMIN->value);
+        return $user->isGlobalOperator();
     }
 
     public function update(User $user, Facility $facility): bool
     {
-        return $user->hasRole(Role::ADMIN->value);
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facility_id === $facility->id;
     }
 
     public function deactivate(User $user, Facility $facility): bool
     {
-        return $user->hasRole(Role::ADMIN->value);
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facility_id === $facility->id;
     }
 }

@@ -42,14 +42,14 @@ trait ScopedToFacility
             return $query->whereRaw('1 = 0');
         }
 
+        if ($user->facilityId() !== null) {
+            return $query->where($this->facilityColumn(), $user->facilityId());
+        }
+
         if ($user->isGlobalOperator()) {
             return $query;
         }
 
-        if ($user->facilityId() === null) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->where($this->facilityColumn(), $user->facilityId());
+        return $query->whereRaw('1 = 0');
     }
 }
