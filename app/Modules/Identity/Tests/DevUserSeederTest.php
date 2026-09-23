@@ -74,6 +74,25 @@ final class DevUserSeederTest extends TestCase
         );
     }
 
+    public function test_it_revives_a_soft_deleted_seed_account(): void
+    {
+        $this->seed(DevUserSeeder::class);
+
+        $seeded = User::query()->where('email', 'admin@bloodlink.test')->firstOrFail();
+        $seeded->delete();
+
+        $this->assertSame(0, User::query()->where('email', 'admin@bloodlink.test')->count());
+
+        $this->seed(DevUserSeeder::class);
+
+        $this->assertSame(1, User::withTrashed()->where('email', 'admin@bloodlink.test')->count());
+
+        $revived = User::query()->where('email', 'admin@bloodlink.test')->firstOrFail();
+
+        $this->assertSame($seeded->id, $revived->id);
+        $this->assertNull($revived->deleted_at);
+    }
+
     public function test_the_seeded_admin_can_log_in_and_receives_its_role(): void
     {
         $this->seed(DevUserSeeder::class);

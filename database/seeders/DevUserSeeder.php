@@ -47,7 +47,7 @@ class DevUserSeeder extends Seeder
 
     private function upsertUser(string $role, string $email, ?int $facilityId): void
     {
-        $user = User::query()->firstOrNew(['email' => $email]);
+        $user = User::withTrashed()->firstOrNew(['email' => $email]);
 
         $user->name = Str::headline(explode('@', $email)[0]);
         $user->password = Hash::make((string) config('dev.seed_password'));
