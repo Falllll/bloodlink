@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Donor\Infrastructure\Policies;
 
+use App\Models\Donor;
 use App\Models\User;
 
 final class DonorPolicy
@@ -15,5 +16,14 @@ final class DonorPolicy
     public function merge(User $user): bool
     {
         return $user->isGlobalOperator();
+    }
+
+    public function recordConsent(User $user, Donor $donor): bool
+    {
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() === $donor->registered_facility_id;
     }
 }

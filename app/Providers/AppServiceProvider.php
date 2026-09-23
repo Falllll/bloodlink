@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\BloodBatch;
 use App\Models\Donor;
+use App\Models\DonorConsent;
 use App\Models\Facility;
 use App\Models\User;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
@@ -51,7 +52,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Facility::class, FacilityPolicy::class);
         Gate::policy(Donor::class, DonorPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 
