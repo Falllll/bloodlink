@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\AuditLog;
 use App\Models\BloodBatch;
 use App\Models\Donor;
 use App\Models\DonorConsent;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
 use App\Modules\Donor\Infrastructure\Policies\DonorPolicy;
 use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
+use App\Modules\Identity\Infrastructure\Policies\AuditLogPolicy;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -51,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(Facility::class, FacilityPolicy::class);
         Gate::policy(Donor::class, DonorPolicy::class);
+        Gate::policy(AuditLog::class, AuditLogPolicy::class);
 
         foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class] as $model) {
             $model::observe(AuditObserver::class);

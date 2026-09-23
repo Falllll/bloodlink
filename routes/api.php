@@ -4,6 +4,7 @@ use App\Models\BloodBatch;
 use App\Models\User;
 use App\Modules\Donor\Http\Controllers\DonorConsentController;
 use App\Modules\Donor\Http\Controllers\DonorMergeController;
+use App\Modules\Identity\Http\Controllers\AuditLogController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\FacilityController;
 use App\Shared\Http\ApiResponse;
@@ -35,6 +36,8 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
             BloodBatch::query()->visibleTo($user)->orderBy('id')->cursorPaginate(25)
         );
     })->name('blood-batches.index');
+
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
     Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
     Route::post('/facilities', [FacilityController::class, 'store'])->name('facilities.store');

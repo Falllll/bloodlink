@@ -163,6 +163,93 @@ paths:
                 required: [data, meta]
         '401':
           $ref: '#/components/responses/Unauthenticated'
+  /audit-logs:
+    get:
+      summary: Daftar audit log
+      description: >-
+        Read-only. Pembaca tanpa fasilitas (operator global) melihat seluruh
+        baris; pembaca ber-fasilitas hanya melihat baris dengan
+        `actor_facility_id` miliknya sendiri. Hanya method `GET` yang ada
+        untuk path ini.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+        - in: query
+          name: occurred_from
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Batas bawah `occurred_at`, inklusif.
+        - in: query
+          name: occurred_to
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Batas atas `occurred_at`, inklusif. Harus >= `occurred_from`.
+        - in: query
+          name: filter[auditable_type]
+          required: false
+          schema:
+            type: string
+          description: Filter persamaan pada `auditable_type`.
+        - in: query
+          name: filter[auditable_id]
+          required: false
+          schema:
+            type: integer
+          description: Filter persamaan pada `auditable_id`.
+        - in: query
+          name: filter[action]
+          required: false
+          schema:
+            type: string
+            enum: [created, updated, deleted]
+          description: Filter persamaan pada `action`.
+        - in: query
+          name: filter[actor_id]
+          required: false
+          schema:
+            type: integer
+          description: Filter persamaan pada `actor_id`.
+        - in: query
+          name: filter[actor_facility_id]
+          required: false
+          schema:
+            type: integer
+          description: Filter persamaan pada `actor_facility_id`.
+        - in: query
+          name: filter[trace_id]
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter persamaan pada `trace_id`.
+      responses:
+        '200':
+          description: Daftar baris audit log yang boleh dilihat pemegang token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogEntry'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /facilities:
     get:
       summary: Daftar fasilitas
@@ -624,6 +711,48 @@ components:
           maximum: 180
           description: Wajib untuk tipe `hospital` dan `blood_bank`.
       required: [code, name, type, address, city, province, phone]
+    AuditLogEntry:
+      type: object
+      description: >-
+        `changes` sudah ter-redaksi saat ditulis ([REDACTED] untuk kunci
+        sensitif); kolom terenkripsi (mis. phone/email/address donor) tidak
+        pernah muncul di sini sama sekali. Pembaca non-global hanya menerima
+        barisnya sendiri (`actor_facility_id` miliknya).
+      properties:
+        id:
+          type: string
+          description: ID numerik internal, diekspos sebagai string opaque (audit_logs tidak punya public_id).
+        auditable_type:
+          type: string
+        auditable_id:
+          type: integer
+        action:
+          type: string
+          enum: [created, updated, deleted]
+        actor_id:
+          type: integer
+          nullable: true
+        actor_facility_id:
+          type: integer
+          nullable: true
+        changes:
+          type: object
+          properties:
+            before:
+              type: object
+            after:
+              type: object
+        trace_id:
+          type: string
+          format: uuid
+          nullable: true
+        ip:
+          type: string
+          nullable: true
+        occurred_at:
+          type: string
+          format: date-time
+      required: [id, auditable_type, auditable_id, action, actor_id, actor_facility_id, changes, trace_id, ip, occurred_at]
     ReadinessReport:
       type: object
       properties:
