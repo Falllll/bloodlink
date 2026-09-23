@@ -45,7 +45,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => null,
                 'label' => 'Hamil atau menyusui',
                 'anchor_note' => 'Berlaku selama kondisi berlangsung; tanggal akhir diisi petugas.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Pregnancy, lactation and menstruation (§4.8.1)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Pregnancy and lactation; Bab 4 §4.8.1',
                 'is_active' => true,
             ],
             [
@@ -56,7 +56,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => DeferralDurationUnit::MONTHS->value,
                 'label' => 'Pasca persalinan atau terminasi kehamilan',
                 'anchor_note' => 'Dihitung dari tanggal persalinan atau terminasi.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Pregnancy, lactation and menstruation (§4.8.1)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Pregnancy and lactation; Bab 4 §4.8.1',
                 'is_active' => true,
             ],
             [
@@ -254,7 +254,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => null,
                 'label' => 'Konfirmasi reaktif infeksi menular transfusi (TTI)',
                 'anchor_note' => 'Dipakai Kartu 250.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: TTI and donor risk assessment; §4.4 halaman ini, §5',
+                'source_reference' => 'WHO 2012 Blood Donor Selection §4.4; Rujukan Pedoman Medis §4.4, §5',
                 'is_active' => true,
             ],
         ];

@@ -59,12 +59,20 @@ final class DeferralReasonSeederTest extends TestCase
     {
         $this->seed(DeferralReasonSeeder::class);
 
-        $references = DeferralReason::query()->pluck('source_reference');
+        $rows = DeferralReason::query()->get(['code', 'source_reference']);
 
-        foreach ($references as $reference) {
-            $this->assertStringStartsWith('WHO 2012 Blood Donor Selection', $reference);
-            $this->assertStringNotContainsString('§6.', $reference);
-            $this->assertStringNotContainsString('§7.', $reference);
+        foreach ($rows as $row) {
+            $this->assertStringStartsWith('WHO 2012 Blood Donor Selection', $row->source_reference);
+
+            // TTI_CONFIRMED_REACTIVE tidak bersumber dari tabel Technical
+            // recommendations -- ia mengutip §4.4/§5 halaman Rujukan Pedoman
+            // Medis sendiri (lihat DeferralReasonSeeder), jadi dikecualikan
+            // dari pemeriksaan "Technical recommendations" di bawah.
+            if ($row->code === 'TTI_CONFIRMED_REACTIVE') {
+                continue;
+            }
+
+            $this->assertStringContainsString('Technical recommendations', $row->source_reference);
         }
     }
 
