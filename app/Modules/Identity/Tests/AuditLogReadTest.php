@@ -143,6 +143,7 @@ final class AuditLogReadTest extends TestCase
             'phone' => '089999999999',
             'email' => 'donor-changed@example.test',
             'address' => 'Alamat Baru Rahasia',
+            'city' => 'Kota Baru', // <- satu kolom yang lolos auditExcept(), supaya baris 'updated' benar-benar tertulis
         ])->save();
 
         $admin = User::factory()->create(['facility_id' => null]);
@@ -166,5 +167,54 @@ final class AuditLogReadTest extends TestCase
         $this->assertStringNotContainsString('089999999999', (string) $body);
         $this->assertStringNotContainsString('donor-changed@example.test', (string) $body);
         $this->assertStringNotContainsString('Alamat Baru Rahasia', (string) $body);
+    }
+
+    public function test_cursor_pagination_never_duplicates_or_skips_rows(): void
+    {
+        $admin = User::factory()->create(['facility_id' => null]);
+        $this->assignRole($admin, RoleEnum::ADMIN);
+
+        $auditableType = 'App\\Models\\CursorPaginationFixture';
+        $occurredAt = now();
+
+        for ($i = 0; $i < 30; $i++) {
+            AuditLog::create([
+                'auditable_type' => $auditableType,
+                'auditable_id' => $i + 1,
+                'action' => 'created',
+                'actor_id' => null,
+                'actor_facility_id' => null,
+                'changes' => ['before' => [], 'after' => []],
+                'trace_id' => null,
+                'ip' => null,
+                'occurred_at' => $occurredAt,
+            ]);
+        }
+
+        $baseQuery = [
+            'per_page' => 10,
+            'sort' => 'occurred_at',
+            'filter' => ['auditable_type' => $auditableType],
+        ];
+
+        $ids = [];
+        $cursor = null;
+
+        do {
+            $query = $cursor === null ? $baseQuery : array_merge($baseQuery, ['cursor' => $cursor]);
+
+            $response = $this->getJson('/api/v1/audit-logs?'.http_build_query($query), $this->bearer($admin));
+
+            $response->assertOk();
+
+            foreach ($response->json('data') as $row) {
+                $ids[] = $row['id'];
+            }
+
+            $cursor = $response->json('meta.next_cursor');
+        } while ($cursor !== null);
+
+        $this->assertCount(30, $ids);
+        $this->assertCount(30, array_unique($ids));
     }
 }
