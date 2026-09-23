@@ -9,6 +9,7 @@ use Database\Factories\DonorFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use InvalidArgumentException;
 
@@ -36,9 +37,7 @@ class Donor extends Model implements FacilityScoped
         return [
             'date_of_birth' => 'date',
             'last_donation_date' => 'date',
-            'deferred_until' => 'date',
             'merged_at' => 'datetime',
-            'is_deferred' => 'boolean',
             'weight_kg' => 'decimal:2',
             'phone' => 'encrypted',
             'email' => 'encrypted',
@@ -100,6 +99,14 @@ class Donor extends Model implements FacilityScoped
     public function mergedInto(): BelongsTo
     {
         return $this->belongsTo(self::class, 'merged_into_id');
+    }
+
+    /**
+     * @return HasMany<Deferral, $this>
+     */
+    public function deferrals(): HasMany
+    {
+        return $this->hasMany(Deferral::class);
     }
 
     protected static function booted(): void

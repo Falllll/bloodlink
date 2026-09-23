@@ -69,7 +69,6 @@ class DevDataSeeder extends Seeder
                 'weight_kg' => fake()->randomFloat(2, 45, 110),
                 'last_donation_date' => now()->subDays(fake()->numberBetween(30, 180))->toDateString(),
                 'donation_count' => fake()->numberBetween(1, 8),
-                'is_deferred' => false,
                 'created_at' => $now,
                 'updated_at' => $now,
             ], 'id');

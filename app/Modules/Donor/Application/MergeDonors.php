@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Donor\Application;
 
+use App\Models\Deferral;
 use App\Models\Donor;
 use App\Modules\Donor\Application\Exceptions\DonorIdentityConflict;
 use Carbon\CarbonInterface;
@@ -44,8 +45,10 @@ final class MergeDonors
 
             $target->last_donation_date = $this->later($source->last_donation_date, $target->last_donation_date);
             $target->donation_count = $source->donation_count + $target->donation_count;
-            $target->is_deferred = $source->is_deferred || $target->is_deferred;
-            $target->deferred_until = $this->later($source->deferred_until, $target->deferred_until);
+
+            Deferral::query()
+                ->where('donor_id', $source->id)
+                ->update(['donor_id' => $target->id]);
 
             if ($target->nik === null && $source->nik !== null) {
                 $target->nik = $source->nik;

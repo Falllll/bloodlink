@@ -2,8 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Deferral;
+use App\Models\DeferralReason;
 use App\Models\Donor;
 use App\Models\Facility;
+use App\Modules\Donor\Domain\DeferralSource;
+use App\Modules\Donor\Domain\DeferralType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -36,15 +40,27 @@ class DonorFactory extends Factory
     {
         return $this->state([
             'last_donation_date' => now()->subDays(90),
-            'is_deferred' => false,
         ]);
     }
 
     public function deferred(): static
     {
-        return $this->state([
-            'is_deferred' => true,
-            'deferred_until' => now()->addDays(30),
-        ]);
+        return $this->afterCreating(function (Donor $donor): void {
+            $reason = DeferralReason::query()->where('type', 'temporary')->where('is_active', true)->firstOrFail();
+
+            $deferral = new Deferral([
+                'donor_id' => $donor->id,
+                'deferral_reason_id' => $reason->id,
+                'type' => DeferralType::TEMPORARY,
+                'anchor_at' => now(),
+                'ends_at' => now()->addDays(30),
+                'source' => DeferralSource::MANUAL,
+            ]);
+
+            $deferral->forceFill([
+                'public_id' => (string) Str::uuid(),
+                'facility_id' => $donor->registered_facility_id,
+            ])->save();
+        });
     }
 }
