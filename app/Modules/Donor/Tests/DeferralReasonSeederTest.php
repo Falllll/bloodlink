@@ -55,6 +55,19 @@ final class DeferralReasonSeederTest extends TestCase
         ]);
     }
 
+    public function test_every_source_reference_cites_the_who_document(): void
+    {
+        $this->seed(DeferralReasonSeeder::class);
+
+        $references = DeferralReason::query()->pluck('source_reference');
+
+        foreach ($references as $reference) {
+            $this->assertStringStartsWith('WHO 2012 Blood Donor Selection', $reference);
+            $this->assertStringNotContainsString('§6.', $reference);
+            $this->assertStringNotContainsString('§7.', $reference);
+        }
+    }
+
     public function test_a_code_removed_from_the_list_is_deactivated_not_deleted(): void
     {
         DB::table('deferral_reasons')->insert([

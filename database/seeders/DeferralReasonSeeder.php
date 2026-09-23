@@ -100,7 +100,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => DeferralDurationUnit::MONTHS->value,
                 'label' => 'Endoskopi fleksibel invasif',
                 'anchor_note' => 'Dihitung dari tanggal prosedur.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Diagnostic and surgical procedures (§6.4)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Diagnostic procedures',
                 'is_active' => true,
             ],
             [
@@ -111,7 +111,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => DeferralDurationUnit::MONTHS->value,
                 'label' => 'Transplantasi jaringan alogenik',
                 'anchor_note' => 'Dihitung dari tanggal transplantasi.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Organ, stem cell and tissue transplantation (§6.3.2)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Transplantation',
                 'is_active' => true,
             ],
             [
@@ -122,7 +122,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => DeferralDurationUnit::MONTHS->value,
                 'label' => 'Hepatitis A, hepatitis E, atau hepatitis penyebab tidak diketahui',
                 'anchor_note' => 'Dihitung dari kesembuhan penuh.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Hepatitis A, hepatitis E and hepatitis of unknown origin (§7.3.1)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Hepatitis A, hepatitis E and hepatitis of unknown origin',
                 'is_active' => true,
             ],
             [
@@ -144,7 +144,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => DeferralDurationUnit::HOURS->value,
                 'label' => 'Tindakan gigi sederhana',
                 'anchor_note' => 'Dihitung dari tanggal tindakan.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Diagnostic and surgical procedures (§6.4)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Dental treatment',
                 'is_active' => true,
             ],
             [
@@ -155,7 +155,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => DeferralDurationUnit::DAYS->value,
                 'label' => 'Cabut gigi atau perawatan endodontik',
                 'anchor_note' => 'Dihitung dari tanggal tindakan.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Diagnostic and surgical procedures (§6.4)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Dental treatment',
                 'is_active' => true,
             ],
             [
@@ -166,7 +166,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => DeferralDurationUnit::DAYS->value,
                 'label' => 'Demam tanpa sebab spesifik',
                 'anchor_note' => 'Dihitung dari kesembuhan penuh.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Minor illnesses (§4.3)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Fever, non-specific',
                 'is_active' => true,
             ],
             [
@@ -177,7 +177,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => DeferralDurationUnit::DAYS->value,
                 'label' => 'Menjalani pengobatan antibiotik',
                 'anchor_note' => 'Dihitung dari akhir pengobatan.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Medications (§6.2)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Antibiotics',
                 'is_active' => true,
             ],
             [
@@ -221,7 +221,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => null,
                 'label' => 'Pekerja seks',
                 'anchor_note' => null,
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: High-risk sexual behaviours (§7.9.1)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Sex workers; Bab 4 §4.9',
                 'is_active' => true,
             ],
             [
@@ -243,7 +243,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => null,
                 'label' => 'Transplantasi organ atau sel punca',
                 'anchor_note' => null,
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Organ, stem cell and tissue transplantation (§6.3.2)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: Transplantation',
                 'is_active' => true,
             ],
             [
@@ -254,7 +254,7 @@ final class DeferralReasonSeeder extends Seeder
                 'default_duration_unit' => null,
                 'label' => 'Konfirmasi reaktif infeksi menular transfusi (TTI)',
                 'anchor_note' => 'Dipakai Kartu 250.',
-                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: TTI and donor risk assessment (§7.1, §7.2)',
+                'source_reference' => 'WHO 2012 Blood Donor Selection, Technical recommendations: TTI and donor risk assessment; §4.4 halaman ini, §5',
                 'is_active' => true,
             ],
         ];
