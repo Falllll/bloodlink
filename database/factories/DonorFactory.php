@@ -26,7 +26,7 @@ class DonorFactory extends Factory
             'full_name' => fake()->name(),
             'date_of_birth' => fake()->dateTimeBetween('-60 years', '-18 years')->format('Y-m-d'),
             'sex' => fake()->randomElement(['male', 'female']),
-            'phone' => fake()->numerify('08##########'),
+            'phone' => fake()->unique()->numerify('08##########'),
             'address' => fake()->streetAddress(),
             'city' => fake()->city(),
         ];

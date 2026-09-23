@@ -51,7 +51,7 @@ class DevDataSeeder extends Seeder
         $donors = collect();
         for ($index = 0; $index < 30; $index++) {
             $facilityId = $facilities[$index % $facilities->count()];
-            $phone = fake()->numerify('08##########');
+            $phone = fake()->unique()->numerify('08##########');
             $donorId = DB::table('donors')->insertGetId([
                 'public_id' => (string) Str::uuid(),
                 'donor_number' => sprintf('DEV-%03d', $index + 1),

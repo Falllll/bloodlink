@@ -10,9 +10,10 @@ use App\Models\User;
 final class DonorPolicy
 {
     // App\Modules\Identity\Domain\Role tidak diimpor di sini: itu melanggar batas
-    // modul yang dijaga deptrac (ModDonor tidak diizinkan bergantung ke DomIdentity).
-    // isGlobalOperator() sudah ada di layer Models (boleh diakses ModDonor) dan
-    // perilakunya sama persis: hasRole(Role::ADMIN->value).
+    // modul yang dijaga deptrac (ModDonor tidak boleh bergantung ke DomIdentity).
+    // isGlobalOperator() ada di layer Models (boleh diakses ModDonor) = admin YANG
+    // TIDAK terikat fasilitas. Sengaja lebih ketat dari kartu: merge itu operasi
+    // lintas fasilitas, jadi admin berfasilitas memang tidak boleh melakukannya.
     public function merge(User $user): bool
     {
         return $user->isGlobalOperator();

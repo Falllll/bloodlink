@@ -30,8 +30,8 @@ return new class extends Migration
         });
 
         DB::statement('CREATE EXTENSION IF NOT EXISTS pg_trgm;');
-        DB::statement('CREATE UNIQUE INDEX donors_nik_hash_active_unique ON donors (nik_hash) WHERE nik_hash IS NOT NULL AND merged_into_id IS NULL;');
-        DB::statement('CREATE UNIQUE INDEX donors_phone_hash_active_unique ON donors (phone_hash) WHERE phone_hash IS NOT NULL AND merged_into_id IS NULL;');
+        DB::statement('CREATE UNIQUE INDEX donors_nik_hash_active_unique ON donors (nik_hash) WHERE nik_hash IS NOT NULL AND merged_into_id IS NULL AND deleted_at IS NULL;');
+        DB::statement('CREATE UNIQUE INDEX donors_phone_hash_active_unique ON donors (phone_hash) WHERE phone_hash IS NOT NULL AND merged_into_id IS NULL AND deleted_at IS NULL;');
         DB::statement('ALTER TABLE donors ADD CONSTRAINT donors_not_merged_into_self CHECK (merged_into_id IS NULL OR merged_into_id <> id);');
     }
 

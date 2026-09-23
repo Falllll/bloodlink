@@ -8,11 +8,10 @@ use App\Models\AuditLog;
 use App\Models\Donor;
 use App\Models\Facility;
 use App\Models\User;
+use App\Modules\Donor\Application\Exceptions\DonorIdentityConflict;
 use App\Modules\Donor\Application\FindSimilarDonors;
 use App\Modules\Donor\Application\MergeDonors;
 use App\Modules\Donor\Application\RegisterDonor;
-use App\Modules\Donor\Application\Exceptions\DonorIdentityConflict;
-use App\Modules\Identity\Domain\Role as RoleEnum;
 use App\Shared\Auth\FacilityScope;
 use App\Shared\Errors\ErrorCode;
 use Database\Seeders\RolePermissionSeeder;
@@ -34,10 +33,11 @@ final class DonorIdentityTest extends TestCase
         $this->seed(RolePermissionSeeder::class);
     }
 
-    private function assignRole(User $user, RoleEnum $role): void
+    /** Nama role sengaja literal: ModDonor tidak boleh bergantung ke DomIdentity. */
+    private function assignRole(User $user, string $role): void
     {
         app(PermissionRegistrar::class)->setPermissionsTeamId(FacilityScope::of($user->facility_id));
-        $user->assignRole($role->value);
+        $user->assignRole($role);
 
         app(PermissionRegistrar::class)->setPermissionsTeamId(-1);
     }
@@ -166,7 +166,7 @@ final class DonorIdentityTest extends TestCase
         $target = Donor::factory()->create(['registered_facility_id' => $facility->id]);
 
         $admin = User::factory()->create(['facility_id' => null]);
-        $this->assignRole($admin, RoleEnum::ADMIN);
+        $this->assignRole($admin, 'admin');
 
         $response = $this->postJson('/api/v1/donors/merge', [
             'source_id' => $source->public_id,
@@ -231,7 +231,7 @@ final class DonorIdentityTest extends TestCase
         $target = Donor::factory()->create(['registered_facility_id' => $facility->id, 'nik' => '3171010190000005']);
 
         $admin = User::factory()->create(['facility_id' => null]);
-        $this->assignRole($admin, RoleEnum::ADMIN);
+        $this->assignRole($admin, 'admin');
 
         $response = $this->postJson('/api/v1/donors/merge', [
             'source_id' => $source->public_id,
@@ -245,6 +245,20 @@ final class DonorIdentityTest extends TestCase
         $this->assertDatabaseHas('donors', ['id' => $target->id, 'merged_into_id' => null]);
     }
 
+    public function test_a_soft_deleted_donor_does_not_block_re_registration(): void
+    {
+        $facility = Facility::factory()->create();
+        $nik = '3171010190000006';
+
+        $first = (new RegisterDonor)->handle($this->makeDonor($facility, ['nik' => $nik]));
+        $first->delete();
+
+        $second = (new RegisterDonor)->handle($this->makeDonor($facility, ['nik' => $nik]));
+
+        $this->assertNotSame($first->id, $second->id);
+        $this->assertDatabaseHas('donors', ['id' => $second->id, 'nik_hash' => Donor::nikHash($nik)]);
+    }
+
     public function test_hospital_staff_cannot_merge(): void
     {
         $facility = Facility::factory()->create();
@@ -252,7 +266,7 @@ final class DonorIdentityTest extends TestCase
         $target = Donor::factory()->create(['registered_facility_id' => $facility->id]);
 
         $staff = User::factory()->create(['facility_id' => $facility->id]);
-        $this->assignRole($staff, RoleEnum::HOSPITAL_STAFF);
+        $this->assignRole($staff, 'hospital_staff');
 
         $response = $this->postJson('/api/v1/donors/merge', [
             'source_id' => $source->public_id,
