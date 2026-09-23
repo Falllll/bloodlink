@@ -6,6 +6,7 @@ namespace App\Modules\Identity\Infrastructure\Policies;
 
 use App\Models\Facility;
 use App\Models\User;
+use App\Modules\Identity\Domain\Role;
 
 final class FacilityPolicy
 {
@@ -34,7 +35,7 @@ final class FacilityPolicy
             return true;
         }
 
-        return $user->facility_id === $facility->id;
+        return $user->hasRole(Role::ADMIN->value) && $user->facility_id === $facility->id;
     }
 
     public function deactivate(User $user, Facility $facility): bool
@@ -43,6 +44,6 @@ final class FacilityPolicy
             return true;
         }
 
-        return $user->facility_id === $facility->id;
+        return $user->hasRole(Role::ADMIN->value) && $user->facility_id === $facility->id;
     }
 }

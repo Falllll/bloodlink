@@ -146,6 +146,7 @@ final class FacilityScopeTest extends TestCase
     public function test_a_facility_bound_admin_does_not_widen_the_batch_query(): void
     {
         $facilityA = Facility::factory()->create();
+        $facilityB = Facility::factory()->create();
 
         $adminA = User::factory()->create(['facility_id' => $facilityA->id]);
         $this->assignRole($adminA, RoleEnum::ADMIN);
@@ -154,6 +155,7 @@ final class FacilityScopeTest extends TestCase
         $this->assignRole($staffA, RoleEnum::HOSPITAL_STAFF);
 
         BloodBatch::factory()->count(3)->create(['facility_id' => $facilityA->id]);
+        BloodBatch::factory()->count(2)->create(['facility_id' => $facilityB->id]);
 
         $adminResponse = $this->getJson('/api/v1/blood-batches', $this->bearer($adminA));
         $staffResponse = $this->getJson('/api/v1/blood-batches', $this->bearer($staffA));

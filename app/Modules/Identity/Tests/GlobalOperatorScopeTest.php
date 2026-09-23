@@ -107,6 +107,46 @@ final class GlobalOperatorScopeTest extends TestCase
         FacilityGuard::assertVisible($batchFromB, $adminA);
     }
 
+    public function test_hospital_staff_cannot_update_their_own_facility(): void
+    {
+        $facilityA = Facility::factory()->create();
+
+        $staffA = User::factory()->create(['facility_id' => $facilityA->id]);
+        $this->assignRole($staffA, RoleEnum::HOSPITAL_STAFF);
+
+        $response = $this->patchJson(
+            "/api/v1/facilities/{$facilityA->public_id}",
+            [],
+            array_merge($this->bearer($staffA), ['Idempotency-Key' => (string) Str::uuid()])
+        );
+
+        $response->assertStatus(403);
+    }
+
+    public function test_a_facility_bound_admin_cannot_update_another_facility(): void
+    {
+        $facilityA = Facility::factory()->create();
+        $facilityB = Facility::factory()->create();
+
+        $adminA = User::factory()->create(['facility_id' => $facilityA->id]);
+        $this->assignRole($adminA, RoleEnum::ADMIN);
+
+        $responseA = $this->patchJson(
+            "/api/v1/facilities/{$facilityA->public_id}",
+            [],
+            array_merge($this->bearer($adminA), ['Idempotency-Key' => (string) Str::uuid()])
+        );
+
+        $responseB = $this->patchJson(
+            "/api/v1/facilities/{$facilityB->public_id}",
+            [],
+            array_merge($this->bearer($adminA), ['Idempotency-Key' => (string) Str::uuid()])
+        );
+
+        $responseA->assertOk();
+        $responseB->assertStatus(403);
+    }
+
     public function test_the_seeded_facility_admin_cannot_read_other_facilities(): void
     {
         Facility::factory()->state(['type' => 'hospital'])->create();
