@@ -2,6 +2,7 @@
 
 use App\Models\BloodBatch;
 use App\Models\User;
+use App\Modules\Donor\Http\Controllers\DonorMergeController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\FacilityController;
 use App\Shared\Http\ApiResponse;
@@ -39,6 +40,7 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::get('/facilities/{facility}', [FacilityController::class, 'show'])->name('facilities.show');
     Route::patch('/facilities/{facility}', [FacilityController::class, 'update'])->name('facilities.update');
     Route::patch('/facilities/{facility}/deactivate', [FacilityController::class, 'deactivate'])->name('facilities.deactivate');
+    Route::post('/donors/merge', DonorMergeController::class)->name('donors.merge');
 
     if (! app()->isProduction()) {
         Route::get('/_test/scope', fn () => ApiResponse::success([

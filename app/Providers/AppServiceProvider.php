@@ -7,6 +7,7 @@ use App\Models\Donor;
 use App\Models\Facility;
 use App\Models\User;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
+use App\Modules\Donor\Infrastructure\Policies\DonorPolicy;
 use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
@@ -48,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         Model::preventAccessingMissingAttributes(! app()->isProduction());
 
         Gate::policy(Facility::class, FacilityPolicy::class);
+        Gate::policy(Donor::class, DonorPolicy::class);
 
         foreach ([Facility::class, Donor::class, BloodBatch::class, User::class] as $model) {
             $model::observe(AuditObserver::class);

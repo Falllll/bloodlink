@@ -316,6 +316,65 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /donors/merge:
+    post:
+      summary: Gabungkan dua baris donor duplikat
+      description: >-
+        Hanya role `admin`. Baris `source_id` ditandai `merged_into_id` ke
+        `target_id` dan tetap ada; `target_id` mewarisi `last_donation_date`
+        terbaru, `donation_count` gabungan, status deferral gabungan, serta
+        NIK/email dari sumber kalau miliknya masih kosong.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                source_id:
+                  type: string
+                  format: uuid
+                  description: Public ID baris donor yang akan ditandai sebagai duplikat.
+                target_id:
+                  type: string
+                  format: uuid
+                  description: Public ID baris donor kanonik yang akan mewarisi data sumber.
+              required: [source_id, target_id]
+      responses:
+        '200':
+          description: Kedua donor berhasil digabungkan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Public ID donor kanonik (target).
+                      merged_id:
+                        type: string
+                        format: uuid
+                        description: Public ID donor sumber, sekarang menunjuk ke id lewat merged_into_id.
+                    required: [id, merged_id]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -395,6 +454,9 @@ components:
         - IDEMPOTENCY_KEY_REQUIRED
         - IDEMPOTENCY_KEY_REUSED
         - REQUEST_IN_PROGRESS
+        - DONOR_DUPLICATE_NIK
+        - DONOR_DUPLICATE_PHONE
+        - DONOR_MERGE_CONFLICT
     Error:
       type: object
       properties:

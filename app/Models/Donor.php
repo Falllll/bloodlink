@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use InvalidArgumentException;
 
 class Donor extends Model implements FacilityScoped
 {
@@ -18,6 +19,7 @@ class Donor extends Model implements FacilityScoped
 
     protected $fillable = [
         'full_name',
+        'nik',
         'date_of_birth',
         'sex',
         'blood_group',
@@ -35,11 +37,13 @@ class Donor extends Model implements FacilityScoped
             'date_of_birth' => 'date',
             'last_donation_date' => 'date',
             'deferred_until' => 'date',
+            'merged_at' => 'datetime',
             'is_deferred' => 'boolean',
             'weight_kg' => 'decimal:2',
             'phone' => 'encrypted',
             'email' => 'encrypted',
             'address' => 'encrypted',
+            'nik' => 'encrypted',
         ];
     }
 
@@ -50,7 +54,7 @@ class Donor extends Model implements FacilityScoped
      */
     public function auditExcept(): array
     {
-        return ['updated_at', 'remember_token', 'phone', 'email', 'address', 'phone_hash'];
+        return ['updated_at', 'remember_token', 'phone', 'email', 'address', 'phone_hash', 'nik', 'nik_hash'];
     }
 
     /**
@@ -70,11 +74,38 @@ class Donor extends Model implements FacilityScoped
         return hash_hmac('sha256', $normalized, (string) config('app.key'));
     }
 
+    /**
+     * Blind index deterministik untuk pencarian/dedup NIK tanpa membuka ciphertext.
+     * HMAC ber-key, dengan pola yang sama seperti phoneHash().
+     */
+    public static function nikHash(string $nik): string
+    {
+        $normalized = preg_replace('/\D/', '', $nik) ?? '';
+
+        if (strlen($normalized) !== 16) {
+            throw new InvalidArgumentException('NIK must be exactly 16 digits.');
+        }
+
+        return hash_hmac('sha256', $normalized, (string) config('app.key'));
+    }
+
+    /**
+     * @return BelongsTo<self, $this>
+     */
+    public function mergedInto(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'merged_into_id');
+    }
+
     protected static function booted(): void
     {
         static::saving(function (self $donor): void {
             if ($donor->isDirty('phone')) {
                 $donor->phone_hash = self::phoneHash($donor->phone);
+            }
+
+            if ($donor->isDirty('nik')) {
+                $donor->nik_hash = $donor->nik === null ? null : self::nikHash($donor->nik);
             }
         });
     }
