@@ -40,6 +40,14 @@ final class AppointmentTransitionRejected extends DomainException
         );
     }
 
+    public static function donationAlreadyRecorded(): self
+    {
+        return new self(
+            ErrorCode::APPOINTMENT_TRANSITION_REJECTED,
+            'A donation has already been recorded for this appointment.'
+        );
+    }
+
     public function errorCode(): ErrorCode
     {
         return $this->errorCode;

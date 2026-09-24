@@ -999,6 +999,81 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /appointments/{appointment}/donation:
+    post:
+      summary: Catat sesi donasi dari janji temu yang sudah diskrining
+      description: >-
+        Admin global, admin fasilitas donor tersebut, atau staf fasilitas
+        donor tersebut. Hanya sah dari janji temu berstatus `screened`
+        (skrining dulu, baru pengambilan); status lain ditolak 409
+        `APPOINTMENT_TRANSITION_REJECTED`. Satu janji temu paling banyak
+        satu donasi, ditegakkan unique index di database -- request kedua
+        dengan Idempotency-Key berbeda untuk janji temu yang sama juga
+        ditolak 409. Dalam satu transaksi: baris donasi tersimpan, janji
+        temu berpindah ke `completed`, `last_donation_date` dan
+        `donation_count` donor diperbarui, dan event `DonationCompleted`
+        diterbitkan; kalau salah satunya gagal, semuanya batal.
+        `volume_ml` 100-600 hanya kewarasan alat, bukan aturan medis.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: appointment
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID janji temu (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                volume_ml:
+                  type: integer
+                  minimum: 100
+                  maximum: 600
+                started_at:
+                  type: string
+                  format: date-time
+                completed_at:
+                  type: string
+                  format: date-time
+                  description: Tidak boleh sebelum `started_at`.
+                note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+              required:
+                - volume_ml
+                - started_at
+                - completed_at
+      responses:
+        '201':
+          description: Donasi tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Donation'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -1517,6 +1592,48 @@ components:
         - completed_at
         - no_show_at
         - cancelled_at
+        - note
+    Donation:
+      type: object
+      description: >-
+        `id` numerik internal tidak pernah keluar ke API. `screening_id`
+        `null` kalau janji temu tidak punya skrining yang tertaut.
+      properties:
+        id:
+          type: string
+          format: uuid
+        donor_id:
+          type: string
+          format: uuid
+          description: Public ID donor (`public_id`).
+        appointment_id:
+          type: string
+          format: uuid
+          description: Public ID janji temu (`public_id`).
+        screening_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Public ID skrining (`public_id`).
+        volume_ml:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+          nullable: true
+      required:
+        - id
+        - donor_id
+        - appointment_id
+        - screening_id
+        - volume_ml
+        - started_at
+        - completed_at
         - note
     ReadinessReport:
       type: object

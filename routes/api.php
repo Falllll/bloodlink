@@ -3,6 +3,7 @@
 use App\Models\BloodBatch;
 use App\Models\User;
 use App\Modules\Donor\Http\Controllers\AppointmentController;
+use App\Modules\Donor\Http\Controllers\DonationController;
 use App\Modules\Donor\Http\Controllers\DonorConsentController;
 use App\Modules\Donor\Http\Controllers\DonorMergeController;
 use App\Modules\Donor\Http\Controllers\DonorProfileController;
@@ -52,6 +53,7 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
     Route::post('/donors/{donor}/appointments', [AppointmentController::class, 'store'])->name('donors.appointments.store');
     Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'transition'])->name('appointments.transition');
+    Route::post('/appointments/{appointment}/donation', [DonationController::class, 'store'])->name('appointments.donation.store');
 
     Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
     Route::post('/facilities', [FacilityController::class, 'store'])->name('facilities.store');
