@@ -51,6 +51,28 @@ class Donor extends Model implements FacilityScoped
         return 'public_id';
     }
 
+    /** @return array<string, mixed> */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->public_id,
+            'donor_number' => $this->donor_number,
+            'full_name' => $this->full_name,
+            'date_of_birth' => $this->date_of_birth,
+            'sex' => $this->sex,
+            'blood_group' => $this->blood_group,
+            'rh_factor' => $this->rh_factor,
+            'phone' => $this->phone,
+            'email' => $this->email,
+            'address' => $this->address,
+            'city' => $this->city,
+            'weight_kg' => $this->weight_kg,
+            'last_donation_date' => $this->last_donation_date,
+            'donation_count' => $this->donation_count,
+            'has_nik' => $this->nik !== null,
+        ];
+    }
+
     /**
      * Kolom terenkripsi tidak boleh masuk diff audit (ciphertext bocor ke audit_logs).
      *

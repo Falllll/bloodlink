@@ -530,6 +530,172 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /donors/{donor}:
+    get:
+      summary: Detail profil donor
+      description: Admin global, admin fasilitas donor tersebut, atau staf fasilitas donor tersebut.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: donor
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID donor (`public_id`). ID numerik internal tidak pernah keluar ke API.
+      responses:
+        '200':
+          description: Detail profil donor.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorProfile'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Perbarui profil donor
+      description: >-
+        Admin global, admin fasilitas donor tersebut, atau staf fasilitas
+        donor tersebut. Semua field opsional; hanya yang dikirim yang
+        diperbarui. NIK hanya boleh diisi sekali saat masih kosong --
+        mengubah NIK yang sudah terisi ditolak 422 (`nik_not_changeable`).
+        `date_of_birth` dan `sex` sengaja tidak bisa diubah lewat endpoint
+        ini.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: donor
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID donor (`public_id`). ID numerik internal tidak pernah keluar ke API.
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                  maxLength: 255
+                nik:
+                  type: string
+                  description: Tepat 16 digit. Hanya bisa diisi sekali saat masih kosong.
+                phone:
+                  type: string
+                  maxLength: 32
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                  nullable: true
+                address:
+                  type: string
+                  maxLength: 255
+                city:
+                  type: string
+                  maxLength: 100
+      responses:
+        '200':
+          description: Profil donor diperbarui.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorProfile'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /donors/{donor}/health-status:
+    patch:
+      summary: Perbarui status kesehatan donor
+      description: >-
+        Admin global, admin fasilitas donor tersebut, atau staf fasilitas
+        donor tersebut. `weight_kg` hanya divalidasi terhadap kewarasan
+        fisik (20-300 kg), bukan terhadap ambang kelayakan donor
+        (Rujukan Pedoman Medis §3.2) -- keputusan kelayakan adalah urusan
+        mesin eligibility, bukan lapisan request ini.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: donor
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID donor (`public_id`). ID numerik internal tidak pernah keluar ke API.
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                weight_kg:
+                  type: number
+                  format: double
+                  minimum: 20
+                  maximum: 300
+                blood_group:
+                  type: string
+                  enum: [A, B, AB, O]
+                  nullable: true
+                rh_factor:
+                  type: string
+                  enum: [positive, negative]
+                  nullable: true
+      responses:
+        '200':
+          description: Status kesehatan donor diperbarui.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorProfile'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -824,6 +990,73 @@ components:
           type: string
           format: date-time
       required: [id, auditable_type, auditable_id, action, actor_id, actor_facility_id, changes, trace_id, ip, occurred_at]
+    DonorProfile:
+      type: object
+      description: >-
+        `id` numerik internal, `nik`, `nik_hash`, dan `phone_hash` tidak
+        pernah keluar ke API. NIK yang sudah terisi dilaporkan lewat
+        `has_nik`, bukan nilainya sendiri.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Public ID donor (`public_id`).
+        donor_number:
+          type: string
+        full_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        sex:
+          type: string
+          enum: [male, female]
+        blood_group:
+          type: string
+          enum: [A, B, AB, O]
+          nullable: true
+        rh_factor:
+          type: string
+          enum: [positive, negative]
+          nullable: true
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+        address:
+          type: string
+        city:
+          type: string
+        weight_kg:
+          type: number
+          format: double
+          nullable: true
+        last_donation_date:
+          type: string
+          format: date
+          nullable: true
+        donation_count:
+          type: integer
+        has_nik:
+          type: boolean
+      required:
+        - id
+        - donor_number
+        - full_name
+        - date_of_birth
+        - sex
+        - blood_group
+        - rh_factor
+        - phone
+        - email
+        - address
+        - city
+        - weight_kg
+        - last_donation_date
+        - donation_count
+        - has_nik
     ReadinessReport:
       type: object
       properties:

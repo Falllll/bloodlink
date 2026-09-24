@@ -27,4 +27,31 @@ final class DonorPolicy
 
         return $user->facilityId() === $donor->registered_facility_id;
     }
+
+    public function view(User $user, Donor $donor): bool
+    {
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() === $donor->registered_facility_id;
+    }
+
+    public function update(User $user, Donor $donor): bool
+    {
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() === $donor->registered_facility_id;
+    }
+
+    public function updateHealthStatus(User $user, Donor $donor): bool
+    {
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() === $donor->registered_facility_id;
+    }
 }
