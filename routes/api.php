@@ -5,10 +5,12 @@ use App\Models\User;
 use App\Modules\Donor\Http\Controllers\DonorConsentController;
 use App\Modules\Donor\Http\Controllers\DonorMergeController;
 use App\Modules\Donor\Http\Controllers\DonorProfileController;
+use App\Modules\Donor\Http\Controllers\EligibilitySelfCheckController;
 use App\Modules\Identity\Http\Controllers\AuditLogController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\FacilityController;
 use App\Shared\Http\ApiResponse;
+use App\Shared\Http\EnsureIdempotency;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\PermissionRegistrar;
@@ -27,6 +29,11 @@ Route::prefix('auth')->name('auth.')->group(function (): void {
 });
 
 Route::get('/ping', fn () => ['pong' => true]);
+
+Route::post('/eligibility/self-check', EligibilitySelfCheckController::class)
+    ->withoutMiddleware(EnsureIdempotency::class)
+    ->middleware('throttle:20,1')
+    ->name('eligibility.self-check');
 
 Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void {
     Route::get('/blood-batches', function (Request $request) {

@@ -250,6 +250,60 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /eligibility/self-check:
+    post:
+      summary: Cek kelayakan donor mandiri (anonim)
+      description: >-
+        Endpoint publik, tanpa token dan tanpa Idempotency-Key. Tidak
+        menerima identitas (nik/phone ditolak) dan tidak menulis baris
+        apa pun -- stateless. Deferral donor terdaftar tidak ikut
+        dipertimbangkan (pemanggil anonim), jadi respons selalu memuat
+        `is_provisional: true`. Dibatasi 20 permintaan per menit per IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date_of_birth:
+                  type: string
+                  format: date
+                sex:
+                  type: string
+                  enum: [male, female]
+                weight_kg:
+                  type: number
+                  format: double
+                  minimum: 20
+                  maximum: 300
+                  nullable: true
+                last_donation_date:
+                  type: string
+                  format: date
+                  nullable: true
+                planned_volume_ml:
+                  type: integer
+                  enum: [350, 450]
+                  nullable: true
+              required: [date_of_birth, sex]
+      responses:
+        '200':
+          description: Hasil pemeriksaan kelayakan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/EligibilitySelfCheck'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /facilities:
     get:
       summary: Daftar fasilitas
@@ -1057,6 +1111,49 @@ components:
         - last_donation_date
         - donation_count
         - has_nik
+    EligibilitySelfCheck:
+      type: object
+      description: >-
+        `outcome` bertiga-nilai, jangan diperas jadi boolean.
+        `is_provisional` selalu true karena pemanggil anonim tidak punya
+        deferral tersimpan untuk dipertimbangkan.
+      properties:
+        outcome:
+          type: string
+          enum: [eligible, not_eligible, undetermined]
+        is_provisional:
+          type: boolean
+          enum: [true]
+        retry_after_date:
+          type: string
+          format: date
+          nullable: true
+        findings:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                enum:
+                  - AGE_BELOW_MINIMUM
+                  - AGE_ABOVE_MAXIMUM
+                  - DONATION_INTERVAL_NOT_MET
+                  - BODY_WEIGHT_BELOW_MINIMUM
+                  - ACTIVE_DEFERRAL
+                  - DATA_MISSING
+              outcome:
+                type: string
+                enum: [eligible, not_eligible, undetermined]
+              retry_after_date:
+                type: string
+                format: date
+                nullable: true
+              detail:
+                type: string
+                nullable: true
+            required: [code, outcome, retry_after_date, detail]
+      required: [outcome, is_provisional, retry_after_date, findings]
     ReadinessReport:
       type: object
       properties:

@@ -13,6 +13,7 @@ final class SensitiveKeys
         'password', 'password_confirmation', 'token', 'access_token',
         'refresh_token', 'authorization', 'secret', 'nik',
         'hemoglobin', 'lab_result',
+        'date_of_birth', 'weight_kg', 'last_donation_date', 'sex',
     ];
 
     public static function isSensitive(string $key): bool
