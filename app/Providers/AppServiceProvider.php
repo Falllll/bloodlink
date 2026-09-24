@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\BloodBatch;
 use App\Models\Deferral;
@@ -58,7 +59,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Donor::class, DonorPolicy::class);
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 

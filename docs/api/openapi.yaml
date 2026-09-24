@@ -843,6 +843,162 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /appointments:
+    get:
+      summary: Daftar janji temu
+      description: Tersaring otomatis ke fasilitas pemegang token. Operator global melihat seluruhnya.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+        - in: query
+          name: filter[status]
+          required: false
+          schema:
+            type: string
+            enum: [booked, arrived, screened, completed, no_show, cancelled]
+          description: Filter persamaan pada `status`.
+        - in: query
+          name: filter[donor_id]
+          required: false
+          schema:
+            type: integer
+          description: Filter persamaan pada `donor_id` (ID numerik internal, dipakai apa adanya sebagai nilai filter).
+      responses:
+        '200':
+          description: Daftar janji temu.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appointment'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /donors/{donor}/appointments:
+    post:
+      summary: Pesan janji temu atau catat walk-in
+      description: >-
+        Admin global, admin fasilitas donor tersebut, atau staf fasilitas
+        donor tersebut. `scheduled_for` yang tidak dikirim berarti walk-in:
+        janji temu lahir langsung berstatus `arrived` dengan `arrived_at`
+        terisi. Memesan slot tidak memeriksa kelayakan donor -- itu urusan
+        skrining. Satu donor hanya boleh punya satu janji temu terbuka
+        (`booked`/`arrived`/`screened`) pada satu waktu.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: donor
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID donor (`public_id`). ID numerik internal tidak pernah keluar ke API.
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduled_for:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Kosongkan untuk walk-in.
+                note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+      responses:
+        '201':
+          description: Janji temu tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Appointment'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /appointments/{appointment}/status:
+    patch:
+      summary: Pindahkan status janji temu
+      description: >-
+        Transisi dijaga oleh `AppointmentStatus::canTransitionTo()`: hanya
+        `booked -> arrived|no_show|cancelled`, `arrived -> screened|cancelled`,
+        dan `screened -> completed|cancelled` yang sah. `no_show` hanya sah
+        dari `booked` dan hanya setelah `scheduled_for` lewat. Transisi yang
+        tidak sah ditolak 409 tanpa mengubah baris.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: appointment
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID janji temu (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [booked, arrived, screened, completed, no_show, cancelled]
+              required: [status]
+      responses:
+        '200':
+          description: Status janji temu berpindah.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Appointment'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -928,6 +1084,7 @@ components:
         - DONOR_DEFERRAL_CONFLICT
         - DONOR_DEFERRAL_ALREADY_LIFTED
         - DONOR_PERMANENT_DEFERRAL_NOT_LIFTABLE
+        - APPOINTMENT_TRANSITION_REJECTED
     Error:
       type: object
       properties:
@@ -1305,6 +1462,61 @@ components:
         - passed
         - findings
         - screened_at
+        - note
+    Appointment:
+      type: object
+      description: >-
+        `id` numerik internal tidak pernah keluar ke API. `scheduled_for`
+        `null` berarti walk-in. Kolom waktu transisi (`arrived_at` dst.)
+        hanya terisi begitu status itu benar-benar tercapai.
+      properties:
+        id:
+          type: string
+          format: uuid
+        donor_id:
+          type: string
+          format: uuid
+          description: Public ID donor (`public_id`).
+        scheduled_for:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [booked, arrived, screened, completed, no_show, cancelled]
+        arrived_at:
+          type: string
+          format: date-time
+          nullable: true
+        screened_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        no_show_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+        note:
+          type: string
+          nullable: true
+      required:
+        - id
+        - donor_id
+        - scheduled_for
+        - status
+        - arrived_at
+        - screened_at
+        - completed_at
+        - no_show_at
+        - cancelled_at
         - note
     ReadinessReport:
       type: object

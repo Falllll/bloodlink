@@ -63,4 +63,22 @@ final class DonorPolicy
 
         return $user->facilityId() === $donor->registered_facility_id;
     }
+
+    public function bookAppointment(User $user, Donor $donor): bool
+    {
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() === $donor->registered_facility_id;
+    }
+
+    public function transitionAppointment(User $user, Donor $donor): bool
+    {
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() === $donor->registered_facility_id;
+    }
 }
