@@ -11,8 +11,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use InvalidArgumentException;
 
+/**
+ * @property Carbon $date_of_birth
+ * @property Carbon|null $last_donation_date
+ */
 class Donor extends Model implements FacilityScoped
 {
     /** @use HasFactory<DonorFactory> */

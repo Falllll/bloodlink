@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property DeferralType $type
  * @property DeferralDurationUnit|null $duration_unit
+ * @property Carbon $anchor_at
  * @property Carbon|null $ends_at
  * @property Carbon|null $lifted_at
  */
