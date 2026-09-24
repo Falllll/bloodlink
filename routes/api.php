@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Modules\Donor\Http\Controllers\DonorConsentController;
 use App\Modules\Donor\Http\Controllers\DonorMergeController;
 use App\Modules\Donor\Http\Controllers\DonorProfileController;
+use App\Modules\Donor\Http\Controllers\DonorScreeningController;
 use App\Modules\Donor\Http\Controllers\EligibilitySelfCheckController;
 use App\Modules\Identity\Http\Controllers\AuditLogController;
 use App\Modules\Identity\Http\Controllers\AuthController;
@@ -57,6 +58,7 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::get('/donors/{donor}', [DonorProfileController::class, 'show'])->name('donors.show');
     Route::patch('/donors/{donor}', [DonorProfileController::class, 'update'])->name('donors.update');
     Route::patch('/donors/{donor}/health-status', [DonorProfileController::class, 'updateHealthStatus'])->name('donors.health-status.update');
+    Route::post('/donors/{donor}/screenings', [DonorScreeningController::class, 'store'])->name('donors.screenings.store');
 
     if (! app()->isProduction()) {
         Route::get('/_test/scope', fn () => ApiResponse::success([

@@ -20,7 +20,7 @@ final class DeferralReasonSeederTest extends TestCase
         $this->seed(DeferralReasonSeeder::class);
         $this->seed(DeferralReasonSeeder::class);
 
-        $this->assertSame(20, DeferralReason::query()->count());
+        $this->assertSame(23, DeferralReason::query()->count());
     }
 
     public function test_permanent_reasons_have_no_duration(): void
@@ -68,7 +68,18 @@ final class DeferralReasonSeederTest extends TestCase
             // recommendations -- ia mengutip §4.4/§5 halaman Rujukan Pedoman
             // Medis sendiri (lihat DeferralReasonSeeder), jadi dikecualikan
             // dari pemeriksaan "Technical recommendations" di bawah.
-            if ($row->code === 'TTI_CONFIRMED_REACTIVE') {
+            //
+            // LOW_HAEMOGLOBIN, VITAL_SIGNS_OUT_OF_RANGE, dan
+            // UNDERWEIGHT_FOR_VOLUME (Kartu 150) juga dikecualikan: ketiganya
+            // bersumber dari §3.2/§3.3/§3.4 (badan dokumen) plus §3.6
+            // (Turunan, ditambahkan khusus Kartu 150), bukan dari tabel
+            // Technical recommendations.
+            if (in_array($row->code, [
+                'TTI_CONFIRMED_REACTIVE',
+                'LOW_HAEMOGLOBIN',
+                'VITAL_SIGNS_OUT_OF_RANGE',
+                'UNDERWEIGHT_FOR_VOLUME',
+            ], true)) {
                 continue;
             }
 

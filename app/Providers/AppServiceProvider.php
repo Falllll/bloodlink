@@ -8,6 +8,7 @@ use App\Models\Deferral;
 use App\Models\DeferralReason;
 use App\Models\Donor;
 use App\Models\DonorConsent;
+use App\Models\DonorScreening;
 use App\Models\Facility;
 use App\Models\User;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
@@ -57,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Donor::class, DonorPolicy::class);
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 

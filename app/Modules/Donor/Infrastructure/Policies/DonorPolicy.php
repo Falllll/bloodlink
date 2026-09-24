@@ -28,6 +28,15 @@ final class DonorPolicy
         return $user->facilityId() === $donor->registered_facility_id;
     }
 
+    public function recordScreening(User $user, Donor $donor): bool
+    {
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() === $donor->registered_facility_id;
+    }
+
     public function view(User $user, Donor $donor): bool
     {
         if ($user->isGlobalOperator()) {

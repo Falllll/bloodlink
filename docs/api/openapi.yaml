@@ -750,6 +750,99 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /donors/{donor}/screenings:
+    post:
+      summary: Rekam skrining donor (Hb, tensi, nadi, suhu, berat)
+      description: >-
+        Admin global, admin fasilitas donor tersebut, atau staf fasilitas
+        donor tersebut. Skrining yang gagal tetap 201 -- ia catatan medis
+        yang terjadi, bukan input yang ditolak. Respons membawa
+        `passed: false` beserta findings-nya. Skrining yang gagal
+        menempatkan tepat satu deferral otomatis (`source: screening`,
+        `type: temporary`, tanpa durasi).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: donor
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID donor (`public_id`). ID numerik internal tidak pernah keluar ke API.
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                haemoglobin_g_dl:
+                  type: number
+                  format: double
+                  minimum: 1
+                  maximum: 30
+                systolic_mmhg:
+                  type: integer
+                  minimum: 40
+                  maximum: 300
+                diastolic_mmhg:
+                  type: integer
+                  minimum: 20
+                  maximum: 200
+                pulse_bpm:
+                  type: integer
+                  minimum: 20
+                  maximum: 250
+                temperature_c:
+                  type: number
+                  format: double
+                  minimum: 30
+                  maximum: 45
+                weight_kg:
+                  type: number
+                  format: double
+                  minimum: 20
+                  maximum: 300
+                planned_volume_ml:
+                  type: integer
+                  enum: [350, 450]
+                  nullable: true
+                note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+              required:
+                - haemoglobin_g_dl
+                - systolic_mmhg
+                - diastolic_mmhg
+                - pulse_bpm
+                - temperature_c
+                - weight_kg
+      responses:
+        '201':
+          description: Skrining tercatat (lolos atau tidak).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorScreening'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -1154,6 +1247,65 @@ components:
                 nullable: true
             required: [code, outcome, retry_after_date, detail]
       required: [outcome, is_provisional, retry_after_date, findings]
+    DonorScreening:
+      type: object
+      description: >-
+        `id` numerik internal tidak pernah keluar ke API. `haemoglobin_g_dl`
+        dan `temperature_c` selalu desimal (mis. 12.5, 37.6) -- penyimpanan
+        internalnya integer dalam sepersepuluh satuan, tapi itu detail
+        implementasi yang tidak pernah bocor ke kontrak ini.
+      properties:
+        id:
+          type: string
+          format: uuid
+        haemoglobin_g_dl:
+          type: number
+          format: double
+        systolic_mmhg:
+          type: integer
+        diastolic_mmhg:
+          type: integer
+        pulse_bpm:
+          type: integer
+        temperature_c:
+          type: number
+          format: double
+        weight_kg:
+          type: number
+          format: double
+        planned_volume_ml:
+          type: integer
+        passed:
+          type: boolean
+        findings:
+          type: array
+          items:
+            type: string
+            enum:
+              - HAEMOGLOBIN_BELOW_MINIMUM
+              - PULSE_OUT_OF_RANGE
+              - TEMPERATURE_TOO_HIGH
+              - BLOOD_PRESSURE_OUT_OF_RANGE
+              - BODY_WEIGHT_BELOW_MINIMUM
+        screened_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+          nullable: true
+      required:
+        - id
+        - haemoglobin_g_dl
+        - systolic_mmhg
+        - diastolic_mmhg
+        - pulse_bpm
+        - temperature_c
+        - weight_kg
+        - planned_volume_ml
+        - passed
+        - findings
+        - screened_at
+        - note
     ReadinessReport:
       type: object
       properties:

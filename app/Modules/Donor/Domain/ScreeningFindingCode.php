@@ -1,0 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Donor\Domain;
+
+enum ScreeningFindingCode: string
+{
+    case HAEMOGLOBIN_BELOW_MINIMUM = 'HAEMOGLOBIN_BELOW_MINIMUM';
+    case PULSE_OUT_OF_RANGE = 'PULSE_OUT_OF_RANGE';
+    case TEMPERATURE_TOO_HIGH = 'TEMPERATURE_TOO_HIGH';
+    case BLOOD_PRESSURE_OUT_OF_RANGE = 'BLOOD_PRESSURE_OUT_OF_RANGE';
+    case BODY_WEIGHT_BELOW_MINIMUM = 'BODY_WEIGHT_BELOW_MINIMUM';
+}
