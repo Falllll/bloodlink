@@ -409,8 +409,9 @@ paths:
       description: >-
         Hanya role `admin`. Baris `source_id` ditandai `merged_into_id` ke
         `target_id` dan tetap ada; `target_id` mewarisi `last_donation_date`
-        terbaru, `donation_count` gabungan, status deferral gabungan, serta
-        NIK/email dari sumber kalau miliknya masih kosong.
+        terbaru, `donation_count` gabungan, seluruh baris `deferrals` milik
+        sumber dipindahkan ke target, serta NIK/email dari sumber kalau
+        miliknya masih kosong.
       security:
         - bearerAuth: []
       parameters:
@@ -611,6 +612,9 @@ components:
         - DONOR_DUPLICATE_NIK
         - DONOR_DUPLICATE_PHONE
         - DONOR_MERGE_CONFLICT
+        - DONOR_DEFERRAL_CONFLICT
+        - DONOR_DEFERRAL_ALREADY_LIFTED
+        - DONOR_PERMANENT_DEFERRAL_NOT_LIFTABLE
     Error:
       type: object
       properties:

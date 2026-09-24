@@ -81,6 +81,25 @@ final class DeferralTest extends TestCase
         $this->assertTrue($deferral->isActive());
     }
 
+    public function test_a_temporary_deferral_without_a_fixed_duration_has_no_end_date(): void
+    {
+        $this->seed(DeferralReasonSeeder::class);
+
+        $donor = Donor::factory()->create();
+        $reason = DeferralReason::query()->where('jurisdiction', 'WHO')->where('code', 'PREGNANT_OR_LACTATING')->firstOrFail();
+
+        $deferral = (new PlaceDeferral)->handle(
+            $donor,
+            $reason,
+            new DateTimeImmutable('2026-01-01'),
+            DeferralSource::SCREENING,
+        );
+
+        $this->assertSame(DeferralType::TEMPORARY, $deferral->type);
+        $this->assertNull($deferral->ends_at);
+        $this->assertTrue($deferral->isActive());
+    }
+
     public function test_a_permanent_deferral_cannot_be_lifted(): void
     {
         $this->seed(DeferralReasonSeeder::class);
@@ -102,6 +121,33 @@ final class DeferralTest extends TestCase
             $this->fail('Expected DeferralConflict to be thrown.');
         } catch (DeferralConflict $e) {
             $this->assertSame(ErrorCode::DONOR_PERMANENT_DEFERRAL_NOT_LIFTABLE, $e->errorCode());
+            $this->assertSame(409, $e->httpStatus());
+        }
+    }
+
+    public function test_a_deferral_cannot_be_lifted_twice(): void
+    {
+        $this->seed(DeferralReasonSeeder::class);
+
+        $donor = Donor::factory()->create();
+        $reason = DeferralReason::query()->where('jurisdiction', 'WHO')->where('code', 'FEVER_NONSPECIFIC')->firstOrFail();
+
+        $deferral = (new PlaceDeferral)->handle(
+            $donor,
+            $reason,
+            new DateTimeImmutable('2026-01-01'),
+            DeferralSource::SCREENING,
+        );
+
+        $staff = User::factory()->create();
+
+        $lifted = (new LiftDeferral)->handle($deferral, $staff->id, 'Sudah sembuh, dikonfirmasi ulang.');
+
+        try {
+            (new LiftDeferral)->handle($lifted, $staff->id, 'Mencoba mencabut lagi.');
+            $this->fail('Expected DeferralConflict to be thrown.');
+        } catch (DeferralConflict $e) {
+            $this->assertSame(ErrorCode::DONOR_DEFERRAL_ALREADY_LIFTED, $e->errorCode());
             $this->assertSame(409, $e->httpStatus());
         }
     }
