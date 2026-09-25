@@ -14,6 +14,7 @@ use App\Modules\Donor\Application\MergeDonors;
 use App\Modules\Donor\Application\PlaceDeferral;
 use App\Modules\Donor\Domain\DeferralSource;
 use App\Modules\Donor\Domain\DeferralType;
+use App\Modules\Donor\Domain\Events\DonorPermanentlyDeferred;
 use App\Shared\Errors\ErrorCode;
 use Database\Seeders\DeferralReasonSeeder;
 use DateTimeImmutable;
@@ -202,5 +203,20 @@ final class DeferralTest extends TestCase
         (new MergeDonors)->handle($source, $target);
 
         $this->assertSame($target->id, $deferral->fresh()->donor_id);
+    }
+
+    public function test_the_permanent_deferral_event_records_a_deferral(): void
+    {
+        $this->seed(DeferralReasonSeeder::class);
+
+        $donor = Donor::factory()->create();
+
+        event(new DonorPermanentlyDeferred($donor->id, 'TTI_CONFIRMED_REACTIVE', '2026-01-01T00:00:00Z'));
+
+        $rows = DB::table('deferrals')->where('donor_id', $donor->id)->get();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('permanent', $rows->first()->type);
+        $this->assertNull($rows->first()->ends_at);
     }
 }

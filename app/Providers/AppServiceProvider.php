@@ -14,7 +14,9 @@ use App\Models\DonorScreening;
 use App\Models\Facility;
 use App\Models\User;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
+use App\Modules\Donor\Domain\Events\DonorPermanentlyDeferred;
 use App\Modules\Donor\Infrastructure\Policies\DonorPolicy;
+use App\Modules\Donor\Infrastructure\RecordPermanentDeferral;
 use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
 use App\Modules\Identity\Infrastructure\Policies\AuditLogPolicy;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
@@ -65,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Event::listen(DonationCompleted::class, CreateQuarantinedUnit::class);
+        Event::listen(DonorPermanentlyDeferred::class, RecordPermanentDeferral::class);
 
         Event::listen(Looping::class, function () {
             static $last = 0;
