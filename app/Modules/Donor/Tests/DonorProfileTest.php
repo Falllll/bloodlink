@@ -239,4 +239,36 @@ final class DonorProfileTest extends TestCase
         $this->assertArrayNotHasKey('address', $log->changes['after']);
         $this->assertArrayNotHasKey('nik', $log->changes['after']);
     }
+
+    public function test_the_endpoint_requires_a_token(): void
+    {
+        $facility = Facility::factory()->create();
+        $donor = Donor::factory()->create(['registered_facility_id' => $facility->id]);
+
+        $response = $this->patchJson(
+            "/api/v1/donors/{$donor->public_id}",
+            ['city' => 'Kota Tanpa Token'],
+            $this->withIdempotencyKey([])
+        );
+
+        $response->assertStatus(401);
+    }
+
+    public function test_date_of_birth_in_the_body_is_rejected(): void
+    {
+        $facility = Facility::factory()->create();
+        $donor = Donor::factory()->create(['registered_facility_id' => $facility->id]);
+
+        $staff = User::factory()->create(['facility_id' => $facility->id]);
+        $this->assignRole($staff, 'hospital_staff');
+
+        $response = $this->patchJson(
+            "/api/v1/donors/{$donor->public_id}",
+            ['date_of_birth' => '1990-01-01'],
+            $this->withIdempotencyKey($this->bearer($staff))
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error.details.date_of_birth.0.rule', 'not_allowed');
+    }
 }

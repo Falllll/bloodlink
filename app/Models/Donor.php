@@ -63,7 +63,7 @@ class Donor extends Model implements FacilityScoped
             'id' => $this->public_id,
             'donor_number' => $this->donor_number,
             'full_name' => $this->full_name,
-            'date_of_birth' => $this->date_of_birth,
+            'date_of_birth' => $this->date_of_birth->toDateString(),
             'sex' => $this->sex,
             'blood_group' => $this->blood_group,
             'rh_factor' => $this->rh_factor,
@@ -72,7 +72,7 @@ class Donor extends Model implements FacilityScoped
             'address' => $this->address,
             'city' => $this->city,
             'weight_kg' => $this->weight_kg,
-            'last_donation_date' => $this->last_donation_date,
+            'last_donation_date' => $this->last_donation_date?->toDateString(),
             'donation_count' => $this->donation_count,
             'has_nik' => $this->nik !== null,
         ];
