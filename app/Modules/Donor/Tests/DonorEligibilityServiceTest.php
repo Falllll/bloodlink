@@ -27,7 +27,7 @@ final class DonorEligibilityServiceTest extends TestCase
     {
         $this->seed(DeferralReasonSeeder::class);
 
-        $donor = Donor::factory()->create(['weight_kg' => 70]);
+        $donor = Donor::factory()->create(['weight_kg' => 70, 'date_of_birth' => '1990-01-01']);
         $reason = DeferralReason::query()->where('jurisdiction', 'WHO')->where('code', 'FEVER_NONSPECIFIC')->firstOrFail();
 
         $deferral = (new PlaceDeferral)->handle($donor, $reason, new DateTimeImmutable('2026-01-01'), DeferralSource::SCREENING);
@@ -48,7 +48,7 @@ final class DonorEligibilityServiceTest extends TestCase
     {
         $this->seed(DeferralReasonSeeder::class);
 
-        $donor = Donor::factory()->create(['weight_kg' => 70]);
+        $donor = Donor::factory()->create(['weight_kg' => 70, 'date_of_birth' => '1990-01-01']);
         $reason = DeferralReason::query()->where('jurisdiction', 'WHO')->where('code', 'PREGNANT_OR_LACTATING')->firstOrFail();
 
         $deferral = (new PlaceDeferral)->handle($donor, $reason, new DateTimeImmutable('2020-01-01'), DeferralSource::SCREENING);
