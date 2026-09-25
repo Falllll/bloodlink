@@ -103,11 +103,22 @@ final class AppointmentFlowTest extends TestCase
 
         $booked = $this->postJson(
             "/api/v1/donors/{$donor->public_id}/appointments",
-            [],
+            ['scheduled_for' => now()->addDay()->toIso8601String()],
             $this->withIdempotencyKey($this->bearer($staff))
         )->assertStatus(201);
 
+        $booked->assertJsonPath('data.status', 'booked');
+
         $publicId = $booked->json('data.id');
+
+        $arrived = $this->patchJson(
+            "/api/v1/appointments/{$publicId}/status",
+            ['status' => 'arrived'],
+            $this->withIdempotencyKey($this->bearer($staff))
+        );
+
+        $arrived->assertOk()->assertJsonPath('data.status', 'arrived');
+        $this->assertNotNull($arrived->json('data.arrived_at'));
 
         $screened = $this->patchJson(
             "/api/v1/appointments/{$publicId}/status",
@@ -128,6 +139,10 @@ final class AppointmentFlowTest extends TestCase
         $this->assertNotNull($completed->json('data.arrived_at'));
         $this->assertNotNull($completed->json('data.screened_at'));
         $this->assertNotNull($completed->json('data.completed_at'));
+
+        $row = Appointment::query()->where('public_id', $publicId)->firstOrFail();
+
+        $this->assertTrue($row->arrived_at <= $row->screened_at && $row->screened_at <= $row->completed_at);
     }
 
     public function test_index_is_scoped_to_the_token_facility_and_paginated(): void
