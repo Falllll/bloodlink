@@ -2,12 +2,11 @@
 
 namespace Database\Factories;
 
-use App\Models\Deferral;
 use App\Models\DeferralReason;
 use App\Models\Donor;
 use App\Models\Facility;
-use App\Modules\Donor\Domain\DeferralSource;
 use App\Modules\Donor\Application\PlaceDeferral;
+use App\Modules\Donor\Domain\DeferralSource;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -43,7 +42,6 @@ class DonorFactory extends Factory
         ]);
     }
 
-
     public function deferred(string $reasonCode = 'TATTOO_PIERCING_ACUPUNCTURE'): static
     {
         return $this->afterCreating(function (Donor $donor) use ($reasonCode): void {
@@ -56,7 +54,7 @@ class DonorFactory extends Factory
             app(PlaceDeferral::class)->handle(
                 donor: $donor,
                 reason: $reason,
-                anchorAt: now()->toDateTimeImmutable(), 
+                anchorAt: now()->toDateTimeImmutable(),
                 source: DeferralSource::MANUAL,
             );
         });

@@ -71,7 +71,7 @@ class Donor extends Model implements FacilityScoped
             'email' => $this->email,
             'address' => $this->address,
             'city' => $this->city,
-            'weight_kg' => $this->weight_kg,
+            'weight_kg' => $this->weight_kg === null ? null : (float) $this->weight_kg,
             'last_donation_date' => $this->last_donation_date?->toDateString(),
             'donation_count' => $this->donation_count,
             'has_nik' => $this->nik !== null,

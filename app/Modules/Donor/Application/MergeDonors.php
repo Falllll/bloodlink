@@ -51,8 +51,8 @@ final class MergeDonors
                 ->get()
                 ->each(
                     fn (Deferral $deferral) => $deferral
-                    ->forceFill(['donor_id' => $target->id])
-                    ->save()
+                        ->forceFill(['donor_id' => $target->id])
+                        ->save()
                 );
 
             if ($target->nik === null && $source->nik !== null) {

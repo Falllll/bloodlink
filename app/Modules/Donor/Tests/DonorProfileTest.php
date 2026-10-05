@@ -67,12 +67,12 @@ final class DonorProfileTest extends TestCase
         );
 
         $response->assertOk()
-            ->assertJsonPath('data.weight_kg', '65.50');
+            ->assertJsonPath('data.weight_kg', 65.50);
 
         $show = $this->getJson("/api/v1/donors/{$donor->public_id}", $this->bearer($staff));
 
         $show->assertOk()
-            ->assertJsonPath('data.weight_kg', '65.50');
+            ->assertJsonPath('data.weight_kg', 65.50);
     }
 
     public function test_a_below_minimum_weight_is_accepted_not_rejected(): void
