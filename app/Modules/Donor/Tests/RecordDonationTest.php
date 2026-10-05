@@ -29,11 +29,14 @@ use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Spatie\Permission\PermissionRegistrar;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 final class RecordDonationTest extends TestCase
 {
     use RefreshDatabase;
+
+    private bool $failListener = true;
 
     protected function setUp(): void
     {
@@ -113,6 +116,7 @@ final class RecordDonationTest extends TestCase
         ];
     }
 
+    /** @return TestResponse<Response> */
     private function donate(Appointment $appointment, User $staff): TestResponse
     {
         return $this->postJson(
@@ -222,10 +226,8 @@ final class RecordDonationTest extends TestCase
      */
     public function test_a_failing_listener_rolls_back_the_whole_donation(): void
     {
-        $failListener = true;
-
-        Event::listen(DonationCompleted::class, function () use (&$failListener): void {
-            if ($failListener) {
+        Event::listen(DonationCompleted::class, function (): void {
+            if ($this->failListener) {
                 throw new RuntimeException('Inventory tidak bisa mengkarantina kantong ini.');
             }
         });
@@ -241,19 +243,23 @@ final class RecordDonationTest extends TestCase
         $this->donate($appointment, $staff)->assertStatus(500);
 
         $this->assertSame(0, Donation::query()->count());
-        $this->assertSame('2025-01-01', $donor->fresh()?->last_donation_date?->toDateString());
-        $this->assertSame(0, (int) $donor->fresh()?->donation_count);
-        $this->assertSame(AppointmentStatus::SCREENED, $appointment->fresh()?->status);
-        $this->assertNull($appointment->fresh()?->completed_at);
+        $donor->refresh();
+        $appointment->refresh();
+        $this->assertSame('2025-01-01', $donor->last_donation_date?->toDateString());
+        $this->assertSame(0, (int) $donor->donation_count);
+        $this->assertSame(AppointmentStatus::SCREENED, $appointment->status);
+        $this->assertNull($appointment->completed_at);
 
-        $failListener = false;
+        $this->failListener = false;
 
         $this->donate($appointment, $staff)->assertStatus(201);
 
+        $donor->refresh();
+        $appointment->refresh();
         $this->assertSame(1, Donation::query()->count());
-        $this->assertNotSame('2025-01-01', $donor->fresh()?->last_donation_date?->toDateString());
-        $this->assertSame(1, (int) $donor->fresh()?->donation_count);
-        $this->assertSame(AppointmentStatus::COMPLETED, $appointment->fresh()?->status);
+        $this->assertNotSame('2025-01-01', $donor->last_donation_date?->toDateString());
+        $this->assertSame(1, (int) $donor->donation_count);
+        $this->assertSame(AppointmentStatus::COMPLETED, $appointment->status);
     }
 
     public function test_an_appointment_that_is_not_yet_screened_is_rejected_with_409(): void
