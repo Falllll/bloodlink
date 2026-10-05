@@ -32,6 +32,9 @@ return new class extends Migration
             $table->timestamps();
             $table->index(['donor_id', 'lifted_at', 'ends_at']);
             $table->index(['facility_id', 'lifted_at']);
+            $table->index('deferral_reason_id');
+            $table->index('placed_by');
+            $table->index('lifted_by');
         });
 
         DB::statement(<<<'SQL'

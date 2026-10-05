@@ -48,7 +48,12 @@ final class MergeDonors
 
             Deferral::query()
                 ->where('donor_id', $source->id)
-                ->update(['donor_id' => $target->id]);
+                ->get()
+                ->each(
+                    fn (Deferral $deferral) => $deferral
+                    ->forceFill(['donor_id' => $target->id])
+                    ->save()
+                );
 
             if ($target->nik === null && $source->nik !== null) {
                 $target->nik = $source->nik;
