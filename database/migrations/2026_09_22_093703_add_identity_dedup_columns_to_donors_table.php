@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         $hasDuplicatePhoneHashes = DB::table('donors')
+            ->select('phone_hash')
             ->whereNotNull('phone_hash')
+            ->whereNull('deleted_at')
             ->groupBy('phone_hash')
             ->havingRaw('count(*) > 1')
             ->exists();

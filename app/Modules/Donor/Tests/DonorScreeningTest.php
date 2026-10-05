@@ -12,6 +12,7 @@ use App\Models\Facility;
 use App\Models\User;
 use App\Shared\Auth\FacilityScope;
 use Database\Seeders\DeferralReasonSeeder;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,7 @@ final class DonorScreeningTest extends TestCase
     {
         parent::setUp();
 
+        $this->seed(RolePermissionSeeder::class);
         $this->seed(DeferralReasonSeeder::class);
     }
 

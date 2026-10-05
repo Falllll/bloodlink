@@ -17,7 +17,7 @@ final class ApiResponse
         return response()->json([
             'data' => $data,
             'meta' => $meta,
-        ]);
+        ], options: JSON_PRESERVE_ZERO_FRACTION);
     }
 
     /**
@@ -35,7 +35,7 @@ final class ApiResponse
                 'prev_cursor' => $page->previousCursor()?->encode(),
                 'has_more' => $page->hasMorePages(),
             ], $meta),
-        ]);
+        ], options: JSON_PRESERVE_ZERO_FRACTION);
     }
 
     /**

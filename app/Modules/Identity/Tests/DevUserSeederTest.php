@@ -115,7 +115,9 @@ final class DevUserSeederTest extends TestCase
 
         $before = User::query()->count();
 
-        $this->seed(DevUserSeeder::class);
+        // --force melewati konfirmasi db:seed, supaya yang diuji benar-benar
+        // penjaga isProduction() di dalam seeder, bukan pembatalan oleh db:seed.
+        $this->artisan('db:seed', ['--class' => DevUserSeeder::class, '--force' => true])->assertSuccessful();
 
         $this->assertSame($before, User::query()->count());
     }

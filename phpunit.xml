@@ -39,5 +39,20 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!--
+            Di container, env_file Docker mengisi $_SERVER, dan Laravel membaca
+            $_SERVER sebelum $_ENV — <env> di atas (bahkan dengan force) kalah.
+            Tanpa baris-baris ini, test di `docker compose exec app` menjalankan
+            RefreshDatabase terhadap DB dev dan memakai Redis sebagai cache.
+            Host/kredensial DB sengaja tidak dipaksa: di container nilainya dari .env.
+        -->
+        <server name="APP_ENV" value="testing"/>
+        <server name="BCRYPT_ROUNDS" value="4"/>
+        <server name="BROADCAST_CONNECTION" value="null"/>
+        <server name="CACHE_STORE" value="array"/>
+        <server name="DB_DATABASE" value="bloodlink_test"/>
+        <server name="MAIL_MAILER" value="array"/>
+        <server name="QUEUE_CONNECTION" value="sync"/>
+        <server name="SESSION_DRIVER" value="array"/>
     </php>
 </phpunit>

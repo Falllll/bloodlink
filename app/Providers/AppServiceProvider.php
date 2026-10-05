@@ -13,6 +13,7 @@ use App\Models\DonorConsent;
 use App\Models\DonorScreening;
 use App\Models\Facility;
 use App\Models\User;
+use App\Modules\Donor\Domain\EligibilityEngine;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
 use App\Modules\Donor\Domain\Events\DonorPermanentlyDeferred;
 use App\Modules\Donor\Infrastructure\Policies\DonorPolicy;
@@ -39,7 +40,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(EligibilityEngine::class, fn (): EligibilityEngine => EligibilityEngine::who());
     }
 
     /**
