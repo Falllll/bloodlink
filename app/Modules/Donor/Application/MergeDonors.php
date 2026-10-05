@@ -7,7 +7,7 @@ namespace App\Modules\Donor\Application;
 use App\Models\Deferral;
 use App\Models\Donor;
 use App\Modules\Donor\Application\Exceptions\DonorIdentityConflict;
-use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class MergeDonors
@@ -69,7 +69,7 @@ final class MergeDonors
         });
     }
 
-    private function later(?CarbonInterface $a, ?CarbonInterface $b): ?CarbonInterface
+    private function later(?Carbon $a, ?Carbon $b): ?Carbon
     {
         if ($a === null) {
             return $b;

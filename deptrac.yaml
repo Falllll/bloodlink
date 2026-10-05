@@ -18,6 +18,8 @@ deptrac:
         - type: classNameRegex
           value: /^Tests\\.*/
         - type: classNameRegex
+          value: /^PHPUnit\\.*/
+        - type: classNameRegex
           value: /^Database\\Seeders\\.*/
 
     - name: Shared

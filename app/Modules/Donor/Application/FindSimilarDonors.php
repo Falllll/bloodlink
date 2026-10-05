@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Donor\Application;
 
-use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class FindSimilarDonors
@@ -12,7 +12,7 @@ final class FindSimilarDonors
     public const float THRESHOLD = 0.4;
 
     /** @return list<array{id: string, full_name: string, score: float}> */
-    public function forIdentity(string $fullName, CarbonInterface $dateOfBirth, ?int $excludeDonorId = null): array
+    public function forIdentity(string $fullName, Carbon $dateOfBirth, ?int $excludeDonorId = null): array
     {
         $query = DB::table('donors')
             ->selectRaw('public_id, full_name, similarity(full_name, ?) AS score', [$fullName])
