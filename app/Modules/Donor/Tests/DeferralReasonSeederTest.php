@@ -87,6 +87,29 @@ final class DeferralReasonSeederTest extends TestCase
         }
     }
 
+    public function test_every_cited_section_is_one_that_was_verified(): void
+    {
+        // Seksi yang sudah dicocokkan ke dokumen sumber. Seksi baru harus
+        // diverifikasi dulu, baru ditambahkan di sini -- rujukan karangan
+        // (mis. "§7.1" yang ditempel ke rujukan yang sah) harus merahkan test ini.
+        $verified = [
+            '§3.2', '§3.3', '§3.4', '§3.6',
+            '§4.3', '§4.4', '§4.8.1', '§4.9', '§5',
+            '§6.3.1', '§6.4',
+            '§7.5.1', '§7.5.6', '§7.7', '§7.9.2', '§7.9.5',
+        ];
+
+        $this->seed(DeferralReasonSeeder::class);
+
+        foreach (DeferralReason::query()->get(['code', 'source_reference']) as $row) {
+            preg_match_all('/§\d+(?:\.\d+)*/u', $row->source_reference, $matches);
+
+            foreach ($matches[0] as $section) {
+                $this->assertContains($section, $verified, "{$row->code} cites unverified {$section}");
+            }
+        }
+    }
+
     public function test_a_code_removed_from_the_list_is_deactivated_not_deleted(): void
     {
         DB::table('deferral_reasons')->insert([

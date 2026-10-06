@@ -180,6 +180,28 @@ final class ComponentTypeSeederTest extends TestCase
         ]);
     }
 
+    public function test_the_database_rejects_an_overlapping_band_for_the_same_component(): void
+    {
+        $this->seed(ComponentTypeSeeder::class);
+
+        $this->expectException(QueryException::class);
+        $this->expectExceptionMessage('component_storage_profiles_no_band_overlap');
+
+        // Whole blood sudah punya band [2,6]; [3,7] tidak identik, jadi lolos
+        // band_unique -- yang harus menolaknya adalah penjaga tumpang-tindih.
+        DB::table('component_storage_profiles')->insert([
+            'component_type_id' => $this->type(BloodComponent::WHOLE_BLOOD)->id,
+            'storage_temp_min_celsius' => '3.0',
+            'storage_temp_max_celsius' => '7.0',
+            'shelf_life_value' => 1,
+            'shelf_life_unit' => 'days',
+            'is_default' => false,
+            'source_reference' => 'Test fixture',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     public function test_the_database_rejects_a_second_default_profile(): void
     {
         $this->seed(ComponentTypeSeeder::class);

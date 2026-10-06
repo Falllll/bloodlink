@@ -9,6 +9,7 @@ use App\Models\Donor;
 use App\Models\Facility;
 use App\Models\User;
 use App\Shared\Auth\FacilityScope;
+use App\Shared\Logging\SensitiveKeys;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -235,6 +236,10 @@ final class DonorProfileTest extends TestCase
 
         $this->assertNotNull($log);
         $this->assertArrayHasKey('weight_kg', $log->changes['after']);
+        // Perubahannya tercatat, nilainya tidak: data kesehatan direduksi di
+        // audit, sama seperti hemoglobin (AuditLogTest).
+        $this->assertSame(SensitiveKeys::REDACTED, $log->changes['before']['weight_kg']);
+        $this->assertSame(SensitiveKeys::REDACTED, $log->changes['after']['weight_kg']);
         $this->assertArrayNotHasKey('phone', $log->changes['after']);
         $this->assertArrayNotHasKey('address', $log->changes['after']);
         $this->assertArrayNotHasKey('nik', $log->changes['after']);

@@ -16,6 +16,7 @@ use Database\Seeders\DeferralReasonSeeder;
 use DateInterval;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -59,6 +60,44 @@ final class DonorEligibilityServiceTest extends TestCase
         $decision = DonorEligibilityService::who()->for($donor->fresh(), new DateTimeImmutable('2026-01-01'));
 
         $this->assertSame(EligibilityOutcome::ELIGIBLE, $decision->outcome);
+    }
+
+    public function test_a_pregnancy_deferral_without_an_end_date_still_blocks_the_donor(): void
+    {
+        $this->seed(DeferralReasonSeeder::class);
+
+        $donor = Donor::factory()->create(['weight_kg' => 70, 'date_of_birth' => '1990-01-01', 'sex' => 'female']);
+        $reason = DeferralReason::query()->where('jurisdiction', 'WHO')->where('code', 'PREGNANT_OR_LACTATING')->firstOrFail();
+
+        (new PlaceDeferral)->handle($donor, $reason, new DateTimeImmutable('2020-01-01'), DeferralSource::SCREENING);
+
+        // Pasangan positif penyaring ends_at: baris temporary tanpa durasi dan
+        // tanpa ends_at harus tetap menahan donor, bertahun-tahun kemudian pun.
+        $decision = DonorEligibilityService::who()->for($donor->fresh(), new DateTimeImmutable('2026-01-01'));
+
+        $this->assertSame(EligibilityOutcome::NOT_ELIGIBLE, $decision->outcome);
+    }
+
+    public function test_a_twenty_four_hour_deferral_expires_at_the_same_hour(): void
+    {
+        $this->seed(DeferralReasonSeeder::class);
+
+        $donor = Donor::factory()->create(['weight_kg' => 70, 'date_of_birth' => '1990-01-01', 'sex' => 'male', 'last_donation_date' => null]);
+        $reason = DeferralReason::query()->where('jurisdiction', 'WHO')->where('code', 'DENTAL_SIMPLE')->firstOrFail();
+
+        (new PlaceDeferral)->handle($donor, $reason, new DateTimeImmutable('2026-03-01 08:00:00'), DeferralSource::SCREENING);
+
+        // Tanpa $today: yang diuji justru jam dari now() milik service.
+        Carbon::setTestNow('2026-03-02 07:00:00');
+        $beforeExpiry = DonorEligibilityService::who()->for($donor->fresh());
+
+        Carbon::setTestNow('2026-03-02 09:00:00');
+        $afterExpiry = DonorEligibilityService::who()->for($donor->fresh());
+
+        Carbon::setTestNow();
+
+        $this->assertSame(EligibilityOutcome::NOT_ELIGIBLE, $beforeExpiry->outcome);
+        $this->assertSame(EligibilityOutcome::ELIGIBLE, $afterExpiry->outcome);
     }
 
     public function test_a_permanent_deferral_row_maps_without_a_duration(): void

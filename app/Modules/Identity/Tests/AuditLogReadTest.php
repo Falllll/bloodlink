@@ -42,6 +42,21 @@ final class AuditLogReadTest extends TestCase
         return ['Authorization' => 'Bearer '.$token];
     }
 
+    private function auditRowFor(int $facilityId): void
+    {
+        AuditLog::create([
+            'auditable_type' => Facility::class,
+            'auditable_id' => $facilityId,
+            'action' => 'updated',
+            'actor_id' => null,
+            'actor_facility_id' => $facilityId,
+            'changes' => ['before' => [], 'after' => []],
+            'trace_id' => null,
+            'ip' => null,
+            'occurred_at' => now(),
+        ]);
+    }
+
     public function test_a_global_admin_can_list_audit_logs(): void
     {
         Facility::factory()->create();
@@ -63,12 +78,19 @@ final class AuditLogReadTest extends TestCase
         $adminA = User::factory()->create(['facility_id' => $facilityA->id]);
         $this->assignRole($adminA, RoleEnum::ADMIN);
 
+        // Baris milik B harus benar-benar ada; tanpa itu test ini hijau
+        // meski scope-nya dicabut.
+        $this->auditRowFor($facilityA->id);
+        $this->auditRowFor($facilityB->id);
+        $this->auditRowFor($facilityB->id);
+
         $response = $this->getJson('/api/v1/audit-logs', $this->bearer($adminA));
 
         $response->assertOk();
+        $this->assertNotEmpty($response->json('data'));
 
         foreach ($response->json('data') as $row) {
-            $this->assertNotSame($facilityB->id, $row['actor_facility_id']);
+            $this->assertSame($facilityA->id, $row['actor_facility_id']);
         }
     }
 
@@ -79,6 +101,8 @@ final class AuditLogReadTest extends TestCase
 
         $adminA = User::factory()->create(['facility_id' => $facilityA->id]);
         $this->assignRole($adminA, RoleEnum::ADMIN);
+
+        $this->auditRowFor($facilityB->id);
 
         $response = $this->getJson('/api/v1/audit-logs?filter[actor_facility_id]='.$facilityB->id, $this->bearer($adminA));
 

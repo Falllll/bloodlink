@@ -102,6 +102,11 @@ final class GlobalOperatorScopeTest extends TestCase
 
         $batchFromB = BloodBatch::factory()->create(['facility_id' => $facilityB->id]);
 
+        // Bind team A seperti BindFacilityContext: tanpa ini hasRole('admin')
+        // selalu false (team diracun -1), dan test ini hijau meski guard bocor.
+        app(PermissionRegistrar::class)->setPermissionsTeamId(FacilityScope::of($adminA->facility_id));
+        $this->assertTrue($adminA->hasRole(RoleEnum::ADMIN->value));
+
         $this->expectException(AuthorizationException::class);
 
         FacilityGuard::assertVisible($batchFromB, $adminA);
