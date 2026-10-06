@@ -22,6 +22,12 @@ deptrac:
         - type: classNameRegex
           value: /^Database\\Seeders\\.*/
 
+    # Library barcode (Kartu 210): hanya ModInventory yang boleh menyentuhnya.
+    - name: Barcode
+      collectors:
+        - type: classNameRegex
+          value: /^Picqer\\Barcode\\.*/
+
     - name: Shared
       collectors:
         - type: directory
@@ -128,7 +134,7 @@ deptrac:
 
     ModIdentity:     [Framework, Shared, Models, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
     ModDonor:        [Framework, Shared, Models, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModInventory:    [Framework, Shared, Models, DomInventory, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModInventory:    [Framework, Shared, Models, DomInventory, Barcode, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
     ModRequest:      [Framework, Shared, Models, DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
     ModNotification: [Framework, Shared, Models, DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
 

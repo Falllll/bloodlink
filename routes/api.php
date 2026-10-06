@@ -10,6 +10,7 @@ use App\Modules\Donor\Http\Controllers\EligibilitySelfCheckController;
 use App\Modules\Identity\Http\Controllers\AuditLogController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\FacilityController;
+use App\Modules\Inventory\Http\Controllers\BloodBatchBarcodeController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
@@ -41,6 +42,7 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::post('/blood-batches', [BloodBatchController::class, 'store'])->name('blood-batches.store');
     Route::get('/blood-batches/{bloodBatch}', [BloodBatchController::class, 'show'])->name('blood-batches.show');
     Route::patch('/blood-batches/{bloodBatch}/status', [BloodBatchController::class, 'transition'])->name('blood-batches.transition');
+    Route::get('/blood-batches/{publicId}/barcode', BloodBatchBarcodeController::class)->whereUuid('publicId')->name('blood-batches.barcode');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 

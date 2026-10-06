@@ -1289,6 +1289,44 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /blood-batches/{publicId}/barcode:
+    get:
+      summary: Barcode nomor unit (SVG)
+      description: >-
+        Barcode **Code 128** dari `batch_number`, dirender sebagai SVG di
+        dalam proses (picqer/php-barcode-generator, LGPL-3.0-or-later) tanpa
+        panggilan jaringan. Ini **BUKAN ISBT 128** -- standar label perbankan
+        darah internasional itu berlisensi dan di luar cakupan MVP, jadi
+        barcode ini tidak bisa dibaca sistem yang mengharapkan ISBT 128.
+
+        `batch_number` berformat `BL-{FAC}-{YYMMDD}-{SEQ}{RND}{CHK}` (22
+        karakter, mis. `BL-JKT1-260925-0007A9L`): `{FAC}` 4 karakter dari kode
+        fasilitas (alfabet Crockford), `{SEQ}` pencacah harian per prefix,
+        `{RND}` 2 karakter acak Crockford, `{CHK}` cek digit ISO 7064 MOD
+        37,36. Nomor unit adalah label fisik, bukan identitas rute: unit
+        dicari lewat `public_id`. Unit milik fasilitas lain dijawab 404, bukan
+        403.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: publicId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID unit (`public_id`).
+      responses:
+        '200':
+          description: SVG barcode Code 128; `<desc>` memuat nomor unitnya.
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -1377,6 +1415,7 @@ components:
         - APPOINTMENT_TRANSITION_REJECTED
         - BLOOD_BATCH_TRANSITION_REJECTED
         - BATCH_EXPIRY_UNDETERMINABLE
+        - UNIT_NUMBER_ALLOCATION_FAILED
     Error:
       type: object
       properties:

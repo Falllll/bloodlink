@@ -6,33 +6,35 @@ namespace App\Modules\Inventory\Application\Listeners;
 
 use App\Models\BloodBatch;
 use App\Models\Donation;
+use App\Models\Facility;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
+use App\Modules\Inventory\Application\GenerateUnitNumber;
 use App\Modules\Inventory\Domain\BatchStatus;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 // Sengaja sinkron, BUKAN ShouldQueue: RecordDonation memanggil event() di dalam
 // DB::transaction-nya, jadi kalau karantina gagal, donasinya ikut batal.
 final class CreateQuarantinedUnit
 {
-    /** Kedua index ini hanya bisa ditabrak oleh donasi yang sama: nomor batch diturunkan dari donation_id. */
-    private const array REPLAY_CONSTRAINTS = [
-        'blood_batches_donation_id_unique',
-        'blood_batches_batch_number_unique',
-    ];
+    public function __construct(private GenerateUnitNumber $unitNumbers) {}
 
     public function handle(DonationCompleted $event): void
     {
         // Tanpa visibleTo(): tidak ada user di sini. Baris utuh, tanpa select kolom.
         $donation = Donation::query()->findOrFail($event->donationId);
+        $facilityCode = (string) Facility::query()->whereKey($donation->facility_id)->value('code');
 
         try {
-            // Savepoint: di PostgreSQL unique violation membatalkan transaksi yang
-            // sedang berjalan, termasuk transaksi RecordDonation di luar sana.
-            DB::transaction(fn () => $this->unitFor($donation)->save());
+            // retrying() menyimpan di dalam savepoint, jadi pelanggaran unique tidak
+            // membatalkan transaksi RecordDonation di luar sana.
+            $this->unitNumbers->retrying(
+                $facilityCode,
+                $donation->completed_at,
+                fn (string $number): bool => $this->unitFor($donation, $number)->save(),
+            );
         } catch (UniqueConstraintViolationException $e) {
-            if (! Str::contains($e->getMessage(), self::REPLAY_CONSTRAINTS)) {
+            if (! str_contains($e->getMessage(), 'blood_batches_donation_id_unique')) {
                 throw $e;
             }
 
@@ -40,7 +42,7 @@ final class CreateQuarantinedUnit
         }
     }
 
-    private function unitFor(Donation $donation): BloodBatch
+    private function unitFor(Donation $donation, string $unitNumber): BloodBatch
     {
         $unit = new BloodBatch;
 
@@ -50,7 +52,7 @@ final class CreateQuarantinedUnit
         // sampai dikonfirmasi lab (Kartu 230).
         return $unit->forceFill([
             'public_id' => (string) Str::uuid(),
-            'batch_number' => $this->placeholderBatchNumber($donation->id),
+            'batch_number' => $unitNumber,
             'donation_id' => $donation->id,
             'donor_id' => $donation->donor_id,
             'component' => 'whole_blood',
@@ -60,12 +62,5 @@ final class CreateQuarantinedUnit
             'collected_at' => $donation->completed_at,
             'status' => BatchStatus::QUARANTINED,
         ]);
-    }
-
-    private function placeholderBatchNumber(int $donationId): string
-    {
-        // Penampung sementara sampai Kartu 210; deterministik supaya replay
-        // menabrak unique index alih-alih membuat nomor baru.
-        return 'DON-'.str_pad((string) $donationId, 12, '0', STR_PAD_LEFT);
     }
 }

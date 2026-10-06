@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Inventory\Application;
 
 use App\Models\BloodBatch;
+use App\Models\Facility;
 use App\Modules\Inventory\Domain\BatchStatus;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +13,10 @@ use Illuminate\Support\Str;
 
 final class RegisterBloodBatch
 {
-    public function __construct(private AssignStorageProfile $assignStorageProfile) {}
+    public function __construct(
+        private AssignStorageProfile $assignStorageProfile,
+        private GenerateUnitNumber $unitNumbers,
+    ) {}
 
     /**
      * Unit baru selalu lahir quarantined: belum diuji lab (Kartu 230) dan belum
@@ -37,12 +41,16 @@ final class RegisterBloodBatch
 
             $batch->forceFill([
                 'public_id' => (string) Str::uuid(),
-                // Penampung sampai Kartu 210 (unit number + barcode).
-                'batch_number' => 'BB-'.Str::upper(Str::random(12)),
                 'status' => BatchStatus::QUARANTINED,
             ]);
 
-            $this->assignStorageProfile->handle($batch, $data['storage_temperature_c'])->save();
+            $this->assignStorageProfile->handle($batch, $data['storage_temperature_c']);
+
+            $this->unitNumbers->retrying(
+                (string) Facility::query()->whereKey($facilityId)->value('code'),
+                $data['collected_at'],
+                fn (string $number): bool => $batch->forceFill(['batch_number' => $number])->save(),
+            );
 
             return $batch;
         });
