@@ -54,7 +54,7 @@ final class DonorEligibilityServiceTest extends TestCase
         $deferral = (new PlaceDeferral)->handle($donor, $reason, new DateTimeImmutable('2020-01-01'), DeferralSource::SCREENING);
 
         // Simulasikan petugas yang kemudian mengisi ends_at (kondisi selesai) di masa lalu.
-        $deferral->forceFill(['ends_at' => '2025-12-31 00:00:00'])->save();
+        $deferral->forceFill(['ends_at' => new DateTimeImmutable('2025-12-01')])->save();
 
         $decision = DonorEligibilityService::who()->for($donor->fresh(), new DateTimeImmutable('2026-01-01'));
 
