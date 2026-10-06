@@ -20,6 +20,11 @@ final class BloodBatchTransitionRejected extends DomainException
         return new self('A blood batch can only be released through the release gate, not through a status update.');
     }
 
+    public static function separationIsNotAStatusUpdate(): self
+    {
+        return new self('A blood batch is separated by recording its components, not through a status update.');
+    }
+
     public function errorCode(): ErrorCode
     {
         return ErrorCode::BLOOD_BATCH_TRANSITION_REJECTED;

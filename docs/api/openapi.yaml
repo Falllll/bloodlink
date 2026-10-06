@@ -1089,7 +1089,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [quarantined, testing, released, reserved, issued, discarded, expired]
+            enum: [quarantined, testing, released, reserved, issued, discarded, expired, separated]
         - in: query
           name: filter[component]
           required: false
@@ -1238,8 +1238,10 @@ paths:
         Transisi dijaga oleh `BatchStatus::canTransitionTo()`. Status
         `released` TIDAK PERNAH bisa dicapai lewat endpoint ini -- rilis hanya
         lewat gerbang rilis -- dan ditolak 409 `BLOOD_BATCH_TRANSITION_REJECTED`
-        tanpa mengubah baris. `discarded` wajib disertai `discard_reason`;
-        `issued`, `discarded`, dan `expired` bersifat final.
+        tanpa mengubah baris. Hal yang sama untuk `separated`: status itu
+        hanya lahir lewat `POST /blood-batches/{bloodBatch}/components`.
+        `discarded` wajib disertai `discard_reason`; `issued`, `discarded`,
+        `expired`, dan `separated` bersifat final.
       security:
         - bearerAuth: []
       parameters:
@@ -1260,7 +1262,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: [quarantined, testing, released, reserved, issued, discarded, expired]
+                  enum: [quarantined, testing, released, reserved, issued, discarded, expired, separated]
                 discard_reason:
                   type: string
                   maxLength: 255
@@ -1327,6 +1329,88 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+  /blood-batches/{bloodBatch}/components:
+    post:
+      summary: Pisahkan whole blood menjadi komponen turunan
+      description: >-
+        Satu kantong whole blood (status `quarantined` atau `testing`, belum
+        pernah dipisah, bukan turunan) menjadi N unit turunan, masing-masing
+        baris sendiri yang menunjuk induknya lewat `parent_id`. Setiap turunan
+        lahir `quarantined`, dengan nomor unit sendiri, dan dengan masa simpan
+        dari profil suhu simpannya sendiri -- dihitung dari `collected_at`
+        ASLI induk, bukan dari waktu pemisahan, sehingga turunan tidak pernah
+        lebih segar dari darah asalnya (trombosit +22 °C: 5 hari; PRC +4 °C:
+        35 hari; FFP -22 °C: 3 bulan). Induk menjadi `separated` dan tidak
+        bisa dipisah lagi (409 `INVENTORY_SEPARATION_REJECTED`); total volume
+        turunan tidak boleh melebihi volume induk. Turunan dan perubahan induk
+        tersimpan bersama atau tidak sama sekali.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bloodBatch
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID unit induk (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                components:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    properties:
+                      component:
+                        type: string
+                        enum: [packed_red_cells, fresh_frozen_plasma, platelet_concentrate, cryoprecipitate]
+                      volume_ml:
+                        type: integer
+                        minimum: 1
+                      storage_temperature_c:
+                        type: number
+                        description: Suhu simpan turunan ini, dalam °C.
+                    required: [component, volume_ml, storage_temperature_c]
+              required: [components]
+      responses:
+        '201':
+          description: Induk ditandai separated; turunan tercatat berstatus quarantined.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      parent:
+                        $ref: '#/components/schemas/BloodBatch'
+                      components:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/BloodBatch'
+                    required: [parent, components]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -1416,6 +1500,7 @@ components:
         - BLOOD_BATCH_TRANSITION_REJECTED
         - BATCH_EXPIRY_UNDETERMINABLE
         - UNIT_NUMBER_ALLOCATION_FAILED
+        - INVENTORY_SEPARATION_REJECTED
     Error:
       type: object
       properties:
@@ -1926,7 +2011,12 @@ components:
           type: integer
         status:
           type: string
-          enum: [quarantined, testing, released, reserved, issued, discarded, expired]
+          enum: [quarantined, testing, released, reserved, issued, discarded, expired, separated]
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Public ID unit induk untuk komponen turunan (look-back); null untuk unit asal.
         collected_at:
           type: string
           format: date-time

@@ -19,6 +19,11 @@ final class TransitionBloodBatch
             throw BloodBatchTransitionRejected::releaseIsGated();
         }
 
+        // SEPARATED hanya lahir bersama turunannya lewat SeparateIntoComponents.
+        if ($to === BatchStatus::SEPARATED) {
+            throw BloodBatchTransitionRejected::separationIsNotAStatusUpdate();
+        }
+
         DB::transaction(function () use ($batch, $to, $discardReason): void {
             // Baca ulang dengan kunci: dua request yang membawa model basi tidak
             // boleh sama-sama lolos cek transisi (preseden TransitionAppointment).

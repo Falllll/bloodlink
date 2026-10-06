@@ -21,7 +21,9 @@ use App\Modules\Donor\Infrastructure\RecordPermanentDeferral;
 use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
 use App\Modules\Identity\Infrastructure\Policies\AuditLogPolicy;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
+use App\Modules\Inventory\Application\AssignStorageProfile;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
+use App\Modules\Inventory\Domain\ComponentExpiryPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -42,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(EligibilityEngine::class, fn (): EligibilityEngine => EligibilityEngine::who());
+        $this->app->bind(ComponentExpiryPolicy::class, AssignStorageProfile::class);
     }
 
     /**

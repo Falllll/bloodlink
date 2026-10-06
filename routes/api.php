@@ -12,6 +12,7 @@ use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\FacilityController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchBarcodeController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchController;
+use App\Modules\Inventory\Http\Controllers\ComponentSeparationController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,7 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::get('/blood-batches/{bloodBatch}', [BloodBatchController::class, 'show'])->name('blood-batches.show');
     Route::patch('/blood-batches/{bloodBatch}/status', [BloodBatchController::class, 'transition'])->name('blood-batches.transition');
     Route::get('/blood-batches/{publicId}/barcode', BloodBatchBarcodeController::class)->whereUuid('publicId')->name('blood-batches.barcode');
+    Route::post('/blood-batches/{bloodBatch}/components', ComponentSeparationController::class)->name('blood-batches.components.store');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 

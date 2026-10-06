@@ -8,29 +8,38 @@ use App\Models\BloodBatch;
 use App\Models\ComponentStorageProfile;
 use App\Models\ComponentType;
 use App\Modules\Inventory\Application\Exceptions\BatchExpiryUndeterminable;
+use App\Modules\Inventory\Domain\ComponentExpiryPolicy;
 use App\Modules\Inventory\Domain\ShelfLifeWindow;
+use DateTimeImmutable;
 
 /**
  * expires_at diturunkan dari profil penyimpanan yang benar-benar ditempati unit,
  * bukan dari konstanta per komponen: FFP di -22 °C hidup 3 bulan, di -35 °C 12 bulan.
  */
-final class AssignStorageProfile
+final class AssignStorageProfile implements ComponentExpiryPolicy
 {
     private const string JURISDICTION = 'WHO';
 
     /** Mengisi storage_profile_id dan expires_at; tidak menyimpan. */
     public function handle(BloodBatch $batch, float $temperatureC): BloodBatch
     {
-        $profile = $this->resolveProfile($batch->component, $temperatureC);
+        return $batch->forceFill(
+            $this->resolve($batch->component, $temperatureC, $batch->collected_at->toDateTimeImmutable())
+        );
+    }
 
-        return $batch->forceFill([
+    public function resolve(string $component, float $storageTemperatureC, DateTimeImmutable $collectedAt): array
+    {
+        $profile = $this->resolveProfile($component, $storageTemperatureC);
+
+        return [
             'storage_profile_id' => $profile->id,
             'expires_at' => (new ShelfLifeWindow(
-                $batch->collected_at->toDateTimeImmutable(),
+                $collectedAt,
                 $profile->shelf_life_value,
                 $profile->shelf_life_unit,
             ))->expiresAt(),
-        ]);
+        ];
     }
 
     /**

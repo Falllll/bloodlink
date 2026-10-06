@@ -10,6 +10,7 @@ use Database\Factories\BloodBatchFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -37,6 +38,8 @@ class BloodBatch extends Model implements FacilityScoped
         return [
             'status' => BatchStatus::class,
             'collected_at' => 'datetime',
+            'separated_at' => 'datetime',
+            'separated_volume_ml' => 'integer',
             'expires_at' => 'datetime',
             'hemoglobin_g_dl' => 'decimal:2',
         ];
@@ -69,6 +72,26 @@ class BloodBatch extends Model implements FacilityScoped
     }
 
     /**
+     * Look-back §6.3, arah turunan -> induk.
+     *
+     * @return BelongsTo<BloodBatch, $this>
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_unit_id');
+    }
+
+    /**
+     * Look-back §6.3, arah induk -> turunan.
+     *
+     * @return HasMany<BloodBatch, $this>
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_unit_id');
+    }
+
+    /**
      * @return BelongsTo<Facility, $this>
      */
     public function facility(): BelongsTo
@@ -94,6 +117,7 @@ class BloodBatch extends Model implements FacilityScoped
             'rh_factor' => $this->rh_factor,
             'volume_ml' => $this->volume_ml,
             'status' => $this->status->value,
+            'parent_id' => $this->parent?->public_id,
             'collected_at' => $this->collected_at->toIso8601String(),
             'expires_at' => $this->expires_at?->toIso8601String(),
             'storage_profile' => $this->storageProfile === null ? null : [

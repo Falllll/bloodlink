@@ -13,22 +13,26 @@ enum BatchStatus: string
     case ISSUED = 'issued';
     case DISCARDED = 'discarded';
     case EXPIRED = 'expired';
+    // Induk whole blood yang sudah dipisah jadi komponen (Kartu 220). Bukan
+    // DISCARDED: pemisahan bukan kehilangan stok, dan bukan jalur pemusnahan.
+    case SEPARATED = 'separated';
 
     /**
      * Graf lengkap siklus hidup unit. TESTING -> RELEASED ada di sini karena
      * memang sah secara domain, tapi hanya gerbang rilis (Kartu 240) yang boleh
-     * menempuhnya -- TransitionBloodBatch menolaknya lebih dulu.
+     * menempuhnya -- TransitionBloodBatch menolaknya lebih dulu. Hal yang sama
+     * untuk SEPARATED: hanya SeparateIntoComponents yang boleh mencapainya.
      *
      * @return list<self>
      */
     public function allowedNext(): array
     {
         return match ($this) {
-            self::QUARANTINED => [self::TESTING, self::DISCARDED, self::EXPIRED],
-            self::TESTING => [self::RELEASED, self::DISCARDED, self::EXPIRED],
+            self::QUARANTINED => [self::TESTING, self::SEPARATED, self::DISCARDED, self::EXPIRED],
+            self::TESTING => [self::RELEASED, self::SEPARATED, self::DISCARDED, self::EXPIRED],
             self::RELEASED => [self::RESERVED, self::ISSUED, self::DISCARDED, self::EXPIRED],
             self::RESERVED => [self::RELEASED, self::ISSUED, self::DISCARDED, self::EXPIRED],
-            self::ISSUED, self::DISCARDED, self::EXPIRED => [],
+            self::ISSUED, self::DISCARDED, self::EXPIRED, self::SEPARATED => [],
         };
     }
 
