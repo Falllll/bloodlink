@@ -88,7 +88,7 @@ final class GlobalOperatorScopeTest extends TestCase
         $this->assertCount(3, $response->json('data'));
 
         foreach ($response->json('data') as $batch) {
-            $this->assertSame($facilityA->id, $batch['facility_id']);
+            $this->assertSame($facilityA->public_id, $batch['facility_id']);
         }
     }
 
@@ -175,7 +175,7 @@ final class GlobalOperatorScopeTest extends TestCase
         $scopedResponse->assertOk();
 
         foreach ($scopedResponse->json('data') as $batch) {
-            $this->assertNotSame($facilityB->id, $batch['facility_id']);
+            $this->assertNotSame($facilityB->public_id, $batch['facility_id']);
         }
     }
 }

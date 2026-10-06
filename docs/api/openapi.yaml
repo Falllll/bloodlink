@@ -1074,6 +1074,221 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /blood-batches:
+    get:
+      summary: Daftar unit darah
+      description: Tersaring otomatis ke fasilitas pemegang token. Operator global melihat seluruhnya.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+        - in: query
+          name: filter[status]
+          required: false
+          schema:
+            type: string
+            enum: [quarantined, testing, released, reserved, issued, discarded, expired]
+        - in: query
+          name: filter[component]
+          required: false
+          schema:
+            type: string
+            enum: [whole_blood, packed_red_cells, fresh_frozen_plasma, platelet_concentrate, cryoprecipitate]
+        - in: query
+          name: filter[blood_group]
+          required: false
+          schema:
+            type: string
+            enum: [A, B, AB, O]
+        - in: query
+          name: filter[rh_factor]
+          required: false
+          schema:
+            type: string
+            enum: [positive, negative]
+      responses:
+        '200':
+          description: Daftar unit darah.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BloodBatch'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    post:
+      summary: Daftarkan unit darah
+      description: >-
+        Staf/admin berfasilitas dengan izin `inventory.create`; unit menjadi
+        milik fasilitas pemegang token. Unit selalu lahir `quarantined`.
+        `expires_at` TIDAK dikirim klien: profil penyimpanan dipilih dari
+        `storage_temperature_c`, lalu kedaluwarsa dihitung dari masa simpan
+        profil itu (bulan kalender, bukan hari). Suhu yang tidak dicakup
+        profil mana pun ditolak 422 `BATCH_EXPIRY_UNDETERMINABLE` tanpa
+        fallback. `expires_at`, `status`, dan kunci lain di luar skema
+        ditolak 422 `not_allowed`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                component:
+                  type: string
+                  enum: [whole_blood, packed_red_cells, fresh_frozen_plasma, platelet_concentrate, cryoprecipitate]
+                blood_group:
+                  type: string
+                  enum: [A, B, AB, O]
+                  nullable: true
+                rh_factor:
+                  type: string
+                  enum: [positive, negative]
+                  nullable: true
+                volume_ml:
+                  type: integer
+                  minimum: 1
+                hemoglobin_g_dl:
+                  type: number
+                  nullable: true
+                collected_at:
+                  type: string
+                  format: date-time
+                storage_temperature_c:
+                  type: number
+                  description: Suhu tempat unit benar-benar disimpan, dalam °C.
+                donor_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Public ID donor (`public_id`).
+              required: [component, volume_ml, collected_at, storage_temperature_c]
+      responses:
+        '201':
+          description: Unit tercatat berstatus quarantined.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BloodBatch'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /blood-batches/{bloodBatch}:
+    get:
+      summary: Detail unit darah
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bloodBatch
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID unit (`public_id`).
+      responses:
+        '200':
+          description: Unit darah.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BloodBatch'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /blood-batches/{bloodBatch}/status:
+    patch:
+      summary: Pindahkan status unit darah
+      description: >-
+        Transisi dijaga oleh `BatchStatus::canTransitionTo()`. Status
+        `released` TIDAK PERNAH bisa dicapai lewat endpoint ini -- rilis hanya
+        lewat gerbang rilis -- dan ditolak 409 `BLOOD_BATCH_TRANSITION_REJECTED`
+        tanpa mengubah baris. `discarded` wajib disertai `discard_reason`;
+        `issued`, `discarded`, dan `expired` bersifat final.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bloodBatch
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID unit (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [quarantined, testing, released, reserved, issued, discarded, expired]
+                discard_reason:
+                  type: string
+                  maxLength: 255
+                  description: Wajib jika dan hanya jika `status` = `discarded`.
+              required: [status]
+      responses:
+        '200':
+          description: Status unit berpindah.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BloodBatch'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -1160,6 +1375,8 @@ components:
         - DONOR_DEFERRAL_ALREADY_LIFTED
         - DONOR_PERMANENT_DEFERRAL_NOT_LIFTABLE
         - APPOINTMENT_TRANSITION_REJECTED
+        - BLOOD_BATCH_TRANSITION_REJECTED
+        - BATCH_EXPIRY_UNDETERMINABLE
     Error:
       type: object
       properties:
@@ -1635,6 +1852,73 @@ components:
         - started_at
         - completed_at
         - note
+    BloodBatch:
+      type: object
+      description: >-
+        `id` numerik internal tidak pernah keluar ke API. `expires_at` selalu
+        berasal dari `storage_profile`; keduanya `null` untuk unit yang belum
+        punya profil (mis. unit dari donasi yang baru dikarantina).
+      properties:
+        id:
+          type: string
+          format: uuid
+        batch_number:
+          type: string
+        facility_id:
+          type: string
+          format: uuid
+          description: Public ID fasilitas pemilik.
+        donor_id:
+          type: string
+          format: uuid
+          nullable: true
+        component:
+          type: string
+          enum: [whole_blood, packed_red_cells, fresh_frozen_plasma, platelet_concentrate, cryoprecipitate]
+        blood_group:
+          type: string
+          enum: [A, B, AB, O]
+          nullable: true
+        rh_factor:
+          type: string
+          enum: [positive, negative]
+          nullable: true
+        volume_ml:
+          type: integer
+        status:
+          type: string
+          enum: [quarantined, testing, released, reserved, issued, discarded, expired]
+        collected_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        storage_profile:
+          type: object
+          nullable: true
+          properties:
+            storage_temp_min_celsius:
+              type: number
+            storage_temp_max_celsius:
+              type: number
+            shelf_life_value:
+              type: integer
+            shelf_life_unit:
+              type: string
+              enum: [hours, days, months]
+        discard_reason:
+          type: string
+          nullable: true
+      required:
+        - id
+        - batch_number
+        - facility_id
+        - component
+        - volume_ml
+        - status
+        - collected_at
     ReadinessReport:
       type: object
       properties:

@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\BloodBatch;
-use App\Models\User;
 use App\Modules\Donor\Http\Controllers\AppointmentController;
 use App\Modules\Donor\Http\Controllers\DonationController;
 use App\Modules\Donor\Http\Controllers\DonorConsentController;
@@ -12,9 +10,9 @@ use App\Modules\Donor\Http\Controllers\EligibilitySelfCheckController;
 use App\Modules\Identity\Http\Controllers\AuditLogController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\FacilityController;
+use App\Modules\Inventory\Http\Controllers\BloodBatchController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\HttpFoundation\Response;
@@ -39,14 +37,10 @@ Route::post('/eligibility/self-check', EligibilitySelfCheckController::class)
     ->name('eligibility.self-check');
 
 Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void {
-    Route::get('/blood-batches', function (Request $request) {
-        /** @var User|null $user */
-        $user = $request->user();
-
-        return ApiResponse::paginated(
-            BloodBatch::query()->visibleTo($user)->orderBy('id')->cursorPaginate(25)
-        );
-    })->name('blood-batches.index');
+    Route::get('/blood-batches', [BloodBatchController::class, 'index'])->name('blood-batches.index');
+    Route::post('/blood-batches', [BloodBatchController::class, 'store'])->name('blood-batches.store');
+    Route::get('/blood-batches/{bloodBatch}', [BloodBatchController::class, 'show'])->name('blood-batches.show');
+    Route::patch('/blood-batches/{bloodBatch}/status', [BloodBatchController::class, 'transition'])->name('blood-batches.transition');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 

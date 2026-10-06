@@ -22,6 +22,7 @@ use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
 use App\Modules\Identity\Infrastructure\Policies\AuditLogPolicy;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
+use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -62,6 +63,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Facility::class, FacilityPolicy::class);
         Gate::policy(Donor::class, DonorPolicy::class);
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
+        Gate::policy(BloodBatch::class, BloodBatchPolicy::class);
 
         foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class] as $model) {
             $model::observe(AuditObserver::class);

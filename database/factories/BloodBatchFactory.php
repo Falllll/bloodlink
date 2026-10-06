@@ -3,10 +3,15 @@
 namespace Database\Factories;
 
 use App\Models\BloodBatch;
+use App\Models\ComponentStorageProfile;
 use App\Models\Donor;
 use App\Models\Facility;
+use Database\Seeders\ComponentTypeSeeder;
+use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * @extends Factory<BloodBatch>
@@ -24,12 +29,6 @@ class BloodBatchFactory extends Factory
             'whole_blood', 'packed_red_cells', 'fresh_frozen_plasma',
             'platelet_concentrate', 'cryoprecipitate']);
 
-        $shelflifeDays = match ($component) {
-            'platelet_concentrate' => 5,
-            'fresh_frozen_plasma', 'cryoprecipitate' => 365,
-            default => 35,
-        };
-
         $collectedAt = fake()->dateTimeBetween('-60 Days', 'now');
 
         $bloodGroup = fake()->randomElement(['A', 'B', 'AB', 'O']);
@@ -44,8 +43,34 @@ class BloodBatchFactory extends Factory
             'rh_factor' => fake()->randomElement(['positive', 'negative']),
             'volume_ml' => fake()->numberBetween(200, 500),
             'collected_at' => $collectedAt,
-            'expires_at' => (clone $collectedAt)->modify("+{$shelflifeDays} days"),
+            // Kedaluwarsa wajib punya asal-usul (CHECK blood_batches_expiry_provenance):
+            // diturunkan dari profil default komponennya, bukan konstanta per komponen.
+            'storage_profile_id' => fn (array $attributes): int => $this->defaultProfileFor($attributes['component'])->id,
+            'expires_at' => fn (array $attributes): DateTimeImmutable => $this->defaultProfileFor($attributes['component'])
+                ->expiryFrom(Carbon::parse($attributes['collected_at'])->toDateTimeImmutable()),
         ];
+    }
+
+    private function defaultProfileFor(string $component): ComponentStorageProfile
+    {
+        $query = fn () => ComponentStorageProfile::query()
+            ->where('is_default', true)
+            ->whereHas('componentType', fn ($q) => $q->where('jurisdiction', 'WHO')->where('code', $component))
+            ->first();
+
+        $profile = $query();
+
+        if ($profile === null) {
+            // Test DB yang belum di-seed master data komponen: seed sekali, idempoten.
+            (new ComponentTypeSeeder)->run();
+            $profile = $query();
+        }
+
+        if ($profile === null) {
+            throw new RuntimeException("No default WHO storage profile for component \"{$component}\".");
+        }
+
+        return $profile;
     }
 
     public function released(): static

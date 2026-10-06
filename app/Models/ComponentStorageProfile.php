@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Modules\Inventory\Domain\ShelfLifeUnit;
+use App\Modules\Inventory\Domain\ShelfLifeWindow;
 use App\Shared\Database\Auditable;
-use DateInterval;
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,16 +46,6 @@ final class ComponentStorageProfile extends Model
 
     public function expiryFrom(DateTimeImmutable $collectedAt): DateTimeImmutable
     {
-        $expiry = $collectedAt->add(new DateInterval(
-            $this->shelf_life_unit->toDateIntervalSpec($this->shelf_life_value)
-        ));
-
-        // P3M dari 31 Jan meluap ke 1 Mei. Untuk kedaluwarsa, luapan berarti unit
-        // hidup lebih lama dari seharusnya — tarik ke hari terakhir bulan tujuan.
-        if ($this->shelf_life_unit === ShelfLifeUnit::MONTHS && $expiry->format('j') !== $collectedAt->format('j')) {
-            $expiry = $expiry->modify('last day of previous month');
-        }
-
-        return $expiry;
+        return (new ShelfLifeWindow($collectedAt, $this->shelf_life_value, $this->shelf_life_unit))->expiresAt();
     }
 }

@@ -13,4 +13,32 @@ enum BatchStatus: string
     case ISSUED = 'issued';
     case DISCARDED = 'discarded';
     case EXPIRED = 'expired';
+
+    /**
+     * Graf lengkap siklus hidup unit. TESTING -> RELEASED ada di sini karena
+     * memang sah secara domain, tapi hanya gerbang rilis (Kartu 240) yang boleh
+     * menempuhnya -- TransitionBloodBatch menolaknya lebih dulu.
+     *
+     * @return list<self>
+     */
+    public function allowedNext(): array
+    {
+        return match ($this) {
+            self::QUARANTINED => [self::TESTING, self::DISCARDED, self::EXPIRED],
+            self::TESTING => [self::RELEASED, self::DISCARDED, self::EXPIRED],
+            self::RELEASED => [self::RESERVED, self::ISSUED, self::DISCARDED, self::EXPIRED],
+            self::RESERVED => [self::RELEASED, self::ISSUED, self::DISCARDED, self::EXPIRED],
+            self::ISSUED, self::DISCARDED, self::EXPIRED => [],
+        };
+    }
+
+    public function canTransitionTo(self $next): bool
+    {
+        return in_array($next, $this->allowedNext(), strict: true);
+    }
+
+    public function isTerminal(): bool
+    {
+        return $this->allowedNext() === [];
+    }
 }

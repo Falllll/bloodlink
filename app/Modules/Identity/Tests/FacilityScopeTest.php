@@ -66,7 +66,7 @@ final class FacilityScopeTest extends TestCase
         $this->assertCount(3, $response->json('data'));
 
         foreach ($response->json('data') as $batch) {
-            $this->assertSame($facilityA->id, $batch['facility_id']);
+            $this->assertSame($facilityA->public_id, $batch['facility_id']);
         }
     }
 

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\ComponentStorageProfile;
 use App\Models\Donor;
 use App\Models\Facility;
+use DateInterval;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -83,17 +85,23 @@ class DevDataSeeder extends Seeder
             );
         }
 
-        $components = [
-            'whole_blood' => 35,
-            'packed_red_cells' => 35,
-            'fresh_frozen_plasma' => 365,
-            'platelet_concentrate' => 5,
-            'cryoprecipitate' => 365,
-        ];
+        // Profil penyimpanan per komponen dari master data. Komponen beku punya dua
+        // band, jadi dua masa simpan. Seeder ini juga dipanggil sendirian (SeederSmokeTest).
+        if (! ComponentStorageProfile::query()->exists()) {
+            $this->call(ComponentTypeSeeder::class);
+        }
+
+        $profilesByComponent = ComponentStorageProfile::query()
+            ->with('componentType')
+            ->get()
+            ->groupBy(fn (ComponentStorageProfile $profile): string => $profile->componentType->code->value);
         $statuses = ['quarantined', 'testing', 'released', 'reserved', 'issued', 'discarded'];
 
         for ($index = 0; $index < 60; $index++) {
-            $component = fake()->randomElement(array_keys($components));
+            $component = fake()->randomElement($profilesByComponent->keys()->all());
+            /** @var ComponentStorageProfile $profile */
+            $profile = fake()->randomElement($profilesByComponent[$component]->all());
+
             if ($index < 15) {
                 $daysUntilExpiry = fake()->numberBetween(-30, -1);
             } elseif ($index < 30) {
@@ -101,7 +109,15 @@ class DevDataSeeder extends Seeder
             } else {
                 $daysUntilExpiry = fake()->numberBetween(8, 180);
             }
-            $expiresAt = now()->addDays($daysUntilExpiry);
+
+            // Mundur dari target kedaluwarsa sejauh masa simpan profil, lalu hitung
+            // ulang kedaluwarsanya lewat profil -- asal-usulnya selalu profil itu.
+            $collectedAt = now()->addDays($daysUntilExpiry)
+                ->sub(new DateInterval($profile->shelf_life_unit->toDateIntervalSpec($profile->shelf_life_value)));
+            if ($collectedAt->isFuture()) {
+                $collectedAt = now()->subHours(fake()->numberBetween(1, 23));
+            }
+            $expiresAt = $profile->expiryFrom($collectedAt->toDateTimeImmutable());
             $facilityId = $facilities[$index % $facilities->count()];
 
             DB::table('blood_batches')->insert([
@@ -114,8 +130,9 @@ class DevDataSeeder extends Seeder
                 'rh_factor' => fake()->randomElement(['positive', 'negative']),
                 'volume_ml' => fake()->numberBetween(200, 500),
                 'status' => fake()->randomElement($statuses),
-                'collected_at' => (clone $expiresAt)->subDays($components[$component]),
+                'collected_at' => $collectedAt,
                 'expires_at' => $expiresAt,
+                'storage_profile_id' => $profile->id,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);

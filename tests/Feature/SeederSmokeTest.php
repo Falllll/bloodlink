@@ -25,5 +25,7 @@ class SeederSmokeTest extends TestCase
                 ->count(),
         );
         $this->assertSame(0, DB::table('donors')->whereNull('location')->count());
+        // Setiap kedaluwarsa punya asal-usul profil penyimpanan.
+        $this->assertSame(0, DB::table('blood_batches')->whereNull('storage_profile_id')->count());
     }
 }
