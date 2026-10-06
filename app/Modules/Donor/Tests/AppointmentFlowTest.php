@@ -9,6 +9,9 @@ use App\Models\AuditLog;
 use App\Models\Donor;
 use App\Models\Facility;
 use App\Models\User;
+use App\Modules\Donor\Application\Exceptions\AppointmentTransitionRejected;
+use App\Modules\Donor\Application\TransitionAppointment;
+use App\Modules\Donor\Domain\AppointmentStatus;
 use App\Shared\Auth\FacilityScope;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\QueryException;
@@ -143,6 +146,47 @@ final class AppointmentFlowTest extends TestCase
         $row = Appointment::query()->where('public_id', $publicId)->firstOrFail();
 
         $this->assertTrue($row->arrived_at <= $row->screened_at && $row->screened_at <= $row->completed_at);
+    }
+
+    public function test_stale_appointment_transition_is_rejected_after_the_first_transition(): void
+    {
+        $facility = Facility::factory()->create();
+        $donor = Donor::factory()->create([
+            'registered_facility_id' => $facility->id,
+        ]);
+
+        $appointment = new Appointment;
+
+        $appointment->forceFill([
+            'public_id' => (string) Str::uuid(),
+            'donor_id' => $donor->id,
+            'facility_id' => $facility->id,
+            'scheduled_for' => now()->addHour(),
+            'status' => AppointmentStatus::ARRIVED,
+        ]);
+
+        $appointment->save();
+
+        $staleA = Appointment::query()->findOrFail($appointment->id);
+        $staleB = Appointment::query()->findOrFail($appointment->id);
+
+        $transition = app(TransitionAppointment::class);
+
+        $transition->handle($staleA, AppointmentStatus::SCREENED);
+
+        // $staleB still believes the row is ARRIVED, where SCREENED is legal;
+        // the locked re-read must see SCREENED and reject a second screening.
+        try {
+            $transition->handle($staleB, AppointmentStatus::SCREENED);
+            $this->fail('A stale transition was accepted.');
+        } catch (AppointmentTransitionRejected) {
+        }
+
+        $fresh = Appointment::query()->findOrFail($appointment->id);
+
+        $this->assertSame(AppointmentStatus::SCREENED, $fresh->status);
+        $this->assertNotNull($fresh->screened_at);
+        $this->assertTrue($fresh->screened_at->equalTo($staleA->screened_at));
     }
 
     public function test_index_is_scoped_to_the_token_facility_and_paginated(): void

@@ -18,12 +18,6 @@ final readonly class TransitionAppointment
         AppointmentStatus $to,
         ?DateTimeImmutable $at = null,
     ): Appointment {
-        $from = $appointment->status;
-
-        if (! $from->canTransitionTo($to)) {
-            throw AppointmentTransitionRejected::illegal($from, $to);
-        }
-
         if ($to === AppointmentStatus::NO_SHOW
             && $appointment->scheduled_for !== null
             && $appointment->scheduled_for->isFuture()) {
@@ -33,6 +27,15 @@ final readonly class TransitionAppointment
         $timestamp = $at ?? now();
 
         DB::transaction(function () use ($appointment, $to, $timestamp): void {
+            $fresh = Appointment::query()
+                ->whereKey($appointment->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $fresh->status->canTransitionTo($to)) {
+                throw AppointmentTransitionRejected::illegal($fresh->status, $to);
+            }
+
             $appointment->forceFill([
                 'status' => $to,
                 $this->timestampColumnFor($to) => $timestamp,
