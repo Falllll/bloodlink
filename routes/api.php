@@ -13,6 +13,7 @@ use App\Modules\Identity\Http\Controllers\FacilityController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchBarcodeController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchController;
 use App\Modules\Inventory\Http\Controllers\ComponentSeparationController;
+use App\Modules\Inventory\Http\Controllers\LabTestController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +46,9 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::patch('/blood-batches/{bloodBatch}/status', [BloodBatchController::class, 'transition'])->name('blood-batches.transition');
     Route::get('/blood-batches/{publicId}/barcode', BloodBatchBarcodeController::class)->whereUuid('publicId')->name('blood-batches.barcode');
     Route::post('/blood-batches/{bloodBatch}/components', ComponentSeparationController::class)->name('blood-batches.components.store');
+    Route::get('/blood-batches/{bloodBatch}/lab-results', [LabTestController::class, 'index'])->name('blood-batches.lab-results.index');
+    Route::post('/blood-batches/{bloodBatch}/tti-results', [LabTestController::class, 'storeTtiResult'])->name('blood-batches.tti-results.store');
+    Route::post('/blood-batches/{bloodBatch}/abo-rh', [LabTestController::class, 'storeAboRh'])->name('blood-batches.abo-rh.store');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 

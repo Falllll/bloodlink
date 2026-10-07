@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\AboRhDetermination;
 use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\BloodBatch;
@@ -12,6 +13,7 @@ use App\Models\Donor;
 use App\Models\DonorConsent;
 use App\Models\DonorScreening;
 use App\Models\Facility;
+use App\Models\TtiTestResult;
 use App\Models\User;
 use App\Modules\Donor\Domain\EligibilityEngine;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
@@ -68,7 +70,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
         Gate::policy(BloodBatch::class, BloodBatchPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 

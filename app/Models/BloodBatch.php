@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -89,6 +90,18 @@ class BloodBatch extends Model implements FacilityScoped
     public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_unit_id');
+    }
+
+    /** @return HasMany<TtiTestResult, $this> */
+    public function ttiTestResults(): HasMany
+    {
+        return $this->hasMany(TtiTestResult::class);
+    }
+
+    /** @return HasOne<AboRhDetermination, $this> */
+    public function aboRhDetermination(): HasOne
+    {
+        return $this->hasOne(AboRhDetermination::class);
     }
 
     /**

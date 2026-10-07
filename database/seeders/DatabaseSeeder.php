@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call(RolePermissionSeeder::class);
         $this->call(DeferralReasonSeeder::class);
         $this->call(ComponentTypeSeeder::class);
+        $this->call(TtiTestTypeSeeder::class);
         $this->call(DevDataSeeder::class);
         $this->call(DevUserSeeder::class);
     }

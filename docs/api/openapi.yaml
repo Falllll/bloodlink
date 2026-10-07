@@ -1411,6 +1411,202 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /blood-batches/{bloodBatch}/lab-results:
+    get:
+      summary: Panel, hasil lab, dan vonis skrining sebuah unit
+      description: >-
+        Panel IMLTD fasilitas unit = seluruh uji wajib (§6.1: HIV-1/2, HBsAg,
+        HCV, sifilis) ditambah uji regional (§6.2: malaria, Chagas, HTLV) yang
+        di-opt-in fasilitas. `screening_verdict` hanya membaca hasil SKRINING:
+        satu hasil reaktif membuat vonis `reactive` apa pun hasil konfirmasinya.
+        Vonis ini hanya bacaan -- tidak merilis apa pun. Untuk komponen
+        turunan, semua data dibaca dari unit asal donasinya (`source_unit_id`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bloodBatch
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID unit (`public_id`).
+      responses:
+        '200':
+          description: Data lab unit.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      unit_id:
+                        type: string
+                        format: uuid
+                      source_unit_id:
+                        type: string
+                        format: uuid
+                      panel:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            test_code:
+                              type: string
+                              enum: [hiv_1_2, hbsag, hcv, syphilis, malaria, chagas, htlv]
+                            label:
+                              type: string
+                            requirement:
+                              type: string
+                              enum: [mandatory, regional]
+                      tti_results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TtiTestResult'
+                      abo_rh:
+                        allOf:
+                          - $ref: '#/components/schemas/AboRhDetermination'
+                        nullable: true
+                      screening_verdict:
+                        type: string
+                        enum: [incomplete, all_non_reactive, reactive, indeterminate]
+                    required: [unit_id, source_unit_id, panel, tti_results, abo_rh, screening_verdict]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /blood-batches/{bloodBatch}/tti-results:
+    post:
+      summary: Catat satu hasil uji IMLTD
+      description: >-
+        Dicatat di unit asal donasi (bukan komponen turunan) yang berstatus
+        `quarantined`, `testing`, atau `separated`. Uji di luar panel fasilitas
+        ditolak 409 `LAB_TEST_NOT_IN_PANEL`; hasil kedua untuk unit, uji, dan
+        tahap yang sama ditolak 409 `LAB_RESULT_DUPLICATE`. Uji konfirmasi
+        (`is_confirmatory`, §6.3) hanya sah setelah hasil skrining reaktif atau
+        indeterminate untuk uji yang sama. Mencatat hasil TIDAK PERNAH
+        mengubah status unit: non-reaktif tidak merilis, reaktif tidak
+        memusnahkan.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bloodBatch
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID unit (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                test_code:
+                  type: string
+                  enum: [hiv_1_2, hbsag, hcv, syphilis, malaria, chagas, htlv]
+                result:
+                  type: string
+                  enum: [non_reactive, reactive, indeterminate]
+                is_confirmatory:
+                  type: boolean
+                  default: false
+                tested_at:
+                  type: string
+                  format: date-time
+              required: [test_code, result, tested_at]
+      responses:
+        '201':
+          description: Hasil tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TtiTestResult'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /blood-batches/{bloodBatch}/abo-rh:
+    post:
+      summary: Tetapkan golongan ABO/Rh unit
+      description: >-
+        Satu penetapan per unit asal donasi; penetapan kedua ditolak 409
+        `LAB_RESULT_DUPLICATE`. `blood_group` dan `rh_factor` disalin ke unit
+        itu dan ke semua komponen turunannya. Status unit tidak berubah.
+        Kompatibilitas golongan bukan bagian endpoint ini.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bloodBatch
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID unit (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                blood_group:
+                  type: string
+                  enum: [A, B, AB, O]
+                rh_factor:
+                  type: string
+                  enum: [positive, negative]
+                determined_at:
+                  type: string
+                  format: date-time
+              required: [blood_group, rh_factor, determined_at]
+      responses:
+        '201':
+          description: Golongan tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AboRhDetermination'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -1501,6 +1697,9 @@ components:
         - BATCH_EXPIRY_UNDETERMINABLE
         - UNIT_NUMBER_ALLOCATION_FAILED
         - INVENTORY_SEPARATION_REJECTED
+        - LAB_TEST_NOT_IN_PANEL
+        - LAB_RESULT_DUPLICATE
+        - LAB_RESULT_REJECTED
     Error:
       type: object
       properties:
@@ -2048,6 +2247,40 @@ components:
         - volume_ml
         - status
         - collected_at
+    TtiTestResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        test_code:
+          type: string
+          enum: [hiv_1_2, hbsag, hcv, syphilis, malaria, chagas, htlv]
+        is_confirmatory:
+          type: boolean
+        result:
+          type: string
+          enum: [non_reactive, reactive, indeterminate]
+        tested_at:
+          type: string
+          format: date-time
+      required: [id, test_code, is_confirmatory, result, tested_at]
+    AboRhDetermination:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        blood_group:
+          type: string
+          enum: [A, B, AB, O]
+        rh_factor:
+          type: string
+          enum: [positive, negative]
+        determined_at:
+          type: string
+          format: date-time
+      required: [id, blood_group, rh_factor, determined_at]
     ReadinessReport:
       type: object
       properties:

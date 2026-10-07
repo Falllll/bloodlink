@@ -40,4 +40,10 @@ final class BloodBatchPolicy
 
         return $user->facilityId() !== null && $user->facilityId() === $batch->ownerFacilityId();
     }
+
+    /** Mencatat hasil lab mengubah data medis unit: syaratnya sama dengan perpindahan status. */
+    public function recordLabResult(User $user, BloodBatch $batch): bool
+    {
+        return $this->transition($user, $batch);
+    }
 }
