@@ -255,15 +255,21 @@ final class SeparateIntoComponentsTest extends TestCase
         $this->assertSame(BatchStatus::QUARANTINED, $parent->fresh()?->status);
     }
 
-    public function test_staff_of_another_facility_cannot_separate_and_whole_blood_is_not_a_component(): void
+    public function test_staff_of_another_facility_cannot_separate(): void
     {
         $parent = $this->wholeBlood();
         $outsider = $this->staffOf(Facility::factory()->create()->id);
-        $insider = $this->staffOf($parent->facility_id);
 
         $this->postJson("/api/v1/blood-batches/{$parent->public_id}/components", [
             'components' => [['component' => 'packed_red_cells', 'volume_ml' => 250, 'storage_temperature_c' => 4]],
         ], $this->headers($outsider))->assertForbidden();
+        $this->assertSame(BatchStatus::QUARANTINED, $parent->fresh()?->status);
+    }
+
+    public function test_whole_blood_is_not_a_derivable_component(): void
+    {
+        $parent = $this->wholeBlood();
+        $insider = $this->staffOf($parent->facility_id);
 
         $this->postJson("/api/v1/blood-batches/{$parent->public_id}/components", [
             'components' => [['component' => 'whole_blood', 'volume_ml' => 250, 'storage_temperature_c' => 4]],

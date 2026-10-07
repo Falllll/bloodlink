@@ -13,8 +13,21 @@ final class BloodBatchPolicy
     // App\Modules\Identity\Domain\Permission (dijaga deptrac).
     private const string CREATE = 'inventory.create';
 
+    private const string VIEW = 'inventory.view';
+
+    /** Gerbang jenis data: boleh melihat inventori sama sekali? Baris mana diurus visibleTo(). */
+    public function viewAny(User $user): bool
+    {
+        return $user->hasPermissionTo(self::VIEW);
+    }
+
     public function view(User $user, BloodBatch $batch): bool
     {
+        // Izin dulu, sebelum cabang operator global: operator global pun butuh izin.
+        if (! $user->hasPermissionTo(self::VIEW)) {
+            return false;
+        }
+
         if ($user->isGlobalOperator()) {
             return true;
         }

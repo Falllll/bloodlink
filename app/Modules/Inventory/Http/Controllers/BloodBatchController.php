@@ -25,6 +25,8 @@ final class BloodBatchController
 
     public function index(BloodBatchListRequest $request): JsonResponse
     {
+        Gate::authorize('viewAny', BloodBatch::class);
+
         /** @var User|null $user */
         $user = $request->user();
 

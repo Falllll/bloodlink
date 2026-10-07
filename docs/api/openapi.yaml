@@ -1077,7 +1077,9 @@ paths:
   /blood-batches:
     get:
       summary: Daftar unit darah
-      description: Tersaring otomatis ke fasilitas pemegang token. Operator global melihat seluruhnya.
+      description: >-
+        Butuh izin `inventory.view` (peran donor ditolak 403). Tersaring
+        otomatis ke fasilitas pemegang token; operator global melihat seluruhnya.
       security:
         - bearerAuth: []
       parameters:
@@ -1127,6 +1129,8 @@ paths:
                 required: [data, links, meta]
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationFailed'
     post:
@@ -1306,8 +1310,8 @@ paths:
         fasilitas (alfabet Crockford), `{SEQ}` pencacah harian per prefix,
         `{RND}` 2 karakter acak Crockford, `{CHK}` cek digit ISO 7064 MOD
         37,36. Nomor unit adalah label fisik, bukan identitas rute: unit
-        dicari lewat `public_id`. Unit milik fasilitas lain dijawab 404, bukan
-        403.
+        dicari lewat `public_id`. Butuh izin `inventory.view` (tanpanya 403);
+        unit milik fasilitas lain dijawab 404, bukan 403.
       security:
         - bearerAuth: []
       parameters:
@@ -1327,6 +1331,8 @@ paths:
                 type: string
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
   /blood-batches/{bloodBatch}/components:

@@ -98,10 +98,9 @@ final class FacilityScopeTest extends TestCase
         BloodBatch::factory()->count(3)->create(['facility_id' => $facilityA->id]);
         BloodBatch::factory()->count(2)->create(['facility_id' => $facilityB->id]);
 
-        $response = $this->getJson('/api/v1/blood-batches', $this->bearer($donor));
-
-        $response->assertOk();
-        $this->assertCount(0, $response->json('data'));
+        // Sejak Kartu 172 peran donor ditolak di gerbang izin inventory.view,
+        // sebelum scope fasilitas sempat menyaring.
+        $this->getJson('/api/v1/blood-batches', $this->bearer($donor))->assertForbidden();
     }
 
     public function test_staff_cannot_read_a_single_batch_from_another_facility(): void
@@ -151,18 +150,19 @@ final class FacilityScopeTest extends TestCase
         $adminA = User::factory()->create(['facility_id' => $facilityA->id]);
         $this->assignRole($adminA, RoleEnum::ADMIN);
 
-        $staffA = User::factory()->create(['facility_id' => $facilityA->id]);
-        $this->assignRole($staffA, RoleEnum::HOSPITAL_STAFF);
-
         BloodBatch::factory()->count(3)->create(['facility_id' => $facilityA->id]);
         BloodBatch::factory()->count(2)->create(['facility_id' => $facilityB->id]);
 
+        // Satu user per test: membandingkan respons admin dengan respons staf dalam
+        // test yang sama tidak membuktikan apa pun -- guard Sanctum memegang user
+        // request pertama, jadi request kedua juga berjalan sebagai admin.
         $adminResponse = $this->getJson('/api/v1/blood-batches', $this->bearer($adminA));
-        $staffResponse = $this->getJson('/api/v1/blood-batches', $this->bearer($staffA));
 
         $adminResponse->assertOk();
-        $staffResponse->assertOk();
+        $this->assertCount(3, $adminResponse->json('data'));
 
-        $this->assertCount(count($staffResponse->json('data')), $adminResponse->json('data'));
+        foreach ($adminResponse->json('data') as $batch) {
+            $this->assertSame($facilityA->public_id, $batch['facility_id']);
+        }
     }
 }

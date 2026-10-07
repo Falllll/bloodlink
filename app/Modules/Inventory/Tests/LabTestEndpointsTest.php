@@ -237,15 +237,31 @@ final class LabTestEndpointsTest extends TestCase
             ->assertJsonPath('error.code', 'LAB_RESULT_REJECTED');
     }
 
-    public function test_access_is_limited_to_the_unit_facility_with_inventory_create(): void
+    // Satu user per test: dalam satu test, guard Sanctum tetap memegang user dari
+    // request pertama meski token berganti.
+
+    public function test_recording_a_result_needs_a_token(): void
     {
         $unit = $this->quarantinedUnit();
 
         $this->postJson("/api/v1/blood-batches/{$unit->public_id}/tti-results", [])->assertUnauthorized();
-        $this->recordTti($unit, $this->userOf(Facility::factory()->create()->id), 'hcv', 'reactive')->assertForbidden();
+    }
+
+    public function test_staff_of_another_facility_cannot_record_or_read_results(): void
+    {
+        $unit = $this->quarantinedUnit();
+        $outsider = $this->userOf(Facility::factory()->create()->id);
+
+        $this->recordTti($unit, $outsider, 'hcv', 'reactive')->assertForbidden();
+        $this->getJson("/api/v1/blood-batches/{$unit->public_id}/lab-results", $this->headers($outsider))->assertForbidden();
+        $this->assertSame(0, TtiTestResult::query()->count());
+    }
+
+    public function test_a_donor_of_the_same_facility_cannot_record_results(): void
+    {
+        $unit = $this->quarantinedUnit();
+
         $this->recordTti($unit, $this->userOf($unit->facility_id, 'donor'), 'hcv', 'reactive')->assertForbidden();
-        $this->getJson("/api/v1/blood-batches/{$unit->public_id}/lab-results", $this->headers($this->userOf(Facility::factory()->create()->id)))
-            ->assertForbidden();
         $this->assertSame(0, TtiTestResult::query()->count());
     }
 

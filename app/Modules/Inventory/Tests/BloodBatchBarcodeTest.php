@@ -90,4 +90,21 @@ final class BloodBatchBarcodeTest extends TestCase
         $this->getJson("/api/v1/blood-batches/{$own->batch_number}/barcode", $this->bearer($staff))->assertNotFound();
         $this->getJson("/api/v1/blood-batches/{$own->id}/barcode", $this->bearer($staff))->assertNotFound();
     }
+
+    public function test_a_donor_bound_to_a_facility_cannot_fetch_a_barcode(): void
+    {
+        $facility = Facility::factory()->create();
+        $batch = BloodBatch::factory()->create(['facility_id' => $facility->id]);
+
+        $donor = User::factory()->create(['facility_id' => $facility->id]);
+        app(PermissionRegistrar::class)->setPermissionsTeamId(FacilityScope::of($facility->id));
+        $donor->assignRole('donor');
+        app(PermissionRegistrar::class)->setPermissionsTeamId(-1);
+
+        // 403, bukan 404: unitnya ada di fasilitas donor ini -- yang kurang adalah
+        // izinnya. Staf fasilitas yang sama mendapat 200 untuk unit yang sama di
+        // test_a_registered_unit_gets_a_unit_number_and_an_svg_barcode.
+        $this->get("/api/v1/blood-batches/{$batch->public_id}/barcode", $this->bearer($donor))
+            ->assertForbidden();
+    }
 }

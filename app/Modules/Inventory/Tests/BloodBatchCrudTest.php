@@ -107,13 +107,19 @@ final class BloodBatchCrudTest extends TestCase
         $this->assertSame(0, BloodBatch::query()->count());
     }
 
-    public function test_only_facility_staff_with_inventory_create_may_register(): void
+    public function test_a_donor_may_not_register_a_unit(): void
     {
         $donor = $this->userWithRole(Facility::factory()->create()->id, 'donor');
-        $globalAdmin = $this->userWithRole(null, 'admin');
 
         $this->postJson('/api/v1/blood-batches', $this->ffpPayload(), $this->headers($donor))->assertForbidden();
+        $this->assertSame(0, BloodBatch::query()->count());
+    }
+
+    public function test_a_global_admin_may_not_register_a_unit(): void
+    {
         // Operator tanpa fasilitas tidak punya tempat menaruh unit.
+        $globalAdmin = $this->userWithRole(null, 'admin');
+
         $this->postJson('/api/v1/blood-batches', $this->ffpPayload(), $this->headers($globalAdmin))->assertForbidden();
         $this->assertSame(0, BloodBatch::query()->count());
     }
@@ -179,5 +185,61 @@ final class BloodBatchCrudTest extends TestCase
 
         $response->assertOk();
         $this->assertCount(2, $response->json('data'));
+    }
+
+    // Satu user per test: dalam satu test, guard Sanctum tetap memegang user dari
+    // request pertama meski token berganti, jadi request kedua berjalan sebagai
+    // user pertama. Pasangan positif karenanya hidup di test sendiri.
+
+    public function test_a_donor_bound_to_a_facility_cannot_list_its_inventory(): void
+    {
+        $facility = Facility::factory()->create();
+        BloodBatch::factory()->create(['facility_id' => $facility->id]);
+        $donor = $this->userWithRole($facility->id, 'donor');
+
+        // Unitnya ada dan terlihat oleh scope fasilitas: 403 di bawah berasal dari
+        // izin, bukan dari data yang kosong.
+        $this->assertSame(1, BloodBatch::query()->visibleTo($donor)->count());
+
+        $this->getJson('/api/v1/blood-batches', $this->headers($donor))->assertForbidden();
+    }
+
+    public function test_hospital_staff_of_the_same_facility_still_lists_its_inventory(): void
+    {
+        $facility = Facility::factory()->create();
+        BloodBatch::factory()->create(['facility_id' => $facility->id]);
+
+        $this->getJson('/api/v1/blood-batches', $this->headers($this->userWithRole($facility->id, 'hospital_staff')))
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_a_donor_bound_to_a_facility_cannot_read_a_single_unit(): void
+    {
+        $facility = Facility::factory()->create();
+        $batch = BloodBatch::factory()->create(['facility_id' => $facility->id]);
+
+        $this->getJson("/api/v1/blood-batches/{$batch->public_id}", $this->headers($this->userWithRole($facility->id, 'donor')))
+            ->assertForbidden();
+    }
+
+    public function test_hospital_staff_of_the_same_facility_still_reads_a_single_unit(): void
+    {
+        $facility = Facility::factory()->create();
+        $batch = BloodBatch::factory()->create(['facility_id' => $facility->id]);
+
+        $this->getJson("/api/v1/blood-batches/{$batch->public_id}", $this->headers($this->userWithRole($facility->id, 'hospital_staff')))
+            ->assertOk()
+            ->assertJsonPath('data.id', $batch->public_id);
+    }
+
+    public function test_a_global_admin_still_reads_every_facility(): void
+    {
+        BloodBatch::factory()->create(['facility_id' => Facility::factory()->create()->id]);
+        BloodBatch::factory()->create(['facility_id' => Facility::factory()->create()->id]);
+
+        $this->getJson('/api/v1/blood-batches', $this->headers($this->userWithRole(null, 'admin')))
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
     }
 }
