@@ -70,6 +70,27 @@ final class Deferral extends Model implements FacilityScoped
         return $this->belongsTo(DeferralReason::class, 'deferral_reason_id');
     }
 
+    /** @return array<string, mixed> */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->public_id,
+            'donor_id' => $this->donor->public_id,
+            'reason_code' => $this->reason->code,
+            'reason_label' => $this->reason->label,
+            'type' => $this->type->value,
+            'source' => $this->source->value,
+            'anchor_at' => $this->anchor_at->toIso8601String(),
+            'duration_value' => $this->duration_value,
+            'duration_unit' => $this->duration_unit?->value,
+            'ends_at' => $this->ends_at?->toIso8601String(),
+            'note' => $this->note,
+            'is_active' => $this->isActive(),
+            'lifted_at' => $this->lifted_at?->toIso8601String(),
+            'lift_note' => $this->lift_note,
+        ];
+    }
+
     public function isActive(): bool
     {
         return $this->lifted_at === null && ($this->ends_at === null || $this->ends_at->isFuture());

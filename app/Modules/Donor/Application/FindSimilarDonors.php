@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Donor\Application;
 
+use App\Modules\Donor\Domain\DonorNameSimilarity;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class FindSimilarDonors
 {
-    public const float THRESHOLD = 0.4;
+    public const float THRESHOLD = DonorNameSimilarity::THRESHOLD;
 
     /** @return list<array{id: string, full_name: string, score: float}> */
     public function forIdentity(string $fullName, Carbon $dateOfBirth, ?int $excludeDonorId = null): array

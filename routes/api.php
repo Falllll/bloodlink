@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Donor\Http\Controllers\AppointmentController;
+use App\Modules\Donor\Http\Controllers\DeferralController;
+use App\Modules\Donor\Http\Controllers\DeferralReasonController;
 use App\Modules\Donor\Http\Controllers\DonationController;
 use App\Modules\Donor\Http\Controllers\DonorConsentController;
 use App\Modules\Donor\Http\Controllers\DonorMergeController;
@@ -62,7 +64,12 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::get('/facilities/{facility}', [FacilityController::class, 'show'])->name('facilities.show');
     Route::patch('/facilities/{facility}', [FacilityController::class, 'update'])->name('facilities.update');
     Route::patch('/facilities/{facility}/deactivate', [FacilityController::class, 'deactivate'])->name('facilities.deactivate');
+    Route::get('/donors', [DonorProfileController::class, 'index'])->name('donors.index');
     Route::post('/donors/merge', DonorMergeController::class)->name('donors.merge');
+    Route::get('/deferral-reasons', DeferralReasonController::class)->name('deferral-reasons.index');
+    Route::get('/donors/{donor}/deferrals', [DeferralController::class, 'index'])->name('donors.deferrals.index');
+    Route::post('/donors/{donor}/deferrals', [DeferralController::class, 'store'])->name('donors.deferrals.store');
+    Route::patch('/deferrals/{deferral}/lift', [DeferralController::class, 'lift'])->name('deferrals.lift');
     Route::post('/donors/{donor}/consents', [DonorConsentController::class, 'store'])->name('donors.consents.store');
     Route::get('/donors/{donor}', [DonorProfileController::class, 'show'])->name('donors.show');
     Route::patch('/donors/{donor}', [DonorProfileController::class, 'update'])->name('donors.update');

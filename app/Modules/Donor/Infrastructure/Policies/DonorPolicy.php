@@ -14,6 +14,32 @@ final class DonorPolicy
     // isGlobalOperator() ada di layer Models (boleh diakses ModDonor) = admin YANG
     // TIDAK terikat fasilitas. Sengaja lebih ketat dari kartu: merge itu operasi
     // lintas fasilitas, jadi admin berfasilitas memang tidak boleh melakukannya.
+    // Nama permission sengaja literal, alasannya sama dengan Role di atas.
+    private const string VIEW = 'donor.view';
+
+    private const string UPDATE = 'donor.update';
+
+    /** Gerbang jenis data daftar donor; baris mana diurus visibleTo(). */
+    public function viewAny(User $user): bool
+    {
+        return $user->hasPermissionTo(self::VIEW);
+    }
+
+    /**
+     * Riwayat deferral adalah data kesehatan: izin donor.view DAN fasilitas yang
+     * sama. view() saja hanya mencocokkan fasilitas.
+     */
+    public function viewDeferrals(User $user, Donor $donor): bool
+    {
+        return $user->hasPermissionTo(self::VIEW) && $this->view($user, $donor);
+    }
+
+    /** Menempatkan atau mencabut deferral: izin donor.update DAN fasilitas yang sama. */
+    public function manageDeferrals(User $user, Donor $donor): bool
+    {
+        return $user->hasPermissionTo(self::UPDATE) && $this->update($user, $donor);
+    }
+
     public function merge(User $user): bool
     {
         return $user->isGlobalOperator();

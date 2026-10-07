@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Modules\Donor\Domain\DonorNameSimilarity;
 use App\Shared\Database\Auditable;
 use App\Shared\Database\FacilityScoped;
 use App\Shared\Database\ScopedToFacility;
 use Database\Factories\DonorFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,6 +56,40 @@ class Donor extends Model implements FacilityScoped
     public function getRouteKeyName(): string
     {
         return 'public_id';
+    }
+
+    /**
+     * Nama mirip-tapi-tidak-persis lewat pg_trgm, dengan ekspresi dan ambang yang
+     * sama dengan FindSimilarDonors -- bukan LIKE '%...%' yang memindai seluruh tabel.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeMatchingName(Builder $query, string $term): void
+    {
+        $query->whereRaw('similarity(full_name, ?) >= ?', [$term, DonorNameSimilarity::THRESHOLD]);
+    }
+
+    /**
+     * Baris ringkas untuk tabel daftar donor. Sengaja TANPA phone, email, address,
+     * weight_kg, dan nik: data kontak & kesehatan tidak ikut terkirim per halaman.
+     *
+     * @param  'none'|'temporary'|'permanent'  $deferralStatus
+     * @return array<string, mixed>
+     */
+    public function toListArray(string $deferralStatus): array
+    {
+        return [
+            'id' => $this->public_id,
+            'donor_number' => $this->donor_number,
+            'full_name' => $this->full_name,
+            'sex' => $this->sex,
+            'blood_group' => $this->blood_group,
+            'rh_factor' => $this->rh_factor,
+            'city' => $this->city,
+            'last_donation_date' => $this->last_donation_date?->toDateString(),
+            'donation_count' => $this->donation_count,
+            'deferral_status' => $deferralStatus,
+        ];
     }
 
     /** @return array<string, mixed> */

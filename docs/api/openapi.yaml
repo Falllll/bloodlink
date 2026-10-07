@@ -1613,6 +1613,267 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /donors:
+    get:
+      summary: Daftar donor (staf)
+      description: >-
+        Butuh izin `donor.view` (peran donor ditolak 403). Tersaring otomatis
+        ke fasilitas registrasi donor pemegang token; operator global melihat
+        seluruhnya. Baris nisan hasil merge tidak ikut. Baris berbentuk ringkas
+        (`DonorListItem`) tanpa kontak maupun data kesehatan. `search` mencari
+        nama yang mirip lewat pg_trgm dengan ambang yang sama dengan deduplikasi
+        identitas. `deferral_status` dihitung dari deferral yang belum dicabut
+        dan belum berakhir; permanen mengalahkan temporer.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+            maxLength: 255
+          description: Nama donor (pencocokan kemiripan, bukan awalan).
+        - in: query
+          name: filter[blood_group]
+          required: false
+          schema:
+            type: string
+            enum: [A, B, AB, O]
+        - in: query
+          name: filter[rh_factor]
+          required: false
+          schema:
+            type: string
+            enum: [positive, negative]
+        - in: query
+          name: filter[sex]
+          required: false
+          schema:
+            type: string
+            enum: [male, female]
+        - in: query
+          name: filter[city]
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: filter[deferral_status]
+          required: false
+          schema:
+            type: string
+            enum: [none, temporary, permanent]
+      responses:
+        '200':
+          description: Daftar donor.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DonorListItem'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deferral-reasons:
+    get:
+      summary: Master data alasan deferral yang aktif
+      description: Read-only, tanpa paginasi. Dipakai form penempatan deferral.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Alasan deferral yang aktif.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeferralReason'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /donors/{donor}/deferrals:
+    get:
+      summary: Riwayat deferral seorang donor
+      description: >-
+        Butuh izin `donor.view` dan fasilitas yang sama dengan donor. Memuat
+        deferral yang sudah dicabut atau berakhir; `filter[active]` menyaring
+        ke yang masih menahan (`true`) atau yang tidak lagi (`false`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: donor
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID donor (`public_id`).
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+        - in: query
+          name: filter[active]
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Riwayat deferral.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Deferral'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    post:
+      summary: Tempatkan deferral (tindakan petugas)
+      description: >-
+        Butuh izin `donor.update` dan fasilitas yang sama dengan donor. Jenis,
+        durasi, dan `ends_at` diturunkan dari alasan (master data), tidak
+        dikirim klien; sumbernya tercatat `manual`. Kode alasan yang tidak ada
+        ditolak 422; kode yang dinonaktifkan ditolak 409
+        `DONOR_DEFERRAL_CONFLICT`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: donor
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID donor (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason_code:
+                  type: string
+                anchor_at:
+                  type: string
+                  format: date-time
+                note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+              required: [reason_code, anchor_at]
+      responses:
+        '201':
+          description: Deferral tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Deferral'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deferrals/{deferral}/lift:
+    patch:
+      summary: Cabut deferral
+      description: >-
+        Butuh izin `donor.update` dan fasilitas yang sama dengan donor.
+        Deferral permanen tidak bisa dicabut (409
+        `DONOR_PERMANENT_DEFERRAL_NOT_LIFTABLE`); deferral yang sudah dicabut
+        ditolak 409 `DONOR_DEFERRAL_ALREADY_LIFTED`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: deferral
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID deferral (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 1000
+              required: [reason]
+      responses:
+        '200':
+          description: Deferral dicabut.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Deferral'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     bearerAuth:
@@ -2287,6 +2548,108 @@ components:
           type: string
           format: date-time
       required: [id, blood_group, rh_factor, determined_at]
+    DonorListItem:
+      type: object
+      description: >-
+        Bentuk ringkas untuk tabel daftar donor. Sengaja tanpa phone, email,
+        address, weight_kg, nik, maupun id numerik.
+      properties:
+        id:
+          type: string
+          format: uuid
+        donor_number:
+          type: string
+        full_name:
+          type: string
+        sex:
+          type: string
+          enum: [male, female]
+        blood_group:
+          type: string
+          enum: [A, B, AB, O]
+          nullable: true
+        rh_factor:
+          type: string
+          enum: [positive, negative]
+          nullable: true
+        city:
+          type: string
+        last_donation_date:
+          type: string
+          format: date
+          nullable: true
+        donation_count:
+          type: integer
+        deferral_status:
+          type: string
+          enum: [none, temporary, permanent]
+      required: [id, donor_number, full_name, sex, city, donation_count, deferral_status]
+    Deferral:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        donor_id:
+          type: string
+          format: uuid
+        reason_code:
+          type: string
+        reason_label:
+          type: string
+        type:
+          type: string
+          enum: [temporary, permanent]
+        source:
+          type: string
+          enum: [manual, screening, tti_result]
+        anchor_at:
+          type: string
+          format: date-time
+        duration_value:
+          type: integer
+          nullable: true
+        duration_unit:
+          type: string
+          enum: [hours, days, months, years]
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        lifted_at:
+          type: string
+          format: date-time
+          nullable: true
+        lift_note:
+          type: string
+          nullable: true
+      required: [id, donor_id, reason_code, type, source, anchor_at, is_active]
+    DeferralReason:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [temporary, permanent]
+        default_duration_value:
+          type: integer
+          nullable: true
+        default_duration_unit:
+          type: string
+          enum: [hours, days, months, years]
+          nullable: true
+        source_reference:
+          type: string
+      required: [code, label, type, source_reference]
     ReadinessReport:
       type: object
       properties:
