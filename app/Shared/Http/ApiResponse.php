@@ -23,16 +23,25 @@ final class ApiResponse
     /**
      * @param  CursorPaginator<int, mixed>  $page
      * @param  array<string, mixed>  $meta
+     * @param  (callable(mixed): mixed)|null  $transform
      */
-    public static function paginated(CursorPaginator $page, array $meta = []): JsonResponse
+    public static function paginated(CursorPaginator $page, array $meta = [], ?callable $transform = null): JsonResponse
     {
+        $links = ['next' => $page->nextPageUrl(), 'prev' => $page->previousPageUrl()];
+        $cursors = [
+            'next_cursor' => $page->nextCursor()?->encode(),
+            'prev_cursor' => $page->previousCursor()?->encode(),
+        ];
+
+        // Kursor wajib dihitung dari model SEBELUM transform: ia memakai primary key internal, sedangkan 'id' hasil transform adalah public_id (UUID) -> `id < 'uuid'` -> 500.
+        $items = $transform === null ? $page->items() : array_map($transform, $page->items());
+
         return response()->json([
-            'data' => $page->items(),
-            'links' => ['next' => $page->nextPageUrl(), 'prev' => $page->previousPageUrl()],
+            'data' => $items,
+            'links' => $links,
             'meta' => array_merge([
                 'per_page' => $page->perPage(),
-                'next_cursor' => $page->nextCursor()?->encode(),
-                'prev_cursor' => $page->previousCursor()?->encode(),
+                ...$cursors,
                 'has_more' => $page->hasMorePages(),
             ], $meta),
         ], options: JSON_PRESERVE_ZERO_FRACTION);

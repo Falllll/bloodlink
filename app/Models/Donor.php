@@ -172,6 +172,22 @@ class Donor extends Model implements FacilityScoped
         return $this->hasMany(Deferral::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return HasMany<Donation, $this>
+     */
+    public function donations(): HasMany
+    {
+        return $this->hasMany(Donation::class);
+    }
+
     protected static function booted(): void
     {
         static::saving(function (self $donor): void {

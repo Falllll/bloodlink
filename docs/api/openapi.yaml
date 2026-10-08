@@ -163,6 +163,64 @@ paths:
                 required: [data, meta]
         '401':
           $ref: '#/components/responses/Unauthenticated'
+  /me/donor:
+    get:
+      summary: Profil donor milik akun yang login
+      description: >-
+        Donor diselesaikan dari token, bukan dari parameter path. Akun yang
+        belum tertaut ke baris donor aktif (termasuk baris yang sudah digabung
+        lewat merge) dibalas 404 `DONOR_ACCOUNT_NOT_LINKED`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profil donor milik akun ini.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorProfile'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/donor/donations:
+    get:
+      summary: Riwayat donasi milik akun yang login
+      description: >-
+        Hanya donasi milik donor yang tertaut ke token ini, terbaru lebih dulu
+        (`completed_at` desc, lalu `id` desc sebagai tie-breaker). 20 baris per
+        halaman. Akun yang belum tertaut dibalas 404 `DONOR_ACCOUNT_NOT_LINKED`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Riwayat donasi.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Donation'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /audit-logs:
     get:
       summary: Daftar audit log
@@ -1958,6 +2016,7 @@ components:
         - DONOR_MERGE_CONFLICT
         - DONOR_DEFERRAL_CONFLICT
         - DONOR_DEFERRAL_ALREADY_LIFTED
+        - DONOR_ACCOUNT_NOT_LINKED
         - DONOR_PERMANENT_DEFERRAL_NOT_LIFTABLE
         - APPOINTMENT_TRANSITION_REJECTED
         - BLOOD_BATCH_TRANSITION_REJECTED
