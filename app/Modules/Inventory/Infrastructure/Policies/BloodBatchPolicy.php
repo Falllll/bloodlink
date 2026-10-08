@@ -15,6 +15,8 @@ final class BloodBatchPolicy
 
     private const string VIEW = 'inventory.view';
 
+    private const string RELEASE = 'inventory.release';
+
     /** Gerbang jenis data: boleh melihat inventori sama sekali? Baris mana diurus visibleTo(). */
     public function viewAny(User $user): bool
     {
@@ -44,6 +46,19 @@ final class BloodBatchPolicy
     public function transition(User $user, BloodBatch $batch): bool
     {
         if (! $user->hasPermissionTo(self::CREATE)) {
+            return false;
+        }
+
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() !== null && $user->facilityId() === $batch->ownerFacilityId();
+    }
+
+    public function release(User $user, BloodBatch $batch): bool
+    {
+        if (! $user->hasPermissionTo(self::RELEASE)) {
             return false;
         }
 

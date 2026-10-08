@@ -1671,6 +1671,52 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /blood-batches/{bloodBatch}/release:
+    post:
+      summary: Rilis unit dari karantina
+      description: >-
+        Gerbang rilis: satu-satunya jalan ke status `released`. Butuh izin
+        `inventory.release` dan fasilitas yang sama dengan unit. Lolos hanya
+        kalau seluruh uji panel skrining IMLTD fasilitas unit asal donasi
+        (uji wajib + regional yang di-opt-in) punya hasil skrining dan
+        semuanya non-reaktif; hasil konfirmasi tidak ikut dihitung. Komponen
+        turunan membaca hasil dari unit induknya. Panel yang belum lengkap,
+        reaktif, atau indeterminate, serta unit yang tidak bisa dirilis dari
+        statusnya (mis. `separated`, `released`), ditolak 409
+        `INVENTORY_RELEASE_REJECTED` dan statusnya tidak berubah. Badan
+        permintaan kosong.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bloodBatch
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID unit (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Unit dirilis; `status` = `released` dan `released_at` terisi.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BloodBatch'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /donors:
     get:
       summary: Daftar donor (staf)
@@ -2026,6 +2072,7 @@ components:
         - LAB_TEST_NOT_IN_PANEL
         - LAB_RESULT_DUPLICATE
         - LAB_RESULT_REJECTED
+        - INVENTORY_RELEASE_REJECTED
     Error:
       type: object
       properties:
@@ -2545,6 +2592,13 @@ components:
         collected_at:
           type: string
           format: date-time
+        released_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            Kapan unit dilepas dari karantina lewat gerbang rilis. `null` sampai
+            unit dirilis; tetap terisi setelah unit pindah ke `reserved`/`issued`.
         expires_at:
           type: string
           format: date-time

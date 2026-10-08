@@ -17,6 +17,7 @@ use App\Modules\Inventory\Http\Controllers\BloodBatchBarcodeController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchController;
 use App\Modules\Inventory\Http\Controllers\ComponentSeparationController;
 use App\Modules\Inventory\Http\Controllers\LabTestController;
+use App\Modules\Inventory\Http\Controllers\UnitReleaseController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,7 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::get('/blood-batches/{bloodBatch}/lab-results', [LabTestController::class, 'index'])->name('blood-batches.lab-results.index');
     Route::post('/blood-batches/{bloodBatch}/tti-results', [LabTestController::class, 'storeTtiResult'])->name('blood-batches.tti-results.store');
     Route::post('/blood-batches/{bloodBatch}/abo-rh', [LabTestController::class, 'storeAboRh'])->name('blood-batches.abo-rh.store');
+    Route::post('/blood-batches/{bloodBatch}/release', UnitReleaseController::class)->name('blood-batches.release');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 

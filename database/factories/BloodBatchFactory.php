@@ -75,7 +75,8 @@ class BloodBatchFactory extends Factory
 
     public function released(): static
     {
-        return $this->state(['status' => 'released']);
+        // CHECK blood_batches_released_shape: status released wajib membawa released_at.
+        return $this->state(['status' => 'released', 'released_at' => now()]);
     }
 
     public function expiringSoon(): static

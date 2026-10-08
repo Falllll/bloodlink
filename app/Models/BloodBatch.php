@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property BatchStatus $status
  * @property Carbon $collected_at
  * @property Carbon|null $expires_at
+ * @property Carbon|null $released_at
  */
 class BloodBatch extends Model implements FacilityScoped
 {
@@ -40,6 +41,7 @@ class BloodBatch extends Model implements FacilityScoped
             'status' => BatchStatus::class,
             'collected_at' => 'datetime',
             'separated_at' => 'datetime',
+            'released_at' => 'datetime',
             'separated_volume_ml' => 'integer',
             'expires_at' => 'datetime',
             'hemoglobin_g_dl' => 'decimal:2',
@@ -132,6 +134,7 @@ class BloodBatch extends Model implements FacilityScoped
             'status' => $this->status->value,
             'parent_id' => $this->parent?->public_id,
             'collected_at' => $this->collected_at->toIso8601String(),
+            'released_at' => $this->released_at?->toIso8601String(),
             'expires_at' => $this->expires_at?->toIso8601String(),
             'storage_profile' => $this->storageProfile === null ? null : [
                 'storage_temp_min_celsius' => (float) $this->storageProfile->storage_temp_min_celsius,

@@ -230,7 +230,7 @@ final class LabTestEndpointsTest extends TestCase
 
     public function test_a_released_unit_takes_no_new_results(): void
     {
-        $unit = BloodBatch::factory()->create(['status' => 'released']);
+        $unit = BloodBatch::factory()->released()->create();
 
         $this->recordTti($unit, $this->userOf($unit->facility_id), 'hcv', 'reactive')
             ->assertStatus(409)

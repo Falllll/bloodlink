@@ -119,6 +119,13 @@ class DevDataSeeder extends Seeder
             }
             $expiresAt = $profile->expiryFrom($collectedAt->toDateTimeImmutable());
             $facilityId = $facilities[$index % $facilities->count()];
+            $status = fake()->randomElement($statuses);
+
+            // CHECK blood_batches_released_shape: released/reserved/issued wajib membawa
+            // released_at. Data dev sintetis: waktunya setelah pengambilan, tidak di masa depan.
+            $releasedAt = in_array($status, ['released', 'reserved', 'issued'], true)
+                ? $collectedAt->copy()->addHours(fake()->numberBetween(12, 48))->min($now)
+                : null;
 
             DB::table('blood_batches')->insert([
                 'public_id' => (string) Str::uuid(),
@@ -129,8 +136,9 @@ class DevDataSeeder extends Seeder
                 'blood_group' => fake()->randomElement(['A', 'B', 'AB', 'O']),
                 'rh_factor' => fake()->randomElement(['positive', 'negative']),
                 'volume_ml' => fake()->numberBetween(200, 500),
-                'status' => fake()->randomElement($statuses),
+                'status' => $status,
                 'collected_at' => $collectedAt,
+                'released_at' => $releasedAt,
                 'expires_at' => $expiresAt,
                 'storage_profile_id' => $profile->id,
                 'created_at' => $now,
