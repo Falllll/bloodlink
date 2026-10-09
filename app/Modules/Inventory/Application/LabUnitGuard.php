@@ -16,13 +16,30 @@ final class LabUnitGuard
 
     public static function assertTestable(BloodBatch $unit): void
     {
+        self::assertStatusIn($unit, self::TESTABLE);
+    }
+
+    /**
+     * IMLTD juga menerima unit DISCARDED: skrining reaktif memusnahkan unitnya
+     * (Kartu 250), padahal uji konfirmasi -- yang menentukan deferral donor -- dan
+     * skrining uji lain dalam panel baru dicatat sesudahnya. Hasil lab yang sah
+     * tidak boleh ditolak hanya karena kantongnya sudah musnah.
+     */
+    public static function assertTtiRecordable(BloodBatch $unit): void
+    {
+        self::assertStatusIn($unit, [...self::TESTABLE, BatchStatus::DISCARDED]);
+    }
+
+    /** @param  list<BatchStatus>  $allowed */
+    private static function assertStatusIn(BloodBatch $unit, array $allowed): void
+    {
         // Hasil lab milik sampel donasi, jadi dicatat di unit asal; turunan
         // membacanya lewat parent_unit_id.
         if ($unit->parent_unit_id !== null) {
             throw LabResultRejected::derivedUnit();
         }
 
-        if (! in_array($unit->status, self::TESTABLE, true)) {
+        if (! in_array($unit->status, $allowed, true)) {
             throw LabResultRejected::notUnderTest($unit->status);
         }
     }

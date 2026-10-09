@@ -1551,13 +1551,17 @@ paths:
       summary: Catat satu hasil uji IMLTD
       description: >-
         Dicatat di unit asal donasi (bukan komponen turunan) yang berstatus
-        `quarantined`, `testing`, atau `separated`. Uji di luar panel fasilitas
+        `quarantined`, `testing`, `separated`, atau `discarded` (uji konfirmasi
+        dan uji panel lain tetap dicatat setelah skrining reaktif memusnahkan
+        unit). Uji di luar panel fasilitas
         ditolak 409 `LAB_TEST_NOT_IN_PANEL`; hasil kedua untuk unit, uji, dan
         tahap yang sama ditolak 409 `LAB_RESULT_DUPLICATE`. Uji konfirmasi
         (`is_confirmatory`, §6.3) hanya sah setelah hasil skrining reaktif atau
-        indeterminate untuk uji yang sama. Mencatat hasil TIDAK PERNAH
-        mengubah status unit: non-reaktif tidak merilis, reaktif tidak
-        memusnahkan.
+        indeterminate untuk uji yang sama. Hasil non-reaktif tidak merilis
+        unit (rilis hanya lewat `/release`). Hasil skrining reaktif memusnahkan
+        unit beserta seluruh komponen turunannya (`discarded`, `discard_reason`
+        menyebut kode uji); hasil konfirmasi reaktif men-deferral donor secara
+        permanen. Indeterminate tidak mengubah apa pun.
       security:
         - bearerAuth: []
       parameters:

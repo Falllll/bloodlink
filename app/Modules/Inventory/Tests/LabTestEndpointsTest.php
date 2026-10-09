@@ -89,7 +89,8 @@ final class LabTestEndpointsTest extends TestCase
         ], $this->headers($staff));
     }
 
-    public function test_a_reactive_result_never_changes_the_unit_status(): void
+    /** Kartu 250: skrining reaktif memusnahkan unit; hasilnya tetap terbaca utuh. */
+    public function test_a_reactive_screen_discards_the_unit_with_the_test_as_reason(): void
     {
         $unit = $this->quarantinedUnit();
         $staff = $this->userOf($unit->facility_id);
@@ -98,7 +99,10 @@ final class LabTestEndpointsTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.result', 'reactive');
 
-        $this->assertSame(BatchStatus::QUARANTINED, $unit->fresh()?->status);
+        $this->getJson("/api/v1/blood-batches/{$unit->public_id}", $this->headers($staff))
+            ->assertOk()
+            ->assertJsonPath('data.status', 'discarded')
+            ->assertJsonPath('data.discard_reason', 'TTI screening reactive: hiv_1_2');
         $this->getJson("/api/v1/blood-batches/{$unit->public_id}/lab-results", $this->headers($staff))
             ->assertOk()
             ->assertJsonPath('data.screening_verdict', 'reactive');

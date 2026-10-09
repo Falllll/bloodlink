@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Donor\Infrastructure;
 
+use App\Models\Deferral;
 use App\Models\DeferralReason;
 use App\Models\Donor;
 use App\Modules\Donor\Application\PlaceDeferral;
@@ -23,6 +24,16 @@ final class RecordPermanentDeferral
             ->where('jurisdiction', 'WHO')
             ->where('code', 'TTI_CONFIRMED_REACTIVE')
             ->firstOrFail();
+
+        // Satu deferral permanen cukup; event kedua hanya menduplikasi rekam medis.
+        $already = Deferral::query()
+            ->where('donor_id', $donor->id)
+            ->where('deferral_reason_id', $reason->id)
+            ->exists();
+
+        if ($already) {
+            return;
+        }
 
         $this->placeDeferral->handle(
             $donor,

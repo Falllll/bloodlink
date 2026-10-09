@@ -16,13 +16,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Mencatat satu hasil uji IMLTD. TIDAK PERNAH menyentuh status unit: hasil
- * non-reaktif tidak merilis apa pun (Kartu 240), hasil reaktif tidak
- * memusnahkan apa pun (Kartu 250).
+ * Mencatat satu hasil uji IMLTD. Hasil non-reaktif tidak merilis apa pun --
+ * rilis hanya lewat ReleaseUnit (Kartu 240). Hasil reaktif membawa akibat lewat
+ * ApplyReactiveTtiConsequences (Kartu 250): skrining memusnahkan unit beserta
+ * turunannya, konfirmasi memancarkan DonorPermanentlyDeferred.
  */
 final class RecordTtiTestResult
 {
-    public function __construct(private ResolveTtiPanel $panel) {}
+    public function __construct(
+        private ResolveTtiPanel $panel,
+        private ApplyReactiveTtiConsequences $consequences,
+    ) {}
 
     public function handle(
         BloodBatch $unit,
@@ -32,7 +36,7 @@ final class RecordTtiTestResult
         DateTimeImmutable $testedAt,
         ?int $recordedBy,
     ): TtiTestResult {
-        LabUnitGuard::assertTestable($unit);
+        LabUnitGuard::assertTtiRecordable($unit);
 
         $testType = $this->panel->forFacility($unit->facility_id)
             ->first(fn (TtiTestType $type): bool => $type->code === $code);
@@ -62,7 +66,10 @@ final class RecordTtiTestResult
 
         try {
             // Savepoint: pelanggaran unique tidak boleh membatalkan transaksi luar.
-            DB::transaction(fn (): bool => $row->save());
+            DB::transaction(function () use ($unit, $row, $code): void {
+                $row->save();
+                $this->consequences->handle($unit, $row, $code);
+            });
         } catch (UniqueConstraintViolationException $e) {
             if (str_contains($e->getMessage(), 'tti_test_results_unit_test_stage_unique')) {
                 throw LabResultRejected::duplicate();

@@ -219,4 +219,17 @@ final class DeferralTest extends TestCase
         $this->assertSame('permanent', $rows->first()->type);
         $this->assertNull($rows->first()->ends_at);
     }
+
+    public function test_two_permanent_deferral_events_place_only_one_deferral(): void
+    {
+        $this->seed(DeferralReasonSeeder::class);
+
+        $donor = Donor::factory()->create();
+
+        // Mis. HIV dan HCV sama-sama terkonfirmasi reaktif: dua event, satu donor.
+        event(new DonorPermanentlyDeferred($donor->id, 'TTI_CONFIRMED_REACTIVE', '2026-01-01T00:00:00Z'));
+        event(new DonorPermanentlyDeferred($donor->id, 'TTI_CONFIRMED_REACTIVE', '2026-01-02T00:00:00Z'));
+
+        $this->assertSame(1, DB::table('deferrals')->where('donor_id', $donor->id)->count());
+    }
 }

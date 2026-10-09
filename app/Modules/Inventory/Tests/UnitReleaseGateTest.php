@@ -112,6 +112,14 @@ final class UnitReleaseGateTest extends TestCase
         $this->assertNull($fresh->released_at);
     }
 
+    /** Skrining reaktif memusnahkan unit sejak Kartu 250; gerbang tetap 409. */
+    private function assertDiscardedNeverReleased(BloodBatch $unit): void
+    {
+        $fresh = $unit->fresh();
+        $this->assertSame(BatchStatus::DISCARDED, $fresh?->status);
+        $this->assertNull($fresh->released_at);
+    }
+
     public function test_a_full_non_reactive_panel_releases_the_unit(): void
     {
         $unit = $this->quarantinedUnit();
@@ -128,7 +136,7 @@ final class UnitReleaseGateTest extends TestCase
         $this->assertNotNull($fresh->released_at);
     }
 
-    public function test_one_reactive_screen_is_409_and_the_unit_stays_quarantined(): void
+    public function test_one_reactive_screen_is_409_and_the_unit_is_never_released(): void
     {
         $unit = $this->quarantinedUnit();
         $this->recordNonReactive($unit, ['hiv_1_2', 'hbsag', 'syphilis']);
@@ -138,7 +146,7 @@ final class UnitReleaseGateTest extends TestCase
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'INVENTORY_RELEASE_REJECTED');
 
-        $this->assertStillQuarantined($unit);
+        $this->assertDiscardedNeverReleased($unit);
     }
 
     public function test_an_indeterminate_screen_is_409_not_treated_as_non_reactive(): void
@@ -178,7 +186,7 @@ final class UnitReleaseGateTest extends TestCase
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'INVENTORY_RELEASE_REJECTED');
 
-        $this->assertStillQuarantined($unit);
+        $this->assertDiscardedNeverReleased($unit);
     }
 
     public function test_a_facility_that_opted_into_malaria_needs_five_tests_not_four(): void
@@ -234,7 +242,7 @@ final class UnitReleaseGateTest extends TestCase
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'INVENTORY_RELEASE_REJECTED');
 
-        $this->assertStillQuarantined($plasma);
+        $this->assertDiscardedNeverReleased($plasma);
     }
 
     public function test_a_separated_parent_can_never_be_released(): void

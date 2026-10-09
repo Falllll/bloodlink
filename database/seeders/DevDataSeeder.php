@@ -127,6 +127,9 @@ class DevDataSeeder extends Seeder
                 ? $collectedAt->copy()->addHours(fake()->numberBetween(12, 48))->min($now)
                 : null;
 
+            // CHECK blood_batches_discarded_shape: discarded wajib membawa discard_reason.
+            $discardReason = $status === 'discarded' ? 'Data dev sintetis: kantong rusak.' : null;
+
             DB::table('blood_batches')->insert([
                 'public_id' => (string) Str::uuid(),
                 'batch_number' => sprintf('DEV-BB-%05d', $index + 1),
@@ -139,6 +142,7 @@ class DevDataSeeder extends Seeder
                 'status' => $status,
                 'collected_at' => $collectedAt,
                 'released_at' => $releasedAt,
+                'discard_reason' => $discardReason,
                 'expires_at' => $expiresAt,
                 'storage_profile_id' => $profile->id,
                 'created_at' => $now,
