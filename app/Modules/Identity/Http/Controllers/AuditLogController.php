@@ -32,6 +32,6 @@ final class AuditLogController
         /** @var CursorPaginator<int, AuditLog> $page */
         $page = $this->listing($query, $request);
 
-        return ApiResponse::paginated($page->through(fn (AuditLog $l) => $l->toApiArray()));
+        return ApiResponse::paginated($page, transform: fn (AuditLog $l): array => $l->toApiArray());
     }
 }

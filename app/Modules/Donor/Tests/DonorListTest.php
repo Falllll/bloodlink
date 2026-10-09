@@ -233,4 +233,32 @@ final class DonorListTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $target->public_id);
     }
+
+    public function test_the_second_page_is_reachable_with_the_cursor_from_the_first_page(): void
+    {
+        $facility = Facility::factory()->create();
+        $donors = Donor::factory()->count(3)->create(['registered_facility_id' => $facility->id]);
+        // Donor terakhir (id terbesar) jatuh ke halaman 2; status-nya harus tetap dihitung dari model.
+        $this->defer($donors[2], 'TTI_CONFIRMED_REACTIVE');
+        $headers = $this->bearer($this->userOf($facility->id));
+
+        $first = $this->getJson('/api/v1/donors?per_page=2', $headers)->assertOk();
+        $cursor = $first->json('meta.next_cursor');
+        $this->assertIsString($cursor);
+
+        $second = $this->getJson('/api/v1/donors?per_page=2&cursor='.$cursor, $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $donors[2]->public_id)
+            ->assertJsonPath('data.0.deferral_status', SummariseDeferralStatus::PERMANENT);
+
+        $this->assertSame([], array_intersect(
+            array_column($first->json('data'), 'id'),
+            array_column($second->json('data'), 'id'),
+        ));
+
+        foreach ($first->json('data') as $row) {
+            $this->assertSame(SummariseDeferralStatus::NONE, $row['deferral_status']);
+        }
+    }
 }

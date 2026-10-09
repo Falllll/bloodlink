@@ -31,7 +31,7 @@ final class AppointmentController
         /** @var CursorPaginator<int, Appointment> $page */
         $page = $this->listing(Appointment::query()->visibleTo($user)->with('donor'), $request);
 
-        return ApiResponse::paginated($page->through(fn (Appointment $appointment) => $appointment->toApiArray()));
+        return ApiResponse::paginated($page, transform: fn (Appointment $appointment): array => $appointment->toApiArray());
     }
 
     public function store(BookAppointmentRequest $request, Donor $donor, BookAppointment $bookAppointment): JsonResponse

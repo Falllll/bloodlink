@@ -246,4 +246,26 @@ final class DeferralEndpointTest extends TestCase
         $response->assertOk()->assertJsonCount($seeded - 1, 'data');
         $this->assertNotContains('FEVER_NONSPECIFIC', array_column($response->json('data'), 'code'));
     }
+
+    public function test_the_second_page_is_reachable_with_the_cursor_from_the_first_page(): void
+    {
+        $donor = $this->donor();
+        $this->placed($donor, 'PREGNANT_OR_LACTATING');
+        $this->placed($donor, 'FEVER_NONSPECIFIC');
+        $this->placed($donor, 'TATTOO_PIERCING_ACUPUNCTURE');
+        $headers = $this->headers($this->userOf($donor->registered_facility_id), withKey: false);
+
+        $first = $this->getJson("/api/v1/donors/{$donor->public_id}/deferrals?per_page=2", $headers)->assertOk();
+        $cursor = $first->json('meta.next_cursor');
+        $this->assertIsString($cursor);
+
+        $second = $this->getJson("/api/v1/donors/{$donor->public_id}/deferrals?per_page=2&cursor=".$cursor, $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $this->assertSame([], array_intersect(
+            array_column($first->json('data'), 'id'),
+            array_column($second->json('data'), 'id'),
+        ));
+    }
 }

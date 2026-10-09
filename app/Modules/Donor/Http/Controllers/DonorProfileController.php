@@ -51,8 +51,8 @@ final class DonorProfileController
             $asOf,
         );
 
-        return ApiResponse::paginated($page->through(
-            fn (Donor $donor): array => $donor->toListArray($statuses[$donor->id] ?? SummariseDeferralStatus::NONE)
+        return ApiResponse::paginated($page, transform: fn (Donor $donor): array => $donor->toListArray(
+            $statuses[$donor->id] ?? SummariseDeferralStatus::NONE
         ));
     }
 

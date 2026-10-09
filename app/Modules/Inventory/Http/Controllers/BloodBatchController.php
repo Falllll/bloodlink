@@ -36,7 +36,7 @@ final class BloodBatchController
             $request,
         );
 
-        return ApiResponse::paginated($page->through(fn (BloodBatch $batch) => $batch->toApiArray()));
+        return ApiResponse::paginated($page, transform: fn (BloodBatch $batch): array => $batch->toApiArray());
     }
 
     public function show(BloodBatch $bloodBatch): JsonResponse

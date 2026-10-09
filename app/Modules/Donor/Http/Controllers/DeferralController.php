@@ -45,7 +45,7 @@ final class DeferralController
         /** @var CursorPaginator<int, Deferral> $page */
         $page = $this->listing($query, $request);
 
-        return ApiResponse::paginated($page->through(fn (Deferral $deferral): array => $deferral->toApiArray()));
+        return ApiResponse::paginated($page, transform: fn (Deferral $deferral): array => $deferral->toApiArray());
     }
 
     public function store(StoreDeferralRequest $request, Donor $donor, PlaceDeferral $placeDeferral): JsonResponse

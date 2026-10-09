@@ -466,4 +466,34 @@ final class AppointmentFlowTest extends TestCase
         $this->assertNotNull($log);
         $this->assertArrayHasKey('status', $log->changes['after']);
     }
+
+    public function test_the_second_page_is_reachable_with_the_cursor_from_the_first_page(): void
+    {
+        $facility = Facility::factory()->create();
+        $staff = User::factory()->create(['facility_id' => $facility->id]);
+        $this->assignRole($staff, 'hospital_staff');
+        $headers = $this->bearer($staff);
+
+        // Satu appointment aktif per donor, jadi tiga baris butuh tiga donor.
+        foreach (Donor::factory()->count(3)->create(['registered_facility_id' => $facility->id]) as $donor) {
+            $this->postJson(
+                "/api/v1/donors/{$donor->public_id}/appointments",
+                [],
+                $this->withIdempotencyKey($headers)
+            )->assertStatus(201);
+        }
+
+        $first = $this->getJson('/api/v1/appointments?per_page=2', $headers)->assertOk();
+        $cursor = $first->json('meta.next_cursor');
+        $this->assertIsString($cursor);
+
+        $second = $this->getJson('/api/v1/appointments?per_page=2&cursor='.$cursor, $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $this->assertSame([], array_intersect(
+            array_column($first->json('data'), 'id'),
+            array_column($second->json('data'), 'id'),
+        ));
+    }
 }

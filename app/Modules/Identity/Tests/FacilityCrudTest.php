@@ -220,6 +220,26 @@ final class FacilityCrudTest extends TestCase
             ->assertJsonPath('error.code', 'VALIDATION_FAILED');
     }
 
+    public function test_the_second_page_is_reachable_with_the_cursor_from_the_first_page(): void
+    {
+        Facility::factory()->count(3)->create();
+
+        $admin = User::factory()->create(['facility_id' => null]);
+        $this->assignRole($admin, RoleEnum::ADMIN);
+        $headers = $this->bearer($admin);
+
+        $first = $this->getJson('/api/v1/facilities?per_page=2', $headers)->assertOk();
+        $cursor = $first->json('meta.next_cursor');
+        $this->assertIsString($cursor);
+
+        $second = $this->getJson('/api/v1/facilities?per_page=2&cursor='.$cursor, $headers)->assertOk();
+
+        $this->assertSame([], array_intersect(
+            array_column($first->json('data'), 'id'),
+            array_column($second->json('data'), 'id'),
+        ));
+    }
+
     public function test_nearby_uses_the_gist_index(): void
     {
         // Planner sudah memilih index scan secara alami di sini (dibuktikan

@@ -242,4 +242,24 @@ final class BloodBatchCrudTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data');
     }
+
+    public function test_the_second_page_is_reachable_with_the_cursor_from_the_first_page(): void
+    {
+        $facility = Facility::factory()->create();
+        BloodBatch::factory()->count(3)->create(['facility_id' => $facility->id]);
+        $headers = $this->headers($this->userWithRole($facility->id, 'hospital_staff'));
+
+        $first = $this->getJson('/api/v1/blood-batches?per_page=2', $headers)->assertOk();
+        $cursor = $first->json('meta.next_cursor');
+        $this->assertIsString($cursor);
+
+        $second = $this->getJson('/api/v1/blood-batches?per_page=2&cursor='.$cursor, $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $this->assertSame([], array_intersect(
+            array_column($first->json('data'), 'id'),
+            array_column($second->json('data'), 'id'),
+        ));
+    }
 }

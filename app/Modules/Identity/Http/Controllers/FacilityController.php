@@ -27,7 +27,7 @@ final class FacilityController
         /** @var CursorPaginator<int, Facility> $page */
         $page = $this->listing(Facility::query(), $request);
 
-        return ApiResponse::paginated($page->through(fn (Facility $f) => $f->toApiArray()));
+        return ApiResponse::paginated($page, transform: fn (Facility $f): array => $f->toApiArray());
     }
 
     public function show(Facility $facility): JsonResponse
