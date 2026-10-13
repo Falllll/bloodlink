@@ -21,5 +21,6 @@ class DatabaseSeeder extends Seeder
         $this->call(TtiTestTypeSeeder::class);
         $this->call(DevDataSeeder::class);
         $this->call(DevUserSeeder::class);
+        $this->call(DevDonorHistorySeeder::class);
     }
 }

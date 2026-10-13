@@ -26,6 +26,7 @@ use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
 use App\Modules\Inventory\Application\AssignStorageProfile;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
 use App\Modules\Inventory\Domain\ComponentExpiryPolicy;
+use App\Modules\Inventory\Infrastructure\BloodBatchEventRecorder;
 use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -73,6 +74,9 @@ class AppServiceProvider extends ServiceProvider
         foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class] as $model) {
             $model::observe(AuditObserver::class);
         }
+
+        // Peristiwa status unit (Kartu 260): hanya BloodBatch, jadi di luar loop.
+        BloodBatch::observe(BloodBatchEventRecorder::class);
 
         Event::listen(DonationCompleted::class, CreateQuarantinedUnit::class);
         Event::listen(DonorPermanentlyDeferred::class, RecordPermanentDeferral::class);
