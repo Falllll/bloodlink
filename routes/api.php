@@ -18,6 +18,7 @@ use App\Modules\Inventory\Http\Controllers\BloodBatchBarcodeController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchController;
 use App\Modules\Inventory\Http\Controllers\ComponentSeparationController;
 use App\Modules\Inventory\Http\Controllers\LabTestController;
+use App\Modules\Inventory\Http\Controllers\StorageLocationController;
 use App\Modules\Inventory\Http\Controllers\UnitReleaseController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
@@ -63,6 +64,11 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::post('/blood-batches/{bloodBatch}/tti-results', [LabTestController::class, 'storeTtiResult'])->name('blood-batches.tti-results.store');
     Route::post('/blood-batches/{bloodBatch}/abo-rh', [LabTestController::class, 'storeAboRh'])->name('blood-batches.abo-rh.store');
     Route::post('/blood-batches/{bloodBatch}/release', UnitReleaseController::class)->name('blood-batches.release');
+
+    Route::get('/storage-locations', [StorageLocationController::class, 'index'])->name('storage-locations.index');
+    Route::post('/storage-locations', [StorageLocationController::class, 'store'])->name('storage-locations.store');
+    Route::get('/storage-locations/{storageLocation}/temperature-readings', [StorageLocationController::class, 'readings'])->name('storage-locations.readings.index');
+    Route::post('/storage-locations/{storageLocation}/temperature-readings', [StorageLocationController::class, 'recordReading'])->name('storage-locations.readings.store');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 

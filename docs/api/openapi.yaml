@@ -1859,6 +1859,238 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /storage-locations:
+    get:
+      summary: Daftar lokasi penyimpanan
+      description: >-
+        Lemari pendingin, freezer, dan agitator yang nyata. Tersaring otomatis
+        ke fasilitas pemegang token; operator global melihat seluruhnya.
+        Butuh `inventory.view`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - in: query
+          name: sort
+          required: false
+          schema:
+            type: string
+            enum: [code, -code, created_at, -created_at]
+        - in: query
+          name: filter[kind]
+          required: false
+          schema:
+            type: string
+            enum: [refrigerator, freezer, deep_freezer, platelet_agitator, ambient_shelf]
+        - in: query
+          name: filter[purpose]
+          required: false
+          schema:
+            type: string
+            enum: [untested, reactive, indeterminate, release_ready, general]
+        - in: query
+          name: filter[is_active]
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Daftar lokasi penyimpanan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StorageLocation'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Daftarkan lokasi penyimpanan
+      description: >-
+        Lokasi selalu milik fasilitas pemegang token (`facility_id` di body
+        ditolak 422 `not_allowed`); operator global tanpa fasilitas ditolak 403.
+        Band suhu adalah milik alat ini, terpisah dari band referensi per
+        komponen. Rentang `-80..40` hanya kewarasan instrumen, bukan ambang
+        medis. `code` unik per fasilitas. Butuh `inventory.create`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  maxLength: 32
+                label:
+                  type: string
+                  maxLength: 255
+                kind:
+                  type: string
+                  enum: [refrigerator, freezer, deep_freezer, platelet_agitator, ambient_shelf]
+                purpose:
+                  type: string
+                  enum: [untested, reactive, indeterminate, release_ready, general]
+                temp_min_celsius:
+                  type: number
+                  minimum: -80
+                  maximum: 40
+                temp_max_celsius:
+                  type: number
+                  minimum: -80
+                  maximum: 40
+                  description: Harus `>= temp_min_celsius`.
+              required: [code, label, kind, purpose, temp_min_celsius, temp_max_celsius]
+      responses:
+        '201':
+          description: Lokasi tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StorageLocation'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /storage-locations/{storageLocation}/temperature-readings:
+    parameters:
+      - in: path
+        name: storageLocation
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID lokasi (`public_id`).
+    get:
+      summary: Riwayat pembacaan suhu satu lokasi
+      description: >-
+        `is_out_of_range` adalah penilaian yang DISIMPAN saat pembacaan
+        dicatat, terhadap band yang berlaku saat itu; merevisi band kemudian
+        tidak mengubahnya. Lokasi fasilitas lain dibalas 403. Butuh
+        `inventory.view`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - in: query
+          name: sort
+          required: false
+          schema:
+            type: string
+            enum: [recorded_at, -recorded_at]
+        - in: query
+          name: filter[is_out_of_range]
+          required: false
+          schema:
+            type: boolean
+        - in: query
+          name: filter[source]
+          required: false
+          schema:
+            type: string
+            enum: [manual, device]
+      responses:
+        '200':
+          description: Riwayat pembacaan suhu.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StorageTemperatureReading'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Catat satu pembacaan suhu
+      description: >-
+        Pembacaan di luar band lokasi TETAP dibalas 201 -- ia sah dan wajib
+        tersimpan -- dengan `is_out_of_range: true`, dan memancarkan event
+        domain `StorageTemperatureOutOfRange` (pengiriman alert belum ada).
+        Band inklusif di kedua ujung: tepat di `temp_min_celsius` atau
+        `temp_max_celsius` masih di dalam rentang. Nilai disimpan dengan satu
+        desimal dan dinilai sebagai nilai yang tersimpan. Rentang `-80..40`
+        hanya kewarasan instrumen. Lokasi fasilitas lain dibalas 403 tanpa
+        baris tersimpan. Butuh `inventory.create`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reading_celsius:
+                  type: number
+                  minimum: -80
+                  maximum: 40
+                source:
+                  type: string
+                  enum: [manual, device]
+                note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+              required: [reading_celsius, source]
+      responses:
+        '201':
+          description: Pembacaan tercatat, di dalam maupun di luar rentang.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StorageTemperatureReading'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /donors:
     get:
       summary: Daftar donor (staf)
@@ -2690,6 +2922,56 @@ components:
         - started_at
         - completed_at
         - note
+    StorageLocation:
+      type: object
+      description: >-
+        Alat penyimpanan yang nyata milik satu fasilitas. `id` numerik internal
+        dan `facility_id` tidak pernah keluar ke API.
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [refrigerator, freezer, deep_freezer, platelet_agitator, ambient_shelf]
+        purpose:
+          type: string
+          enum: [untested, reactive, indeterminate, release_ready, general]
+          description: Empat kategori pemisahan fisik unit, plus `general`.
+        temp_min_celsius:
+          type: number
+        temp_max_celsius:
+          type: number
+        is_active:
+          type: boolean
+      required: [id, code, label, kind, purpose, temp_min_celsius, temp_max_celsius, is_active]
+    StorageTemperatureReading:
+      type: object
+      properties:
+        storage_location_id:
+          type: string
+          format: uuid
+          description: Public ID lokasi (`public_id`).
+        reading_celsius:
+          type: number
+          description: Satu desimal.
+        is_out_of_range:
+          type: boolean
+          description: Penilaian tersimpan terhadap band yang berlaku saat dicatat.
+        source:
+          type: string
+          enum: [manual, device]
+        note:
+          type: string
+          nullable: true
+        recorded_at:
+          type: string
+          format: date-time
+      required: [storage_location_id, reading_celsius, is_out_of_range, source, note, recorded_at]
     BloodBatch:
       type: object
       description: >-
