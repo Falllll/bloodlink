@@ -12,6 +12,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      garage:
+        condition: service_healthy
     env_file: .env
 
   worker:
@@ -27,6 +29,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      garage:
+        condition: service_healthy
     env_file: .env
 
   db:
@@ -50,5 +54,35 @@ services:
     ports:
       - "6379:6379"
 
+  # Object storage S3-compatible self-hosted (Garage, AGPL-3.0). Menggantikan
+  # MinIO: image community MinIO sudah tidak dipublikasikan. --single-node
+  # --default-bucket membuat layout, kunci S3, dan bucket privat saat pertama
+  # menyala; tidak ada langkah manual. Garage tidak punya akses anonim --
+  # berkas hanya keluar lewat request bertanda tangan.
+  garage:
+    image: dxflrs/garage:v2.4.1
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN}
+      # Kunci yang sama dibaca disk `s3` Laravel: satu sumber, tidak bisa melenceng.
+      GARAGE_DEFAULT_ACCESS_KEY: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID}
+      GARAGE_DEFAULT_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY}
+      GARAGE_DEFAULT_BUCKET: ${AWS_BUCKET:?AWS_BUCKET}
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    ports:
+      - "3900:3900"
+    healthcheck:
+      # Image-nya tanpa shell maupun curl; CLI garage sendiri yang memeriksa node.
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   db-data:
+  garage-meta:
+  garage-data:

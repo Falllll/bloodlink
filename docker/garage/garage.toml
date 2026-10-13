@@ -1,0 +1,25 @@
+# Garage (https://garagehq.deuxfleurs.fr) -- object storage S3-compatible,
+# self-hosted, AGPL-3.0. Dijalankan sebagai server terpisah lewat service
+# `garage` di docker-compose.yml.
+#
+# TIDAK ADA rahasia di file ini. rpc_secret dan admin_token dibaca dari env
+# GARAGE_RPC_SECRET / GARAGE_ADMIN_TOKEN; kunci S3 dan bucket dibuat saat
+# server pertama kali menyala (`--single-node --default-bucket`) dari
+# GARAGE_DEFAULT_ACCESS_KEY / GARAGE_DEFAULT_SECRET_KEY / GARAGE_DEFAULT_BUCKET.
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+# Harus sama dengan AWS_DEFAULT_REGION: Garage menolak request untuk region lain.
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+
+[admin]
+api_bind_addr = "[::]:3903"

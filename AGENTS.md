@@ -27,7 +27,8 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   `supports_credentials => false` di `config/cors.php`, dan
   `sanctum/csrf-cookie` tidak boleh ada di `paths`.
 - **Semua tool wajib gratis / open source.** Padanan yang dipakai: GlitchTip
-  (bukan Sentry), Uptime Kuma, MinIO (bukan S3), Leaflet + OpenStreetMap
+  (bukan Sentry), Uptime Kuma, Garage (bukan S3; MinIO community sudah tidak
+  dipublikasikan sebagai image), Leaflet + OpenStreetMap
   (bukan Google Maps), Nominatim untuk geocoding. Kalau sebuah langkah butuh
   layanan berbayar, cari padanan gratisnya dulu dan sebutkan.
 
@@ -52,6 +53,11 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
 - Queue job tidak mewarisi konteks fasilitas dari request. Job yang perlu
   memeriksa izin harus memanggil `setPermissionsTeamId()` sendiri dari data
   di payload-nya.
+- Object storage: berkas lampiran masuk disk `s3` (Garage self-hosted, lihat
+  service `garage` di docker-compose), bukan disk `local` dan bukan ke dalam
+  working tree. Disk itu `visibility => private` dan `throw => true`; jangan
+  dilonggarkan. Bucket tidak pernah dibuat publik — berkas keluar hanya lewat
+  URL bertanda tangan yang diterbitkan aplikasi.
 
 ## Perintah yang sering dipakai
 

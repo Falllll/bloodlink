@@ -47,16 +47,24 @@ return [
             'report' => false,
         ],
 
+        // Endpoint-nya Garage self-hosted (service `garage` di docker-compose),
+        // bukan AWS. Nama kunci AWS_* dipertahankan karena protokolnya S3 dan
+        // itu yang dibaca driver Flysystem. Privat dan throw: jangan dilonggarkan.
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
+            // Harus sama dengan s3_region di docker/garage/garage.toml.
+            'region' => env('AWS_DEFAULT_REGION', 'garage'),
             'bucket' => env('AWS_BUCKET'),
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
+            // Path-style: endpoint lokal tidak melayani gaya virtual-host.
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
+            'visibility' => 'private',
+            // Default Laravel false: get() key yang tak ada -> null, put() gagal -> false.
+            // Gagal tanpa suara tidak boleh terjadi pada berkas medis.
+            'throw' => true,
             'report' => false,
         ],
 
