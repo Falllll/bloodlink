@@ -9,6 +9,7 @@ use App\Modules\Donor\Http\Controllers\DonorMergeController;
 use App\Modules\Donor\Http\Controllers\DonorProfileController;
 use App\Modules\Donor\Http\Controllers\DonorScreeningController;
 use App\Modules\Donor\Http\Controllers\EligibilitySelfCheckController;
+use App\Modules\Donor\Http\Controllers\MeAppointmentController;
 use App\Modules\Donor\Http\Controllers\MeDonorController;
 use App\Modules\Identity\Http\Controllers\AuditLogController;
 use App\Modules\Identity\Http\Controllers\AuthController;
@@ -39,6 +40,9 @@ Route::prefix('auth')->name('auth.')->group(function (): void {
 Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function (): void {
     Route::get('/donor', [MeDonorController::class, 'show'])->name('donor.show');
     Route::get('/donor/donations', [MeDonorController::class, 'donations'])->name('donor.donations.index');
+    Route::get('/donor/appointments', [MeAppointmentController::class, 'index'])->name('donor.appointments.index');
+    Route::post('/donor/appointments', [MeAppointmentController::class, 'store'])->name('donor.appointments.store');
+    Route::patch('/donor/appointments/{appointment}/status', [MeAppointmentController::class, 'cancel'])->whereUuid('appointment')->name('donor.appointments.cancel');
 });
 
 Route::get('/ping', fn () => ['pong' => true]);

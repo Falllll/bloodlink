@@ -221,6 +221,144 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+  /me/donor/appointments:
+    get:
+      summary: Janji temu milik akun yang login
+      description: >-
+        Hanya janji temu milik donor yang tertaut ke token ini, termasuk walk-in
+        yang dicatat petugas. Terbaru lebih dulu menurut waktu janji temu:
+        `scheduled_for`, atau `arrived_at` untuk walk-in yang tidak punya
+        `scheduled_for` (desc, lalu `id` desc sebagai tie-breaker). 20 baris per
+        halaman. Akun yang belum tertaut dibalas 404 `DONOR_ACCOUNT_NOT_LINKED`,
+        bukan daftar kosong.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Janji temu donor ini.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appointment'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Donor memesan janji temunya sendiri
+      description: >-
+        Berbeda dari jalur petugas, `scheduled_for` WAJIB di sini dan harus di
+        masa depan: walk-in (`arrived`) adalah pernyataan petugas, bukan donor.
+        Fasilitas diambil dari pendaftaran donor (`registered_facility_id`),
+        tidak bisa dipilih. Key di luar `scheduled_for` dan `note` ditolak 422
+        `not_allowed`. Satu donor hanya boleh punya satu janji temu terbuka;
+        pesanan kedua dibalas 409 `APPOINTMENT_TRANSITION_REJECTED` -- batalkan
+        yang lama lebih dulu untuk menjadwal ulang. Akun yang belum tertaut
+        dibalas 404 `DONOR_ACCOUNT_NOT_LINKED`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduled_for:
+                  type: string
+                  format: date-time
+                note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+              required: [scheduled_for]
+      responses:
+        '201':
+          description: Janji temu tercatat berstatus `booked`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Appointment'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /me/donor/appointments/{appointment}/status:
+    patch:
+      summary: Donor membatalkan janji temunya sendiri
+      description: >-
+        Satu-satunya status yang boleh dikirim donor adalah `cancelled`; status
+        lain (`arrived`, `screened`, `completed`, `no_show`) adalah pernyataan
+        petugas dan ditolak 422. Janji temu dicari di antara milik donor ini
+        saja, jadi janji temu donor lain dibalas 404 -- bukan 403. Pembatalan
+        tetap mengikuti graf transisi; dari status terminal ditolak 409.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: appointment
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Public ID janji temu (`public_id`).
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [cancelled]
+              required: [status]
+      responses:
+        '200':
+          description: Janji temu dibatalkan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Appointment'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /audit-logs:
     get:
       summary: Daftar audit log
