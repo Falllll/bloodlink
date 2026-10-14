@@ -13,6 +13,7 @@ use App\Models\Donor;
 use App\Models\DonorConsent;
 use App\Models\DonorScreening;
 use App\Models\Facility;
+use App\Models\StockTransfer;
 use App\Models\StorageLocation;
 use App\Models\TtiTestResult;
 use App\Models\User;
@@ -29,6 +30,7 @@ use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
 use App\Modules\Inventory\Domain\ComponentExpiryPolicy;
 use App\Modules\Inventory\Infrastructure\BloodBatchEventRecorder;
 use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
+use App\Modules\Inventory\Infrastructure\Policies\StockTransferPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -73,8 +75,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
         Gate::policy(BloodBatch::class, BloodBatchPolicy::class);
         Gate::policy(StorageLocation::class, StorageLocationPolicy::class);
+        Gate::policy(StockTransfer::class, StockTransferPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 

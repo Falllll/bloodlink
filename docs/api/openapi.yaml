@@ -2091,6 +2091,289 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /stock-transfers:
+    get:
+      summary: Daftar transfer stok antar fasilitas
+      description: >-
+        Hanya transfer yang menyentuh fasilitas pemegang token, sebagai asal
+        maupun tujuan; operator global melihat seluruhnya. `filter[direction]`
+        menyempitkan ke `incoming` (fasilitas ini tujuan) atau `outgoing`
+        (fasilitas ini asal). Butuh `inventory.view`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - in: query
+          name: sort
+          required: false
+          schema:
+            type: string
+            enum: [created_at, -created_at]
+        - in: query
+          name: filter[status]
+          required: false
+          schema:
+            type: string
+            enum: [requested, approved, rejected, shipped, received, cancelled]
+        - in: query
+          name: filter[direction]
+          required: false
+          schema:
+            type: string
+            enum: [incoming, outgoing]
+      responses:
+        '200':
+          description: Daftar transfer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockTransfer'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    post:
+      summary: Minta satu unit dari fasilitas lain
+      description: >-
+        Fasilitas pemegang token (yang butuh) meminta unit milik fasilitas
+        lain; fasilitas tujuan tidak dikirim di body. Hanya unit `released`
+        yang bisa diminta (selain itu 409). Satu unit hanya boleh punya satu
+        transfer terbuka (`requested`/`approved`/`shipped`); permintaan kedua
+        dibalas 409. Meminta unit milik fasilitas sendiri, atau oleh operator
+        global tanpa fasilitas, ditolak 403. Butuh `inventory.create`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                unit_id:
+                  type: string
+                  format: uuid
+                  description: Public ID unit (`public_id`).
+                reason:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+              required: [unit_id]
+      responses:
+        '201':
+          description: Transfer tercatat berstatus `requested`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StockTransfer'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /stock-transfers/{stockTransfer}/decision:
+    parameters:
+      - in: path
+        name: stockTransfer
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID transfer (`public_id`). Transfer yang tidak menyentuh fasilitas pemegang token dibalas 404.
+    patch:
+      summary: Setujui atau tolak permintaan transfer
+      description: >-
+        Hanya fasilitas asal (pemilik unit), dengan `inventory.release`.
+        Fasilitas peminta dibalas 403. Hanya sah dari `requested`; unit yang
+        sudah tidak `released` (mis. kedaluwarsa sejak diminta) tidak bisa
+        disetujui (409).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [approved, rejected]
+                decision_note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+              required: [status]
+      responses:
+        '200':
+          description: Transfer berpindah status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StockTransfer'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /stock-transfers/{stockTransfer}/ship:
+    parameters:
+      - in: path
+        name: stockTransfer
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID transfer (`public_id`). Transfer yang tidak menyentuh fasilitas pemegang token dibalas 404.
+    post:
+      summary: Kirim unit yang transfernya sudah disetujui
+      description: >-
+        Hanya fasilitas asal, dengan `inventory.release`, dan hanya dari
+        `approved` (selain itu 409). Unit TETAP milik fasilitas asal selama di
+        jalan -- ia baru berpindah saat diterima. Unit yang sudah tidak
+        `released` tidak bisa dikirim (409).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Transfer berpindah status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StockTransfer'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /stock-transfers/{stockTransfer}/receive:
+    parameters:
+      - in: path
+        name: stockTransfer
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID transfer (`public_id`). Transfer yang tidak menyentuh fasilitas pemegang token dibalas 404.
+    post:
+      summary: Terima unit yang sudah dikirim
+      description: >-
+        Hanya fasilitas tujuan, dengan `inventory.create`, dan hanya dari
+        `shipped`. Di langkah inilah -- dan hanya di sini -- `facility_id` unit
+        berpindah ke fasilitas tujuan. Fasilitas asal dibalas 403.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Transfer berpindah status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StockTransfer'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /stock-transfers/{stockTransfer}/cancel:
+    parameters:
+      - in: path
+        name: stockTransfer
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID transfer (`public_id`). Transfer yang tidak menyentuh fasilitas pemegang token dibalas 404.
+    post:
+      summary: Batalkan transfer yang belum dikirim
+      description: >-
+        Fasilitas asal maupun tujuan, dengan `inventory.create`. Hanya dari
+        `requested` atau `approved`; transfer yang sudah `shipped` tidak bisa
+        dibatalkan (409).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Transfer berpindah status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StockTransfer'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /donors:
     get:
       summary: Daftar donor (staf)
@@ -2972,6 +3255,59 @@ components:
           type: string
           format: date-time
       required: [storage_location_id, reading_celsius, is_out_of_range, source, note, recorded_at]
+    StockTransfer:
+      type: object
+      description: >-
+        Perpindahan satu unit antar fasilitas. Selama transfer terbuka unit
+        tetap `released` dan tetap milik fasilitas asal; baris transfer inilah
+        yang menahannya dari alokasi ganda. `id` numerik internal dan pengguna
+        yang meminta/memutuskan tidak pernah keluar ke API.
+      properties:
+        id:
+          type: string
+          format: uuid
+        unit_id:
+          type: string
+          format: uuid
+          description: Public ID unit (`public_id`).
+        from_facility_id:
+          type: string
+          format: uuid
+          description: Fasilitas asal (pemilik unit).
+        to_facility_id:
+          type: string
+          format: uuid
+          description: Fasilitas tujuan (peminta).
+        status:
+          type: string
+          enum: [requested, approved, rejected, shipped, received, cancelled]
+        reason:
+          type: string
+          nullable: true
+        decision_note:
+          type: string
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        rejected_at:
+          type: string
+          format: date-time
+          nullable: true
+        shipped_at:
+          type: string
+          format: date-time
+          nullable: true
+        received_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, unit_id, from_facility_id, to_facility_id, status, reason, decision_note, approved_at, rejected_at, shipped_at, received_at, cancelled_at]
     BloodBatch:
       type: object
       description: >-

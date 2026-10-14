@@ -18,6 +18,7 @@ use App\Modules\Inventory\Http\Controllers\BloodBatchBarcodeController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchController;
 use App\Modules\Inventory\Http\Controllers\ComponentSeparationController;
 use App\Modules\Inventory\Http\Controllers\LabTestController;
+use App\Modules\Inventory\Http\Controllers\StockTransferController;
 use App\Modules\Inventory\Http\Controllers\StorageLocationController;
 use App\Modules\Inventory\Http\Controllers\UnitReleaseController;
 use App\Shared\Http\ApiResponse;
@@ -69,6 +70,13 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::post('/storage-locations', [StorageLocationController::class, 'store'])->name('storage-locations.store');
     Route::get('/storage-locations/{storageLocation}/temperature-readings', [StorageLocationController::class, 'readings'])->name('storage-locations.readings.index');
     Route::post('/storage-locations/{storageLocation}/temperature-readings', [StorageLocationController::class, 'recordReading'])->name('storage-locations.readings.store');
+
+    Route::get('/stock-transfers', [StockTransferController::class, 'index'])->name('stock-transfers.index');
+    Route::post('/stock-transfers', [StockTransferController::class, 'store'])->name('stock-transfers.store');
+    Route::patch('/stock-transfers/{stockTransfer}/decision', [StockTransferController::class, 'decide'])->whereUuid('stockTransfer')->name('stock-transfers.decide');
+    Route::post('/stock-transfers/{stockTransfer}/ship', [StockTransferController::class, 'ship'])->whereUuid('stockTransfer')->name('stock-transfers.ship');
+    Route::post('/stock-transfers/{stockTransfer}/receive', [StockTransferController::class, 'receive'])->whereUuid('stockTransfer')->name('stock-transfers.receive');
+    Route::post('/stock-transfers/{stockTransfer}/cancel', [StockTransferController::class, 'cancel'])->whereUuid('stockTransfer')->name('stock-transfers.cancel');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
