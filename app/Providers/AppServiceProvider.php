@@ -6,6 +6,7 @@ use App\Models\AboRhDetermination;
 use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\BloodBatch;
+use App\Models\BloodRequest;
 use App\Models\Deferral;
 use App\Models\DeferralReason;
 use App\Models\Donation;
@@ -32,6 +33,7 @@ use App\Modules\Inventory\Infrastructure\BloodBatchEventRecorder;
 use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StockTransferPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
+use App\Modules\Request\Infrastructure\Policies\BloodRequestPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -76,8 +78,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BloodBatch::class, BloodBatchPolicy::class);
         Gate::policy(StorageLocation::class, StorageLocationPolicy::class);
         Gate::policy(StockTransfer::class, StockTransferPolicy::class);
+        Gate::policy(BloodRequest::class, BloodRequestPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 

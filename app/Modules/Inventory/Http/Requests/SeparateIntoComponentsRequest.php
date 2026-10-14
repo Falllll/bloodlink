@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Inventory\Http\Requests;
 
-use App\Modules\Inventory\Domain\BloodComponent;
 use App\Modules\Inventory\Domain\ComponentSeparationPlan;
 use App\Modules\Inventory\Domain\DerivedComponentSpec;
+use App\Shared\Blood\BloodComponent;
 use App\Shared\Http\StrictRequest;
 use Illuminate\Validation\Rule;
 

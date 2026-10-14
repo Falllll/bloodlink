@@ -21,6 +21,7 @@ use App\Modules\Inventory\Http\Controllers\LabTestController;
 use App\Modules\Inventory\Http\Controllers\StockTransferController;
 use App\Modules\Inventory\Http\Controllers\StorageLocationController;
 use App\Modules\Inventory\Http\Controllers\UnitReleaseController;
+use App\Modules\Request\Http\Controllers\BloodRequestController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
 use Illuminate\Support\Facades\Route;
@@ -77,6 +78,9 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::post('/stock-transfers/{stockTransfer}/ship', [StockTransferController::class, 'ship'])->whereUuid('stockTransfer')->name('stock-transfers.ship');
     Route::post('/stock-transfers/{stockTransfer}/receive', [StockTransferController::class, 'receive'])->whereUuid('stockTransfer')->name('stock-transfers.receive');
     Route::post('/stock-transfers/{stockTransfer}/cancel', [StockTransferController::class, 'cancel'])->whereUuid('stockTransfer')->name('stock-transfers.cancel');
+
+    Route::get('/blood-requests', [BloodRequestController::class, 'index'])->name('blood-requests.index');
+    Route::post('/blood-requests', [BloodRequestController::class, 'store'])->name('blood-requests.store');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 

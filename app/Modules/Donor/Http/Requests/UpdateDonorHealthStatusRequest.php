@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Donor\Http\Requests;
 
+use App\Shared\Blood\BloodGroup;
+use App\Shared\Blood\RhFactor;
 use App\Shared\Http\StrictRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,8 +18,8 @@ final class UpdateDonorHealthStatusRequest extends StrictRequest
             // min:20/max:300 adalah batas kewarasan fisik, BUKAN ambang kelayakan
             // §3.2 (45/50 kg). Jangan pernah menulis min:45 atau min:50 di sini.
             'weight_kg' => ['sometimes', 'required', 'numeric', 'min:20', 'max:300'],
-            'blood_group' => ['sometimes', 'nullable', Rule::in(['A', 'B', 'AB', 'O'])],
-            'rh_factor' => ['sometimes', 'nullable', Rule::in(['positive', 'negative'])],
+            'blood_group' => ['sometimes', 'nullable', Rule::enum(BloodGroup::class)],
+            'rh_factor' => ['sometimes', 'nullable', Rule::enum(RhFactor::class)],
         ];
     }
 }

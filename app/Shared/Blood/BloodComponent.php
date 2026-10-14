@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Inventory\Domain;
+namespace App\Shared\Blood;
 
 enum BloodComponent: string
 {

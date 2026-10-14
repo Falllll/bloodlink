@@ -2374,6 +2374,139 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /blood-requests:
+    get:
+      summary: Daftar permintaan darah
+      description: >-
+        Tersaring otomatis ke fasilitas pemegang token; operator global
+        melihat seluruhnya. Butuh `request.view`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - in: query
+          name: sort
+          required: false
+          schema:
+            type: string
+            enum: [needed_by, -needed_by, created_at, -created_at]
+        - in: query
+          name: filter[status]
+          required: false
+          schema:
+            type: string
+            enum: [open, partially_fulfilled, fulfilled, cancelled, expired]
+        - in: query
+          name: filter[urgency]
+          required: false
+          schema:
+            type: string
+            enum: [routine, urgent, emergency]
+        - in: query
+          name: filter[blood_group]
+          required: false
+          schema:
+            type: string
+            enum: [A, B, AB, O]
+        - in: query
+          name: filter[component]
+          required: false
+          schema:
+            type: string
+            enum: [whole_blood, packed_red_cells, fresh_frozen_plasma, platelet_concentrate, cryoprecipitate]
+      responses:
+        '200':
+          description: Daftar permintaan darah.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BloodRequest'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    post:
+      summary: Ajukan permintaan darah
+      description: >-
+        Mencatat apa yang diminta rumah sakit; selalu lahir berstatus `open`
+        dan selalu milik fasilitas pemegang token -- `facility_id` maupun
+        `status` di body ditolak 422 `not_allowed`. Operator global tanpa
+        fasilitas ditolak 403. Permintaan TIDAK diperiksa kompatibilitas
+        maupun ketersediaan stoknya: kombinasi yang mustahil dipenuhi tetap
+        tercatat. `needed_by` wajib dan harus di masa depan. Batas `quantity`
+        1..20 adalah kewarasan instrumen, bukan aturan medis.
+        `patient_reference` adalah rujukan internal rumah sakit, bukan
+        identitas pasien. Butuh `request.create`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                patient_reference:
+                  type: string
+                  maxLength: 64
+                component:
+                  type: string
+                  enum: [whole_blood, packed_red_cells, fresh_frozen_plasma, platelet_concentrate, cryoprecipitate]
+                blood_group:
+                  type: string
+                  enum: [A, B, AB, O]
+                rh_factor:
+                  type: string
+                  enum: [positive, negative]
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                urgency:
+                  type: string
+                  enum: [routine, urgent, emergency]
+                needed_by:
+                  type: string
+                  format: date-time
+                note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+              required: [patient_reference, component, blood_group, rh_factor, quantity, urgency, needed_by]
+      responses:
+        '201':
+          description: Permintaan tercatat berstatus `open`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BloodRequest'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /donors:
     get:
       summary: Daftar donor (staf)
@@ -3308,6 +3441,47 @@ components:
           format: date-time
           nullable: true
       required: [id, unit_id, from_facility_id, to_facility_id, status, reason, decision_note, approved_at, rejected_at, shipped_at, received_at, cancelled_at]
+    BloodRequest:
+      type: object
+      description: >-
+        Apa yang DIMINTA satu fasilitas, bukan apa yang dialokasikan untuknya.
+        `id` numerik internal dan pengguna peminta tidak pernah keluar ke API.
+      properties:
+        id:
+          type: string
+          format: uuid
+        facility_id:
+          type: string
+          format: uuid
+          description: Fasilitas peminta (`public_id`).
+        patient_reference:
+          type: string
+          description: Rujukan internal rumah sakit, bukan identitas pasien.
+        component:
+          type: string
+          enum: [whole_blood, packed_red_cells, fresh_frozen_plasma, platelet_concentrate, cryoprecipitate]
+        blood_group:
+          type: string
+          enum: [A, B, AB, O]
+        rh_factor:
+          type: string
+          enum: [positive, negative]
+        quantity:
+          type: integer
+        urgency:
+          type: string
+          enum: [routine, urgent, emergency]
+        status:
+          type: string
+          enum: [open, partially_fulfilled, fulfilled, cancelled, expired]
+          description: Hanya `open` yang ditulis saat ini; status lain lahir bersama alokasi.
+        needed_by:
+          type: string
+          format: date-time
+        note:
+          type: string
+          nullable: true
+      required: [id, facility_id, patient_reference, component, blood_group, rh_factor, quantity, urgency, status, needed_by, note]
     BloodBatch:
       type: object
       description: >-

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Modules\Inventory\Domain\BloodComponent;
+use App\Shared\Blood\BloodComponent;
 use App\Shared\Database\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;

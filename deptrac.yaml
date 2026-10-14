@@ -30,8 +30,21 @@ deptrac:
 
     - name: Shared
       collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Shared/.*
+          must_not:
+            - type: directory
+              value: app/Shared/Blood/.*
+
+    # Kosakata darah bersama (Kartu 310): BloodGroup, RhFactor, BloodComponent.
+    # Enum murni tanpa dependensi, jadi boleh dipakai semua modul DAN semua
+    # domain -- berbeda dengan Shared, yang berisi Http/Auth dan tertutup bagi domain.
+    - name: BloodKernel
+      collectors:
         - type: directory
-          value: app/Shared/.*
+          value: app/Shared/Blood/.*
 
     - name: Models
       collectors:
@@ -129,20 +142,21 @@ deptrac:
           value: app/Modules/Notification/(Application|Http|Infrastructure|Database|Tests)/.*
 
   ruleset:
-    Shared: [Framework]
-    Models: [Framework, Shared, DomIdentity, DomDonor, DomInventory]
+    BloodKernel: ~
+    Shared: [Framework, BloodKernel]
+    Models: [Framework, Shared, BloodKernel, DomIdentity, DomDonor, DomInventory, DomRequest]
 
-    ModIdentity:     [Framework, Shared, Models, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModDonor:        [Framework, Shared, Models, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModInventory:    [Framework, Shared, Models, DomInventory, Barcode, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModRequest:      [Framework, Shared, Models, DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModNotification: [Framework, Shared, Models, DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModIdentity:     [Framework, Shared, BloodKernel, Models, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModDonor:        [Framework, Shared, BloodKernel, Models, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModInventory:    [Framework, Shared, BloodKernel, Models, DomInventory, Barcode, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModRequest:      [Framework, Shared, BloodKernel, Models, DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModNotification: [Framework, Shared, BloodKernel, Models, DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
 
-    DomIdentity: ~
-    DomDonor: ~
-    DomInventory: ~
-    DomRequest: ~
-    DomNotification: ~
+    DomIdentity: [BloodKernel]
+    DomDonor: [BloodKernel]
+    DomInventory: [BloodKernel]
+    DomRequest: [BloodKernel]
+    DomNotification: [BloodKernel]
 
     EvtIdentity: ~
     EvtDonor: ~

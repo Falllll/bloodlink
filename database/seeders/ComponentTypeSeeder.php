@@ -6,8 +6,8 @@ namespace Database\Seeders;
 
 use App\Models\ComponentStorageProfile;
 use App\Models\ComponentType;
-use App\Modules\Inventory\Domain\BloodComponent;
 use App\Modules\Inventory\Domain\ShelfLifeUnit;
+use App\Shared\Blood\BloodComponent;
 use Illuminate\Database\Seeder;
 
 /**

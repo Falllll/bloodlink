@@ -6,8 +6,8 @@ namespace App\Modules\Inventory\Tests;
 
 use App\Models\ComponentStorageProfile;
 use App\Models\ComponentType;
-use App\Modules\Inventory\Domain\BloodComponent;
 use App\Modules\Inventory\Domain\ShelfLifeUnit;
+use App\Shared\Blood\BloodComponent;
 use Database\Seeders\ComponentTypeSeeder;
 use DateTimeImmutable;
 use Illuminate\Database\QueryException;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Inventory\Domain;
 
+use App\Shared\Blood\BloodComponent;
 use InvalidArgumentException;
 
 /** Satu komponen turunan yang diminta dari pemisahan whole blood. */

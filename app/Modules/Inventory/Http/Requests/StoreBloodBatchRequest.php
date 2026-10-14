@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Inventory\Http\Requests;
 
-use App\Modules\Inventory\Domain\BloodComponent;
+use App\Shared\Blood\BloodComponent;
+use App\Shared\Blood\BloodGroup;
+use App\Shared\Blood\RhFactor;
 use App\Shared\Http\StrictRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,8 +21,8 @@ final class StoreBloodBatchRequest extends StrictRequest
     {
         return [
             'component' => ['required', Rule::enum(BloodComponent::class)],
-            'blood_group' => ['nullable', Rule::in(['A', 'B', 'AB', 'O'])],
-            'rh_factor' => ['nullable', Rule::in(['positive', 'negative'])],
+            'blood_group' => ['nullable', Rule::enum(BloodGroup::class)],
+            'rh_factor' => ['nullable', Rule::enum(RhFactor::class)],
             'volume_ml' => ['required', 'integer', 'min:1'],
             'hemoglobin_g_dl' => ['nullable', 'numeric', 'min:0'],
             'collected_at' => ['required', 'date', 'before_or_equal:now'],
