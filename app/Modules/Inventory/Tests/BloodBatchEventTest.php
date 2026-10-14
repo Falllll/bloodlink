@@ -147,6 +147,16 @@ final class BloodBatchEventTest extends TestCase
         $this->assertSame([[null, 'quarantined']], $this->transitionsOf($unit));
     }
 
+    public function test_updating_the_same_instance_after_a_status_less_create_records_the_real_origin(): void
+    {
+        // Instance yang sama, tanpa fresh(): model harus tahu status kelahirannya.
+        $unit = BloodBatch::factory()->create();
+
+        app(TransitionBloodBatch::class)->handle($unit, BatchStatus::TESTING);
+
+        $this->assertSame([[null, 'quarantined'], ['quarantined', 'testing']], $this->transitionsOf($unit));
+    }
+
     public function test_a_transition_records_one_event_with_both_statuses(): void
     {
         $unit = $this->quarantinedUnit();

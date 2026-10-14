@@ -9,4 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('idempotency:prune')->dailyAt('02:00');
+Schedule::command('inventory:expire-check --force')->dailyAt('01:00');
 Schedule::command('privacy:purge-expired --force')->monthlyOn(1, '03:00');

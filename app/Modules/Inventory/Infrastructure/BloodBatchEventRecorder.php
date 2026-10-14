@@ -61,6 +61,10 @@ final class BloodBatchEventRecorder
     /**
      * Baris yang dibuat tanpa status menerima default kolom dari database; model
      * belum memegang nilainya, jadi dibaca dari baris yang sudah tersimpan.
+     *
+     * Nilainya juga ditanam ke model sebagai original: tanpa itu, update
+     * berikutnya pada instance yang sama membaca getRawOriginal('status') = null
+     * dan updated() tidak bisa menentukan status asalnya.
      */
     private function birthStatus(BloodBatch $batch): BatchStatus
     {
@@ -68,6 +72,11 @@ final class BloodBatchEventRecorder
             return $batch->status;
         }
 
-        return BatchStatus::from((string) BloodBatch::query()->whereKey($batch->getKey())->toBase()->value('status'));
+        $raw = (string) BloodBatch::query()->whereKey($batch->getKey())->toBase()->value('status');
+
+        $batch->setRawAttributes([...$batch->getAttributes(), 'status' => $raw]);
+        $batch->syncOriginalAttribute('status');
+
+        return BatchStatus::from($raw);
     }
 }
