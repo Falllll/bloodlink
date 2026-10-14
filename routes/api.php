@@ -22,6 +22,7 @@ use App\Modules\Inventory\Http\Controllers\StockTransferController;
 use App\Modules\Inventory\Http\Controllers\StorageLocationController;
 use App\Modules\Inventory\Http\Controllers\UnitReleaseController;
 use App\Modules\Request\Http\Controllers\BloodRequestController;
+use App\Modules\Request\Http\Controllers\CompatibilityController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +82,7 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
 
     Route::get('/blood-requests', [BloodRequestController::class, 'index'])->name('blood-requests.index');
     Route::post('/blood-requests', [BloodRequestController::class, 'store'])->name('blood-requests.store');
+    Route::get('/compatibility', CompatibilityController::class)->name('compatibility.show');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 

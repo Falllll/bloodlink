@@ -2507,6 +2507,95 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /compatibility:
+    get:
+      summary: Donor yang lolos gerbang kompatibilitas ABO/RhD untuk satu penerima
+      description: >-
+        Pemeriksaan DATA, bukan crossmatch laboratorium. Aturannya data
+        ter-seed ber-provenans (WHO Module 3 §6.3 Figure 14 & 15; Rujukan
+        Pedoman Medis §12). Sel darah merah (`whole_blood`,
+        `packed_red_cells`) memeriksa ABO dan RhD; plasma
+        (`fresh_frozen_plasma`, `cryoprecipitate`) memeriksa ABO arah
+        KEBALIKAN dan tidak memeriksa RhD (`donor_rh` null). Trombosit dibalas
+        `unsupported`: WHO tidak memberi matriksnya. Pasangan tanpa aturan
+        berarti tidak boleh. `provenance` `derived` menandai keputusan yang
+        bergantung pada aturan tanpa kutipan WHO (penerima RhD-positif dengan
+        donor RhD-negatif). Butuh `request.view`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: component
+          required: true
+          schema:
+            type: string
+            enum: [whole_blood, packed_red_cells, fresh_frozen_plasma, platelet_concentrate, cryoprecipitate]
+        - in: query
+          name: recipient_group
+          required: true
+          schema:
+            type: string
+            enum: [A, B, AB, O]
+        - in: query
+          name: recipient_rh
+          required: true
+          schema:
+            type: string
+            enum: [positive, negative]
+      responses:
+        '200':
+          description: Daftar donor yang boleh, atau `unsupported`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      component:
+                        type: string
+                      direction:
+                        type: string
+                        enum: [red_cells, plasma]
+                        description: Tidak ada saat `unsupported`.
+                      outcome:
+                        type: string
+                        enum: [compatible, incompatible, unsupported]
+                      detail:
+                        type: string
+                        description: Hanya saat `unsupported`.
+                      compatible_donors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            donor_group:
+                              type: string
+                              enum: [A, B, AB, O]
+                            donor_rh:
+                              type: string
+                              enum: [positive, negative]
+                              nullable: true
+                              description: Null untuk plasma -- RhD tidak diperiksa.
+                            provenance:
+                              type: string
+                              enum: [cited, derived]
+                            source_references:
+                              type: array
+                              items:
+                                type: string
+                          required: [donor_group, donor_rh, provenance, source_references]
+                    required: [component, outcome, compatible_donors]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /donors:
     get:
       summary: Daftar donor (staf)
