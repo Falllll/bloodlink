@@ -2507,6 +2507,189 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /blood-requests/{bloodRequest}/candidates:
+    parameters:
+      - in: path
+        name: bloodRequest
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID permintaan (`public_id`).
+    get:
+      summary: Kandidat unit FEFO untuk satu permintaan
+      description: >-
+        Unit `released` di fasilitas peminta, berkomponen sama, yang lolos
+        gerbang kompatibilitas ABO/RhD, terurut kedaluwarsa paling dekat lebih
+        dulu (lalu `id`). Dikecualikan: unit tanpa `expires_at` (masa simpan
+        belum ditentukan), unit yang kedaluwarsa sebelum `needed_by`, unit yang
+        sudah punya alokasi aktif, dan unit yang punya transfer antar fasilitas
+        terbuka. Permintaan trombosit selalu nol kandidat (gerbang
+        `unsupported`). Paling banyak sebanyak sisa kuantitas. Tidak menulis
+        apa pun. Butuh `inventory.release` di fasilitas peminta.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Kandidat terurut FEFO.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      blood_request_id:
+                        type: string
+                        format: uuid
+                      remaining:
+                        type: integer
+                      candidates:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            unit_id:
+                              type: string
+                              format: uuid
+                            blood_group:
+                              type: string
+                              enum: [A, B, AB, O]
+                            rh_factor:
+                              type: string
+                              enum: [positive, negative]
+                            expires_at:
+                              type: string
+                              format: date-time
+                    required: [blood_request_id, remaining, candidates]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /blood-requests/{bloodRequest}/allocations:
+    parameters:
+      - in: path
+        name: bloodRequest
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID permintaan (`public_id`).
+    post:
+      summary: Alokasikan unit FEFO ke permintaan
+      description: >-
+        Mengalokasikan kandidat FEFO (lihat `.../candidates`) sebanyak sisa
+        kuantitas, atau paling banyak `max`. Permintaan yang sudah penuh
+        menghasilkan nol alokasi, bukan error. Status permintaan naik ke
+        `partially_fulfilled`/`fulfilled`. Status UNIT tidak berubah -- tetap
+        `released`. Satu unit hanya bisa punya satu alokasi aktif (partial
+        unique index); unit yang direbut alokasi lain di tengah jalan
+        dilewati. Permintaan `cancelled`/`expired` ditolak 409
+        `BLOOD_REQUEST_NOT_ALLOCATABLE`. Butuh `inventory.release`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                max:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                  nullable: true
+      responses:
+        '201':
+          description: Alokasi yang dibuat (bisa kosong).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      blood_request:
+                        $ref: '#/components/schemas/BloodRequest'
+                      allocations:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/BloodRequestAllocation'
+                    required: [blood_request, allocations]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /allocations/{allocation}:
+    parameters:
+      - in: path
+        name: allocation
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID alokasi (`public_id`).
+    delete:
+      summary: Lepaskan satu alokasi
+      description: >-
+        Membebaskan unit untuk dialokasikan lagi dan menurunkan status
+        permintaan kembali (`fulfilled` -> `partially_fulfilled` -> `open`).
+        Idempoten: alokasi yang sudah dilepas dikembalikan apa adanya, alasan
+        pertama dipertahankan. DELETE tidak memakai `Idempotency-Key`.
+        Butuh `inventory.release` di fasilitas peminta.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+              required: [reason]
+      responses:
+        '200':
+          description: Alokasi dilepas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BloodRequestAllocation'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /compatibility:
     get:
       summary: Donor yang lolos gerbang kompatibilitas ABO/RhD untuk satu penerima
@@ -2952,6 +3135,7 @@ components:
         - LAB_RESULT_DUPLICATE
         - LAB_RESULT_REJECTED
         - INVENTORY_RELEASE_REJECTED
+        - BLOOD_REQUEST_NOT_ALLOCATABLE
     Error:
       type: object
       properties:
@@ -3571,6 +3755,33 @@ components:
           type: string
           nullable: true
       required: [id, facility_id, patient_reference, component, blood_group, rh_factor, quantity, urgency, status, needed_by, note]
+    BloodRequestAllocation:
+      type: object
+      description: >-
+        Satu unit yang dialokasikan untuk satu permintaan. Aktif selama
+        `released_at` null. `id` numerik internal dan pengguna yang
+        mengalokasikan tidak pernah keluar ke API.
+      properties:
+        id:
+          type: string
+          format: uuid
+        blood_request_id:
+          type: string
+          format: uuid
+        unit_id:
+          type: string
+          format: uuid
+        allocated_at:
+          type: string
+          format: date-time
+        released_at:
+          type: string
+          format: date-time
+          nullable: true
+        release_reason:
+          type: string
+          nullable: true
+      required: [id, blood_request_id, unit_id, allocated_at, released_at, release_reason]
     BloodBatch:
       type: object
       description: >-

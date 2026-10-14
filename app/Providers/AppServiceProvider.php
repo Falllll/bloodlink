@@ -7,6 +7,7 @@ use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\BloodBatch;
 use App\Models\BloodRequest;
+use App\Models\BloodRequestAllocation;
 use App\Models\Deferral;
 use App\Models\DeferralReason;
 use App\Models\Donation;
@@ -80,7 +81,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(StockTransfer::class, StockTransferPolicy::class);
         Gate::policy(BloodRequest::class, BloodRequestPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class, BloodRequestAllocation::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 

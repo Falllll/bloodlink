@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Modules\Request\Http\Controllers;
 
+use App\Models\BloodBatch;
 use App\Models\BloodRequest;
+use App\Models\BloodRequestAllocation;
 use App\Models\User;
+use App\Modules\Request\Application\AllocateUnitsFefo;
 use App\Modules\Request\Application\CreateBloodRequest;
 use App\Modules\Request\Domain\RequestUrgency;
+use App\Modules\Request\Http\Requests\AllocateRequest;
 use App\Modules\Request\Http\Requests\BloodRequestListRequest;
+use App\Modules\Request\Http\Requests\ReleaseAllocationRequest;
 use App\Modules\Request\Http\Requests\StoreBloodRequestRequest;
 use App\Shared\Blood\BloodComponent;
 use App\Shared\Blood\BloodGroup;
@@ -58,5 +63,57 @@ final class BloodRequestController
         );
 
         return ApiResponse::success($bloodRequest->load('facility')->toApiArray())->setStatusCode(201);
+    }
+
+    /** Kandidat FEFO yang lolos gerbang kompatibilitas, sebanyak sisa kuantitas. Tidak menulis apa pun. */
+    public function candidates(BloodRequest $bloodRequest, AllocateUnitsFefo $fefo): JsonResponse
+    {
+        Gate::authorize('allocate', $bloodRequest);
+
+        $remaining = max(0, $bloodRequest->quantity - BloodRequestAllocation::query()
+            ->where('blood_request_id', $bloodRequest->id)
+            ->whereNull('released_at')
+            ->count());
+
+        return ApiResponse::success([
+            'blood_request_id' => $bloodRequest->public_id,
+            'remaining' => $remaining,
+            'candidates' => $fefo->candidatesFor($bloodRequest, $remaining)
+                ->map(fn (BloodBatch $unit): array => [
+                    'unit_id' => $unit->public_id,
+                    'blood_group' => $unit->getAttribute('blood_group'),
+                    'rh_factor' => $unit->getAttribute('rh_factor'),
+                    'expires_at' => $unit->expires_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all(),
+        ]);
+    }
+
+    public function allocate(AllocateRequest $request, BloodRequest $bloodRequest, AllocateUnitsFefo $fefo): JsonResponse
+    {
+        Gate::authorize('allocate', $bloodRequest);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $allocations = $fefo->handle($bloodRequest, $user->id, $request->max());
+
+        return ApiResponse::success([
+            'blood_request' => $bloodRequest->load('facility')->toApiArray(),
+            'allocations' => array_map(
+                fn (BloodRequestAllocation $allocation): array => $allocation->load(['bloodRequest', 'bloodBatch'])->toApiArray(),
+                $allocations,
+            ),
+        ])->setStatusCode(201);
+    }
+
+    public function releaseAllocation(ReleaseAllocationRequest $request, BloodRequestAllocation $allocation, AllocateUnitsFefo $fefo): JsonResponse
+    {
+        Gate::authorize('allocate', $allocation->bloodRequest);
+
+        $allocation = $fefo->release($allocation, $request->validated('reason'));
+
+        return ApiResponse::success($allocation->load(['bloodRequest', 'bloodBatch'])->toApiArray());
     }
 }

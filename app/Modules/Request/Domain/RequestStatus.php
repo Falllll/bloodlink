@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Request\Domain;
 
 /**
- * Graf status permintaan darah. Kartu 310 HANYA menulis OPEN; status lain
- * belum ditulis kode mana pun -- alokasi (kartu 320) yang menaikkannya ke
- * partially_fulfilled/fulfilled. Bukan pekerjaan yang terlupa.
+ * Graf status permintaan darah. Kartu 310 menulis OPEN; alokasi FEFO (kartu 320)
+ * menaikkannya ke partially_fulfilled/fulfilled dan MENURUNKANNYA kembali saat
+ * alokasi dilepas -- terpenuhi di sini berarti "semua kantong dialokasikan",
+ * belum diterbitkan, jadi masih bisa mundur. CANCELLED dan EXPIRED belum
+ * ditulis kode mana pun (saga pembatalan, kartu 360).
  */
 enum RequestStatus: string
 {
@@ -22,8 +24,10 @@ enum RequestStatus: string
     {
         return match ($this) {
             self::OPEN => [self::PARTIALLY_FULFILLED, self::FULFILLED, self::CANCELLED, self::EXPIRED],
-            self::PARTIALLY_FULFILLED => [self::FULFILLED, self::CANCELLED, self::EXPIRED],
-            self::FULFILLED, self::CANCELLED, self::EXPIRED => [],
+            self::PARTIALLY_FULFILLED => [self::OPEN, self::FULFILLED, self::CANCELLED, self::EXPIRED],
+            // Alokasi dilepas sebelum kantong diterbitkan (kartu 320).
+            self::FULFILLED => [self::OPEN, self::PARTIALLY_FULFILLED],
+            self::CANCELLED, self::EXPIRED => [],
         };
     }
 

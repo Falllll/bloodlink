@@ -15,6 +15,9 @@ final class BloodRequestPolicy
 
     private const string VIEW = 'request.view';
 
+    /** Mengeluarkan stok adalah tindakan inventory, bukan tindakan permintaan. */
+    private const string RELEASE_STOCK = 'inventory.release';
+
     /** Gerbang jenis data; baris mana diurus visibleTo(). */
     public function viewAny(User $user): bool
     {
@@ -39,5 +42,19 @@ final class BloodRequestPolicy
     public function create(User $user): bool
     {
         return $user->facilityId() !== null && $user->hasPermissionTo(self::CREATE);
+    }
+
+    /** Melihat kandidat dan mengalokasikan unit dari stok fasilitas peminta. */
+    public function allocate(User $user, BloodRequest $request): bool
+    {
+        if (! $user->hasPermissionTo(self::RELEASE_STOCK)) {
+            return false;
+        }
+
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() !== null && $user->facilityId() === $request->ownerFacilityId();
     }
 }
