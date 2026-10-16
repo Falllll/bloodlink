@@ -33,6 +33,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon $needed_by
  * @property string|null $note
  * @property int $requested_by
+ * @property Carbon|null $cancelled_at
+ * @property string|null $cancel_reason
  */
 final class BloodRequest extends Model implements FacilityScoped
 {
@@ -57,6 +59,7 @@ final class BloodRequest extends Model implements FacilityScoped
             'urgency' => RequestUrgency::class,
             'status' => RequestStatus::class,
             'needed_by' => 'datetime',
+            'cancelled_at' => 'datetime',
             'quantity' => 'integer',
         ];
     }
@@ -83,6 +86,8 @@ final class BloodRequest extends Model implements FacilityScoped
             'status' => $this->status->value,
             'needed_by' => $this->needed_by->toIso8601String(),
             'note' => $this->note,
+            'cancelled_at' => $this->cancelled_at?->toIso8601String(),
+            'cancel_reason' => $this->cancel_reason,
         ];
     }
 }

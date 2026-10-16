@@ -10,6 +10,7 @@ use App\Models\BloodRequestAllocation;
 use App\Models\Crossmatch;
 use App\Models\User;
 use App\Modules\Request\Application\AllocateUnitsFefo;
+use App\Modules\Request\Application\CancelBloodRequest;
 use App\Modules\Request\Application\CreateBloodRequest;
 use App\Modules\Request\Application\IssueAllocatedUnit;
 use App\Modules\Request\Application\RecordCrossmatch;
@@ -17,6 +18,7 @@ use App\Modules\Request\Application\ReserveAllocatedUnits;
 use App\Modules\Request\Domain\RequestUrgency;
 use App\Modules\Request\Http\Requests\AllocateRequest;
 use App\Modules\Request\Http\Requests\BloodRequestListRequest;
+use App\Modules\Request\Http\Requests\CancelBloodRequestRequest;
 use App\Modules\Request\Http\Requests\RecordCrossmatchRequest;
 use App\Modules\Request\Http\Requests\ReleaseAllocationRequest;
 use App\Modules\Request\Http\Requests\ReserveRequest;
@@ -71,6 +73,16 @@ final class BloodRequestController
         );
 
         return ApiResponse::success($bloodRequest->load('facility')->toApiArray())->setStatusCode(201);
+    }
+
+    /** Saga pembatalan (kartu 360): semua alokasi yang belum terbit dilepas dalam satu transaksi. */
+    public function cancel(CancelBloodRequestRequest $request, BloodRequest $bloodRequest, CancelBloodRequest $cancelBloodRequest): JsonResponse
+    {
+        Gate::authorize('cancel', $bloodRequest);
+
+        $bloodRequest = $cancelBloodRequest->handle($bloodRequest, $request->validated('reason'));
+
+        return ApiResponse::success($bloodRequest->load('facility')->toApiArray());
     }
 
     /** Kandidat FEFO yang lolos gerbang kompatibilitas, sebanyak sisa kuantitas. Tidak menulis apa pun. */
@@ -130,6 +142,9 @@ final class BloodRequestController
         // reserved tanpa alokasi aktif -- tak terlihat timeout, tak bisa dialokasikan.
         // Lepas reservasinya dulu, dalam transaksi yang sama.
         $allocation = DB::transaction(function () use ($allocation, $reason, $fefo, $reservations): BloodRequestAllocation {
+            // URUTAN KUNCI sama dengan saga pembatalan: permintaan dulu, baru unit dan alokasi.
+            BloodRequest::query()->whereKey($allocation->blood_request_id)->lockForUpdate()->firstOrFail();
+
             $reservations->release($allocation, 'allocation released: '.$reason);
 
             return $fefo->release($allocation, $reason);

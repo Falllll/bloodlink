@@ -8,7 +8,6 @@ use App\Models\BloodBatch;
 use App\Models\BloodRequest;
 use App\Models\BloodRequestAllocation;
 use App\Modules\Request\Application\Exceptions\BloodRequestNotAllocatable;
-use App\Modules\Request\Domain\RequestStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -37,7 +36,10 @@ final class AllocateUnitsFefo
 
     private const int BATCH = 50;
 
-    public function __construct(private readonly CheckBloodCompatibility $compatibility) {}
+    public function __construct(
+        private readonly CheckBloodCompatibility $compatibility,
+        private readonly RecomputeRequestStatus $recompute,
+    ) {}
 
     /**
      * Kandidat terurut FEFO yang kompatibel. Tidak menulis apa pun.
@@ -146,7 +148,7 @@ final class AllocateUnitsFefo
                 }
             }
 
-            $this->syncStatus($fresh);
+            $this->recompute->handle($fresh);
             $request->setRawAttributes($fresh->getAttributes(), sync: true);
 
             return $allocations;
@@ -168,7 +170,7 @@ final class AllocateUnitsFefo
 
             $allocation->forceFill(['released_at' => now(), 'release_reason' => $reason])->save();
 
-            $this->syncStatus($request);
+            $this->recompute->handle($request);
         });
 
         return $allocation;
@@ -243,21 +245,5 @@ final class AllocateUnitsFefo
             ->where('blood_request_id', $request->id)
             ->whereNull('released_at')
             ->count();
-    }
-
-    /** Naik/turun lewat graf RequestStatus, tidak pernah ditulis langsung. */
-    private function syncStatus(BloodRequest $request): void
-    {
-        $active = $this->activeCount($request);
-
-        $target = match (true) {
-            $active === 0 => RequestStatus::OPEN,
-            $active < $request->quantity => RequestStatus::PARTIALLY_FULFILLED,
-            default => RequestStatus::FULFILLED,
-        };
-
-        if ($target !== $request->status && $request->status->canTransitionTo($target)) {
-            $request->forceFill(['status' => $target])->save();
-        }
     }
 }

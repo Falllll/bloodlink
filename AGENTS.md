@@ -57,6 +57,13 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   `TransitionBloodBatch` (yang menolak keduanya): rilis lewat `ReleaseUnit`
   (panel TTI non-reaktif lengkap), penerbitan lewat `IssueAllocatedUnit`
   (crossmatch TERBARU compatible). Jalur penerbit baru wajib memakai gerbang yang sama.
+- Kompensasi (pembatalan/kedaluwarsa permintaan, crossmatch incompatible) adalah
+  **satu `DB::transaction`**, bukan saga terdistribusi — tidak ada broker, outbox,
+  atau orkestrator. `ReturnAllocatedUnit` adalah satu-satunya jalur kompensasi yang
+  mengembalikan unit ke peredaran: alokasi dan reservasinya dilepas bersama, unit
+  kembali ke `released` (atau `expired` bila sudah lewat `expires_at`), tidak pernah
+  lebih mundur, dan unit `issued` tidak pernah ditarik. Jalur kompensasi baru wajib
+  memanggilnya, lalu `RecomputeRequestStatus`.
 - Object storage: berkas lampiran masuk disk `s3` (Garage self-hosted, lihat
   service `garage` di docker-compose), bukan disk `local` dan bukan ke dalam
   working tree. Disk itu `visibility => private` dan `throw => true`; jangan

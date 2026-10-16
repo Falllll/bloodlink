@@ -168,7 +168,9 @@ final class CrossmatchTest extends TestCase
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'CROSSMATCH_REJECTED');
 
-        $this->assertSame('reserved', $this->unitStatus($allocation));
+        // Saga kartu 360: incompatible melepas alokasinya, unit kembali ke stok.
+        $this->assertSame('released', $this->unitStatus($allocation));
+        $this->assertNotNull($allocation->fresh()?->released_at);
     }
 
     /** Inconclusive bukan incompatible: unitnya tidak ditarik, hanya belum boleh terbit. */
@@ -197,7 +199,7 @@ final class CrossmatchTest extends TestCase
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'CROSSMATCH_REJECTED');
 
-        $this->assertSame('reserved', $this->unitStatus($allocation));
+        $this->assertSame('released', $this->unitStatus($allocation));
     }
 
     public function test_the_latest_result_wins_when_inconclusive_is_followed_by_compatible(): void

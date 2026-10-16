@@ -2507,6 +2507,65 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /blood-requests/{bloodRequest}/cancel:
+    parameters:
+      - in: path
+        name: bloodRequest
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID permintaan (`public_id`).
+    post:
+      summary: Batalkan satu permintaan darah
+      description: >-
+        Saga pembatalan dalam SATU transaksi: setiap alokasi aktif yang
+        unitnya belum `issued` dilepas beserta reservasinya
+        (`release_reason` = `request_cancelled`), unitnya kembali `released`
+        -- atau `expired` bila kantongnya kedaluwarsa selama tertahan -- dan
+        permintaan berpindah ke `cancelled`. Unit yang sudah `issued` tidak
+        ditarik; alokasinya tetap aktif sebagai riwayat. Gagal di tengah
+        berarti tidak ada yang berubah. Sekali jalan: permintaan yang sudah
+        `cancelled`/`expired` ditolak 409 `BLOOD_REQUEST_NOT_ALLOCATABLE`.
+        Butuh `request.create` atau `request.approve` di fasilitas peminta.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+              required: [reason]
+      responses:
+        '200':
+          description: Permintaan dibatalkan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BloodRequest'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /blood-requests/{bloodRequest}/candidates:
     parameters:
       - in: path
@@ -2821,7 +2880,11 @@ paths:
       description: >-
         Append-only: crossmatch ulang MENAMBAH baris, tidak menimpa; yang
         berlaku untuk penerbitan adalah hasil terbaru. Pencatatan tidak
-        mengubah status unit maupun alokasi apa pun. `method` hanya jejak audit
+        mengubah status unit maupun alokasi apa pun, KECUALI hasil
+        `incompatible`: alokasinya langsung dilepas
+        (`release_reason` = `crossmatch_incompatible`), unitnya kembali ke
+        stok, dan status permintaan diturunkan -- dalam transaksi yang sama.
+        `inconclusive` tidak melepas apa pun. `method` hanya jejak audit
         (teks bebas), tidak pernah dipakai memutuskan. Hasil `incompatible` dan
         `inconclusive` wajib membawa `note`. Alokasi yang sudah dilepas ditolak
         409 `CROSSMATCH_REJECTED`. Butuh `inventory.release` di fasilitas
@@ -3987,14 +4050,24 @@ components:
         status:
           type: string
           enum: [open, partially_fulfilled, fulfilled, cancelled, expired]
-          description: Hanya `open` yang ditulis saat ini; status lain lahir bersama alokasi.
+          description: >-
+            `partially_fulfilled`/`fulfilled` mengikuti jumlah alokasi aktif;
+            `cancelled` dan `expired` terminal.
         needed_by:
           type: string
           format: date-time
         note:
           type: string
           nullable: true
-      required: [id, facility_id, patient_reference, component, blood_group, rh_factor, quantity, urgency, status, needed_by, note]
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancel_reason:
+          type: string
+          nullable: true
+          description: Terisi bersama `cancelled_at`, atau keduanya null.
+      required: [id, facility_id, patient_reference, component, blood_group, rh_factor, quantity, urgency, status, needed_by, note, cancelled_at, cancel_reason]
     BloodRequestAllocation:
       type: object
       description: >-

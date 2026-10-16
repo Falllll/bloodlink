@@ -15,6 +15,8 @@ final class BloodRequestPolicy
 
     private const string VIEW = 'request.view';
 
+    private const string APPROVE = 'request.approve';
+
     /** Mengeluarkan stok adalah tindakan inventory, bukan tindakan permintaan. */
     private const string RELEASE_STOCK = 'inventory.release';
 
@@ -42,6 +44,20 @@ final class BloodRequestPolicy
     public function create(User $user): bool
     {
         return $user->facilityId() !== null && $user->hasPermissionTo(self::CREATE);
+    }
+
+    /** Pemohon membatalkan permintaannya sendiri, atau penyetuju membatalkannya. */
+    public function cancel(User $user, BloodRequest $request): bool
+    {
+        if (! $user->hasPermissionTo(self::CREATE) && ! $user->hasPermissionTo(self::APPROVE)) {
+            return false;
+        }
+
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() !== null && $user->facilityId() === $request->ownerFacilityId();
     }
 
     /** Melihat kandidat dan mengalokasikan unit dari stok fasilitas peminta. */

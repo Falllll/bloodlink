@@ -14,6 +14,10 @@ use App\Modules\Request\Domain\Events\UnitReservationLifted;
  * sudah pernah lolos gerbang itu -- released_at-nya terisi -- jadi mengembalikannya
  * bukan merilis ulang, melainkan membatalkan pemesanan.
  *
+ * Kantong yang kedaluwarsa SELAMA tertahan di reservasi kembali ke EXPIRED, bukan
+ * RELEASED: menaruhnya di released berarti mengembalikannya ke daftar kandidat
+ * stok. RESERVED -> EXPIRED sudah sah di graf (kartu 360).
+ *
  * Sengaja sinkron, BUKAN ShouldQueue: berjalan di transaksi pelepasan reservasi.
  */
 final class ReturnReservedUnitToStock
@@ -28,6 +32,11 @@ final class ReturnReservedUnitToStock
             return;
         }
 
-        $unit->forceFill(['status' => BatchStatus::RELEASED])->save();
+        // SENGAJA `<`, sama dengan inventory:expire-check: yang habis tepat detik ini belum lewat.
+        $to = $unit->expires_at !== null && $unit->expires_at->lt(now())
+            ? BatchStatus::EXPIRED
+            : BatchStatus::RELEASED;
+
+        $unit->forceFill(['status' => $to])->save();
     }
 }

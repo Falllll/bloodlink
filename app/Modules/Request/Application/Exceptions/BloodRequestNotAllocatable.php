@@ -15,6 +15,16 @@ final class BloodRequestNotAllocatable extends DomainException
         return new self("A blood request in status \"{$status->value}\" no longer accepts allocations.");
     }
 
+    public static function cannotCancel(RequestStatus $status): self
+    {
+        return new self("A blood request in status \"{$status->value}\" cannot be cancelled.");
+    }
+
+    public static function cannotExpire(RequestStatus $status): self
+    {
+        return new self("A blood request in status \"{$status->value}\" cannot be expired.");
+    }
+
     public function errorCode(): ErrorCode
     {
         return ErrorCode::BLOOD_REQUEST_NOT_ALLOCATABLE;
