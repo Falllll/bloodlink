@@ -2653,6 +2653,8 @@ paths:
       description: >-
         Membebaskan unit untuk dialokasikan lagi dan menurunkan status
         permintaan kembali (`fulfilled` -> `partially_fulfilled` -> `open`).
+        Reservasi yang masih menempel dilepas lebih dulu, dalam transaksi yang
+        sama, sehingga unitnya kembali `released`.
         Idempoten: alokasi yang sudah dilepas dikembalikan apa adanya, alasan
         pertama dipertahankan. DELETE tidak memakai `Idempotency-Key`.
         Butuh `inventory.release` di fasilitas peminta.
@@ -2672,6 +2674,121 @@ paths:
       responses:
         '200':
           description: Alokasi dilepas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BloodRequestAllocation'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /blood-requests/{bloodRequest}/reservations:
+    parameters:
+      - in: path
+        name: bloodRequest
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID permintaan (`public_id`).
+    post:
+      summary: Pesan unit yang sudah dialokasikan
+      description: >-
+        Setiap alokasi aktif yang belum dipesan: unitnya pindah `released` ->
+        `reserved` dan alokasinya mendapat `reserved_at` serta
+        `reservation_expires_at`, dalam SATU transaksi -- satu unit gagal,
+        semuanya batal. Baris unit dikunci (`SELECT ... FOR UPDATE`) dalam
+        urutan id yang stabil. Unit yang sudah dipesan ditolak oleh graf
+        status (409 `BLOOD_BATCH_TRANSITION_REJECTED`); permintaan tanpa
+        alokasi yang bisa dipesan juga 409. Jendela default 48 jam adalah
+        pilihan operasional, bukan angka medis; `window_hours` maksimal 168
+        (kewarasan instrumen). Reservasi yang lewat batas dilepas otomatis tiap
+        jam. Butuh `inventory.release`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                window_hours:
+                  type: integer
+                  minimum: 1
+                  maximum: 168
+                  nullable: true
+      responses:
+        '201':
+          description: Alokasi yang baru dipesan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BloodRequestAllocation'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /allocations/{allocation}/reservation:
+    parameters:
+      - in: path
+        name: allocation
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID alokasi (`public_id`).
+    delete:
+      summary: Lepas reservasi satu alokasi
+      description: >-
+        Unit `reserved` kembali `released`; alokasinya TETAP hidup (gunakan
+        `DELETE /allocations/{allocation}` untuk melepas alokasinya, yang juga
+        melepas reservasinya lebih dulu). Unit yang sudah keluar stok
+        (`issued`, `discarded`, `expired`) tidak dipaksa kembali -- hanya kolom
+        reservasinya yang dikosongkan. Idempoten. DELETE tidak memakai
+        `Idempotency-Key`. Butuh `inventory.release`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+              required: [reason]
+      responses:
+        '200':
+          description: Reservasi dilepas.
           content:
             application/json:
               schema:
@@ -3781,7 +3898,21 @@ components:
         release_reason:
           type: string
           nullable: true
-      required: [id, blood_request_id, unit_id, allocated_at, released_at, release_reason]
+        reserved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Terisi selama unitnya dipesan untuk permintaan ini.
+        reservation_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Selalu terisi bersama `reserved_at`, dan kosong bersamanya.
+        reservation_release_reason:
+          type: string
+          nullable: true
+          description: Alasan reservasi terakhir dilepas (mis. `reservation timeout`).
+      required: [id, blood_request_id, unit_id, allocated_at, released_at, release_reason, reserved_at, reservation_expires_at, reservation_release_reason]
     BloodBatch:
       type: object
       description: >-

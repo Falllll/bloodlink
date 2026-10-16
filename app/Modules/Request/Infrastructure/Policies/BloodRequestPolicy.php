@@ -57,4 +57,18 @@ final class BloodRequestPolicy
 
         return $user->facilityId() !== null && $user->facilityId() === $request->ownerFacilityId();
     }
+
+    /** Memesan dan melepas reservasi: mengubah stok yang terlihat petugas fasilitas peminta. */
+    public function reserve(User $user, BloodRequest $request): bool
+    {
+        if (! $user->hasPermissionTo(self::RELEASE_STOCK)) {
+            return false;
+        }
+
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() !== null && $user->facilityId() === $request->ownerFacilityId();
+    }
 }

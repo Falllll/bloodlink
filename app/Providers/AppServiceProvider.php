@@ -29,11 +29,15 @@ use App\Modules\Identity\Infrastructure\Policies\AuditLogPolicy;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
 use App\Modules\Inventory\Application\AssignStorageProfile;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
+use App\Modules\Inventory\Application\Listeners\MarkUnitReserved;
+use App\Modules\Inventory\Application\Listeners\ReturnReservedUnitToStock;
 use App\Modules\Inventory\Domain\ComponentExpiryPolicy;
 use App\Modules\Inventory\Infrastructure\BloodBatchEventRecorder;
 use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StockTransferPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
+use App\Modules\Request\Domain\Events\UnitReservationLifted;
+use App\Modules\Request\Domain\Events\UnitReservationPlaced;
 use App\Modules\Request\Infrastructure\Policies\BloodRequestPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -90,6 +94,9 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(DonationCompleted::class, CreateQuarantinedUnit::class);
         Event::listen(DonorPermanentlyDeferred::class, RecordPermanentDeferral::class);
+        // Reservasi (kartu 330): sinkron, di transaksi pemesanan/pelepasan.
+        Event::listen(UnitReservationPlaced::class, MarkUnitReserved::class);
+        Event::listen(UnitReservationLifted::class, ReturnReservedUnitToStock::class);
 
         Event::listen(Looping::class, function () {
             static $last = 0;

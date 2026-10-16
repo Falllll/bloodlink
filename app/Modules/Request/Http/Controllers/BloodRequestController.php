@@ -10,10 +10,12 @@ use App\Models\BloodRequestAllocation;
 use App\Models\User;
 use App\Modules\Request\Application\AllocateUnitsFefo;
 use App\Modules\Request\Application\CreateBloodRequest;
+use App\Modules\Request\Application\ReserveAllocatedUnits;
 use App\Modules\Request\Domain\RequestUrgency;
 use App\Modules\Request\Http\Requests\AllocateRequest;
 use App\Modules\Request\Http\Requests\BloodRequestListRequest;
 use App\Modules\Request\Http\Requests\ReleaseAllocationRequest;
+use App\Modules\Request\Http\Requests\ReserveRequest;
 use App\Modules\Request\Http\Requests\StoreBloodRequestRequest;
 use App\Shared\Blood\BloodComponent;
 use App\Shared\Blood\BloodGroup;
@@ -23,6 +25,7 @@ use App\Shared\Http\AppliesListQuery;
 use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Pagination\CursorPaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 final class BloodRequestController
@@ -108,11 +111,45 @@ final class BloodRequestController
         ])->setStatusCode(201);
     }
 
-    public function releaseAllocation(ReleaseAllocationRequest $request, BloodRequestAllocation $allocation, AllocateUnitsFefo $fefo): JsonResponse
-    {
+    public function releaseAllocation(
+        ReleaseAllocationRequest $request,
+        BloodRequestAllocation $allocation,
+        AllocateUnitsFefo $fefo,
+        ReserveAllocatedUnits $reservations,
+    ): JsonResponse {
         Gate::authorize('allocate', $allocation->bloodRequest);
 
-        $allocation = $fefo->release($allocation, $request->validated('reason'));
+        $reason = $request->validated('reason');
+
+        // Alokasi yang dilepas dengan reservasi masih menempel akan meninggalkan unit
+        // reserved tanpa alokasi aktif -- tak terlihat timeout, tak bisa dialokasikan.
+        // Lepas reservasinya dulu, dalam transaksi yang sama.
+        $allocation = DB::transaction(function () use ($allocation, $reason, $fefo, $reservations): BloodRequestAllocation {
+            $reservations->release($allocation, 'allocation released: '.$reason);
+
+            return $fefo->release($allocation, $reason);
+        });
+
+        return ApiResponse::success($allocation->load(['bloodRequest', 'bloodBatch'])->toApiArray());
+    }
+
+    public function reserve(ReserveRequest $request, BloodRequest $bloodRequest, ReserveAllocatedUnits $reservations): JsonResponse
+    {
+        Gate::authorize('reserve', $bloodRequest);
+
+        $reserved = $reservations->handle($bloodRequest, $request->windowHours());
+
+        return ApiResponse::success(array_map(
+            fn (BloodRequestAllocation $allocation): array => $allocation->load(['bloodRequest', 'bloodBatch'])->toApiArray(),
+            $reserved,
+        ))->setStatusCode(201);
+    }
+
+    public function releaseReservation(ReleaseAllocationRequest $request, BloodRequestAllocation $allocation, ReserveAllocatedUnits $reservations): JsonResponse
+    {
+        Gate::authorize('reserve', $allocation->bloodRequest);
+
+        $allocation = $reservations->release($allocation, $request->validated('reason'));
 
         return ApiResponse::success($allocation->load(['bloodRequest', 'bloodBatch'])->toApiArray());
     }

@@ -21,6 +21,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon $allocated_at
  * @property Carbon|null $released_at
  * @property string|null $release_reason
+ * @property Carbon|null $reserved_at
+ * @property Carbon|null $reservation_expires_at
+ * @property string|null $reservation_release_reason
  */
 final class BloodRequestAllocation extends Model
 {
@@ -41,6 +44,8 @@ final class BloodRequestAllocation extends Model
         return [
             'allocated_at' => 'datetime',
             'released_at' => 'datetime',
+            'reserved_at' => 'datetime',
+            'reservation_expires_at' => 'datetime',
         ];
     }
 
@@ -72,6 +77,9 @@ final class BloodRequestAllocation extends Model
             'allocated_at' => $this->allocated_at->toIso8601String(),
             'released_at' => $this->released_at?->toIso8601String(),
             'release_reason' => $this->release_reason,
+            'reserved_at' => $this->reserved_at?->toIso8601String(),
+            'reservation_expires_at' => $this->reservation_expires_at?->toIso8601String(),
+            'reservation_release_reason' => $this->reservation_release_reason,
         ];
     }
 }
