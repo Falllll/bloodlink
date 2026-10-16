@@ -87,6 +87,8 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::delete('/allocations/{allocation}', [BloodRequestController::class, 'releaseAllocation'])->name('allocations.release');
     Route::post('/blood-requests/{bloodRequest}/reservations', [BloodRequestController::class, 'reserve'])->name('blood-requests.reserve');
     Route::delete('/allocations/{allocation}/reservation', [BloodRequestController::class, 'releaseReservation'])->name('allocations.reservation.release');
+    Route::post('/allocations/{allocation}/crossmatches', [BloodRequestController::class, 'recordCrossmatch'])->name('allocations.crossmatches.store');
+    Route::post('/allocations/{allocation}/issue', [BloodRequestController::class, 'issue'])->name('allocations.issue');
     Route::get('/compatibility', CompatibilityController::class)->name('compatibility.show');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');

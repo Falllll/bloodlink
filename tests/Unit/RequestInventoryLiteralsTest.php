@@ -7,6 +7,7 @@ namespace Tests\Unit;
 use App\Modules\Inventory\Domain\BatchStatus;
 use App\Modules\Inventory\Domain\TransferStatus;
 use App\Modules\Request\Application\AllocateUnitsFefo;
+use App\Modules\Request\Application\IssueAllocatedUnit;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -19,6 +20,11 @@ final class RequestInventoryLiteralsTest extends TestCase
     public function test_the_released_literal_matches_batch_status(): void
     {
         $this->assertSame(BatchStatus::RELEASED->value, AllocateUnitsFefo::RELEASED);
+    }
+
+    public function test_the_reserved_literal_matches_batch_status(): void
+    {
+        $this->assertSame(BatchStatus::RESERVED->value, IssueAllocatedUnit::RESERVED);
     }
 
     public function test_the_open_transfer_literals_match_transfer_status(): void

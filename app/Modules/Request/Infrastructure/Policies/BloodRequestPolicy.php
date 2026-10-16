@@ -61,6 +61,24 @@ final class BloodRequestPolicy
     /** Memesan dan melepas reservasi: mengubah stok yang terlihat petugas fasilitas peminta. */
     public function reserve(User $user, BloodRequest $request): bool
     {
+        return $this->stockAction($user, $request);
+    }
+
+    /** Mencatat hasil uji silang untuk unit yang dialokasikan ke permintaan ini. */
+    public function recordCrossmatch(User $user, BloodRequest $request): bool
+    {
+        return $this->stockAction($user, $request);
+    }
+
+    /** Menerbitkan unit yang lolos crossmatch. */
+    public function issue(User $user, BloodRequest $request): bool
+    {
+        return $this->stockAction($user, $request);
+    }
+
+    /** Urutan cek: izin dulu, lalu operator global, lalu kecocokan fasilitas. */
+    private function stockAction(User $user, BloodRequest $request): bool
+    {
         if (! $user->hasPermissionTo(self::RELEASE_STOCK)) {
             return false;
         }

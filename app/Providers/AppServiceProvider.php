@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\BloodBatch;
 use App\Models\BloodRequest;
 use App\Models\BloodRequestAllocation;
+use App\Models\Crossmatch;
 use App\Models\Deferral;
 use App\Models\DeferralReason;
 use App\Models\Donation;
@@ -29,6 +30,7 @@ use App\Modules\Identity\Infrastructure\Policies\AuditLogPolicy;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
 use App\Modules\Inventory\Application\AssignStorageProfile;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
+use App\Modules\Inventory\Application\Listeners\MarkUnitIssued;
 use App\Modules\Inventory\Application\Listeners\MarkUnitReserved;
 use App\Modules\Inventory\Application\Listeners\ReturnReservedUnitToStock;
 use App\Modules\Inventory\Domain\ComponentExpiryPolicy;
@@ -36,6 +38,7 @@ use App\Modules\Inventory\Infrastructure\BloodBatchEventRecorder;
 use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StockTransferPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
+use App\Modules\Request\Domain\Events\AllocatedUnitIssued;
 use App\Modules\Request\Domain\Events\UnitReservationLifted;
 use App\Modules\Request\Domain\Events\UnitReservationPlaced;
 use App\Modules\Request\Infrastructure\Policies\BloodRequestPolicy;
@@ -85,7 +88,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(StockTransfer::class, StockTransferPolicy::class);
         Gate::policy(BloodRequest::class, BloodRequestPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class, BloodRequestAllocation::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class, BloodRequestAllocation::class, Crossmatch::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 
@@ -97,6 +100,8 @@ class AppServiceProvider extends ServiceProvider
         // Reservasi (kartu 330): sinkron, di transaksi pemesanan/pelepasan.
         Event::listen(UnitReservationPlaced::class, MarkUnitReserved::class);
         Event::listen(UnitReservationLifted::class, ReturnReservedUnitToStock::class);
+        // Penerbitan bergerbang crossmatch (kartu 350): sinkron, di transaksi penerbitan.
+        Event::listen(AllocatedUnitIssued::class, MarkUnitIssued::class);
 
         Event::listen(Looping::class, function () {
             static $last = 0;

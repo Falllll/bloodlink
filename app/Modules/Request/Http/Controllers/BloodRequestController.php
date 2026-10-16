@@ -7,13 +7,17 @@ namespace App\Modules\Request\Http\Controllers;
 use App\Models\BloodBatch;
 use App\Models\BloodRequest;
 use App\Models\BloodRequestAllocation;
+use App\Models\Crossmatch;
 use App\Models\User;
 use App\Modules\Request\Application\AllocateUnitsFefo;
 use App\Modules\Request\Application\CreateBloodRequest;
+use App\Modules\Request\Application\IssueAllocatedUnit;
+use App\Modules\Request\Application\RecordCrossmatch;
 use App\Modules\Request\Application\ReserveAllocatedUnits;
 use App\Modules\Request\Domain\RequestUrgency;
 use App\Modules\Request\Http\Requests\AllocateRequest;
 use App\Modules\Request\Http\Requests\BloodRequestListRequest;
+use App\Modules\Request\Http\Requests\RecordCrossmatchRequest;
 use App\Modules\Request\Http\Requests\ReleaseAllocationRequest;
 use App\Modules\Request\Http\Requests\ReserveRequest;
 use App\Modules\Request\Http\Requests\StoreBloodRequestRequest;
@@ -24,6 +28,7 @@ use App\Shared\Http\ApiResponse;
 use App\Shared\Http\AppliesListQuery;
 use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -152,5 +157,45 @@ final class BloodRequestController
         $allocation = $reservations->release($allocation, $request->validated('reason'));
 
         return ApiResponse::success($allocation->load(['bloodRequest', 'bloodBatch'])->toApiArray());
+    }
+
+    public function recordCrossmatch(RecordCrossmatchRequest $request, BloodRequestAllocation $allocation, RecordCrossmatch $recordCrossmatch): JsonResponse
+    {
+        Gate::authorize('recordCrossmatch', $allocation->bloodRequest);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $crossmatch = $recordCrossmatch->handle(
+            $allocation,
+            $request->result(),
+            $user,
+            $request->validated('method'),
+            $request->validated('note'),
+        );
+
+        return ApiResponse::success($crossmatch->toApiArray())->setStatusCode(201);
+    }
+
+    public function issue(Request $request, BloodRequestAllocation $allocation, IssueAllocatedUnit $issueAllocatedUnit): JsonResponse
+    {
+        Gate::authorize('issue', $allocation->bloodRequest);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $allocation = $issueAllocatedUnit->handle($allocation, $user);
+
+        return ApiResponse::success([
+            'allocation' => $allocation->load(['bloodRequest', 'bloodBatch'])->toApiArray(),
+            'unit_status' => (string) $allocation->bloodBatch->refresh()->getRawOriginal('status'),
+            'crossmatches' => Crossmatch::query()
+                ->where('blood_request_allocation_id', $allocation->id)
+                ->orderBy('performed_at')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Crossmatch $crossmatch): array => $crossmatch->setRelation('allocation', $allocation)->toApiArray())
+                ->all(),
+        ]);
     }
 }

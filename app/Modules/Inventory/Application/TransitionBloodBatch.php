@@ -24,6 +24,12 @@ final class TransitionBloodBatch
             throw BloodBatchTransitionRejected::separationIsNotAStatusUpdate();
         }
 
+        // Penerbitan menuntut crossmatch yang compatible (Kartu 350); hanya
+        // IssueAllocatedUnit yang boleh mencapainya.
+        if ($to === BatchStatus::ISSUED) {
+            throw BloodBatchTransitionRejected::issueIsGated();
+        }
+
         DB::transaction(function () use ($batch, $to, $discardReason): void {
             // Baca ulang dengan kunci: dua request yang membawa model basi tidak
             // boleh sama-sama lolos cek transisi (preseden TransitionAppointment).

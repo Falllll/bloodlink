@@ -2807,6 +2807,128 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /allocations/{allocation}/crossmatches:
+    parameters:
+      - in: path
+        name: allocation
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID alokasi (`public_id`).
+    post:
+      summary: Catat satu hasil crossmatch
+      description: >-
+        Append-only: crossmatch ulang MENAMBAH baris, tidak menimpa; yang
+        berlaku untuk penerbitan adalah hasil terbaru. Pencatatan tidak
+        mengubah status unit maupun alokasi apa pun. `method` hanya jejak audit
+        (teks bebas), tidak pernah dipakai memutuskan. Hasil `incompatible` dan
+        `inconclusive` wajib membawa `note`. Alokasi yang sudah dilepas ditolak
+        409 `CROSSMATCH_REJECTED`. Butuh `inventory.release` di fasilitas
+        peminta.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  enum: [compatible, incompatible, inconclusive]
+                method:
+                  type: string
+                  maxLength: 120
+                  nullable: true
+                note:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+                  description: Wajib bila `result` bukan `compatible`.
+              required: [result]
+      responses:
+        '201':
+          description: Hasil crossmatch tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Crossmatch'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /allocations/{allocation}/issue:
+    parameters:
+      - in: path
+        name: allocation
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID alokasi (`public_id`).
+    post:
+      summary: Terbitkan unit yang lolos crossmatch
+      description: >-
+        SATU-SATUNYA jalur ke status `issued`; perpindahan status biasa
+        (`PATCH /blood-batches/{id}/status`) menolak `issued`. Syaratnya:
+        alokasi masih aktif, unit berstatus `reserved`, dan crossmatch TERBARU
+        bernilai `compatible` -- hasil compatible lama yang disusul hasil lain
+        tidak berlaku. Penolakan dibalas 409 `CROSSMATCH_REJECTED`; unit tetap
+        `reserved` dan alokasinya tetap aktif. Reservasinya dikosongkan saat
+        terbit supaya timeout reservasi tidak menyentuhnya. Butuh
+        `inventory.release` di fasilitas peminta.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Unit diterbitkan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      allocation:
+                        $ref: '#/components/schemas/BloodRequestAllocation'
+                      unit_status:
+                        type: string
+                        enum: [issued]
+                      crossmatches:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Crossmatch'
+                    required: [allocation, unit_status, crossmatches]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /compatibility:
     get:
       summary: Donor yang lolos gerbang kompatibilitas ABO/RhD untuk satu penerima
@@ -3253,6 +3375,7 @@ components:
         - LAB_RESULT_REJECTED
         - INVENTORY_RELEASE_REJECTED
         - BLOOD_REQUEST_NOT_ALLOCATABLE
+        - CROSSMATCH_REJECTED
     Error:
       type: object
       properties:
@@ -3913,6 +4036,33 @@ components:
           nullable: true
           description: Alasan reservasi terakhir dilepas (mis. `reservation timeout`).
       required: [id, blood_request_id, unit_id, allocated_at, released_at, release_reason, reserved_at, reservation_expires_at, reservation_release_reason]
+    Crossmatch:
+      type: object
+      description: >-
+        Satu hasil uji silang antara sampel pasien dan satu kantong. Append-only.
+        `inconclusive` berarti periksa ulang, bukan tarik unit. `id` numerik
+        internal dan petugas pemeriksa tidak pernah keluar ke API.
+      properties:
+        id:
+          type: string
+          format: uuid
+        allocation_id:
+          type: string
+          format: uuid
+        result:
+          type: string
+          enum: [compatible, incompatible, inconclusive]
+        method:
+          type: string
+          nullable: true
+          description: Teks bebas untuk jejak audit; tidak dipakai memutuskan.
+        note:
+          type: string
+          nullable: true
+        performed_at:
+          type: string
+          format: date-time
+      required: [id, allocation_id, result, method, note, performed_at]
     BloodBatch:
       type: object
       description: >-

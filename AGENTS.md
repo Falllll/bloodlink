@@ -53,6 +53,10 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
 - Queue job tidak mewarisi konteks fasilitas dari request. Job yang perlu
   memeriksa izin harus memanggil `setPermissionsTeamId()` sendiri dari data
   di payload-nya.
+- Status unit `released` dan `issued` hanya lewat gerbang, tidak pernah lewat
+  `TransitionBloodBatch` (yang menolak keduanya): rilis lewat `ReleaseUnit`
+  (panel TTI non-reaktif lengkap), penerbitan lewat `IssueAllocatedUnit`
+  (crossmatch TERBARU compatible). Jalur penerbit baru wajib memakai gerbang yang sama.
 - Object storage: berkas lampiran masuk disk `s3` (Garage self-hosted, lihat
   service `garage` di docker-compose), bukan disk `local` dan bukan ke dalam
   working tree. Disk itu `visibility => private` dan `throw => true`; jangan
