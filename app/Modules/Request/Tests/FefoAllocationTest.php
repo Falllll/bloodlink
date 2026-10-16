@@ -219,6 +219,50 @@ final class FefoAllocationTest extends TestCase
         $this->assertSame([$compatible->public_id], $this->candidateIds($this->request(quantity: 1)));
     }
 
+    /**
+     * 51 kandidat O- dengan kedaluwarsa menaik, supaya keyset melewati batas batch 50.
+     * Kolomnya diubah ke timestamp(6) DI DALAM transaksi test (DDL Postgres ikut
+     * di-rollback): hari ini kolomnya timestamp(0) dan tidak bisa menyimpan sub-detik
+     * sama sekali, jadi tanpa ini test regresi hijau dengan atau tanpa perbaikannya.
+     *
+     * @param  array{0: string, 1: string}  $boundaryExpiries  expires_at mentah unit ke-50 dan ke-51
+     * @return list<string>
+     */
+    private function fiftyOneCandidatesAcrossABatchBoundary(array $boundaryExpiries): array
+    {
+        DB::statement('ALTER TABLE blood_batches ALTER COLUMN expires_at TYPE timestamp(6)');
+
+        $ids = [];
+        for ($i = 1; $i <= 51; $i++) {
+            $ids[] = $this->unit('+'.(2 + $i).' hours')->id;
+        }
+
+        DB::table('blood_batches')->where('id', $ids[49])->update(['expires_at' => $boundaryExpiries[0]]);
+        DB::table('blood_batches')->where('id', $ids[50])->update(['expires_at' => $boundaryExpiries[1]]);
+
+        return $this->candidateIds($this->request(quantity: 20, neededBy: '+1 hour'), 60);
+    }
+
+    public function test_the_candidate_cursor_advances_past_sub_second_expiry_values(): void
+    {
+        $base = now()->addHours(60)->format('Y-m-d H:i:s');
+
+        $ids = $this->fiftyOneCandidatesAcrossABatchBoundary([$base.'.123456', $base.'.654321']);
+
+        $this->assertSame($ids, array_values(array_unique($ids)), 'a candidate appeared twice');
+        $this->assertCount(51, $ids);
+    }
+
+    public function test_units_with_identical_expiry_to_the_microsecond_each_appear_once(): void
+    {
+        $same = now()->addHours(60)->format('Y-m-d H:i:s').'.123456';
+
+        $ids = $this->fiftyOneCandidatesAcrossABatchBoundary([$same, $same]);
+
+        $this->assertSame($ids, array_values(array_unique($ids)), 'a candidate appeared twice');
+        $this->assertCount(51, $ids);
+    }
+
     public function test_a_quarantined_unit_is_never_allocated(): void
     {
         $this->unit('+2 days', status: 'quarantined');

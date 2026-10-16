@@ -61,10 +61,18 @@ final class AllocateUnitsFefo
         // Keyset per batch, bukan "ambil limit x N lalu saring": unit tak kompatibel
         // yang kedaluwarsa lebih dulu tidak boleh memotong hasil diam-diam.
         do {
+            // Kursor dari nilai MENTAH database, bukan Carbon: binding Carbon diformat
+            // 'Y-m-d H:i:s' dan membuang sub-detik, sehingga `expires_at > kursor` ikut
+            // mencocokkan baris kursor itu sendiri dan keyset tidak maju. Kolomnya hari
+            // ini timestamp(0), tapi kursor tidak boleh bergantung pada kebetulan itu.
+            $afterExpiry = $after === null ? null : (string) $after->getRawOriginal('expires_at');
+
             $batch = $this->candidateQuery($request)
                 ->when($after !== null, fn (Builder $q) => $q->where(fn (Builder $w) => $w
-                    ->where('expires_at', '>', $after->expires_at)
-                    ->orWhere(fn (Builder $tie) => $tie->where('expires_at', $after->expires_at)->where('id', '>', $after->id))))
+                    ->where('expires_at', '>', $afterExpiry)
+                    // Tie-break id WAJIB: urutannya expires_at, id -- tanpa ini `>` yang
+                    // ketat melewati unit lain ber-expires_at identik.
+                    ->orWhere(fn (Builder $tie) => $tie->where('expires_at', $afterExpiry)->where('id', '>', $after->id))))
                 ->limit(self::BATCH)
                 ->get();
 
@@ -82,7 +90,15 @@ final class AllocateUnitsFefo
                 }
             }
 
+            $previousId = $after?->id;
             $after = $batch->last();
+
+            // Jaring pengaman: loop ini berjalan di dalam transaksi yang memegang kunci
+            // baris permintaan. Kalau keyset tidak maju karena sebab apa pun, berhenti
+            // dengan daftar yang lebih pendek -- jangan berputar selamanya.
+            if ($after !== null && $after->id === $previousId) {
+                break;
+            }
         } while ($batch->count() === self::BATCH);
 
         return $picked;
