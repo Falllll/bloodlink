@@ -40,6 +40,7 @@ use App\Modules\Inventory\Infrastructure\BloodBatchEventRecorder;
 use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StockTransferPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
+use App\Modules\Notification\Application\ChannelPolicy;
 use App\Modules\Request\Domain\Events\AllocatedUnitIssued;
 use App\Modules\Request\Domain\Events\UnitReservationLifted;
 use App\Modules\Request\Domain\Events\UnitReservationPlaced;
@@ -64,6 +65,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(EligibilityEngine::class, fn (): EligibilityEngine => EligibilityEngine::who());
         $this->app->bind(ComponentExpiryPolicy::class, AssignStorageProfile::class);
+        // Satu pintu kebijakan kanal (kartu 455): daftar izin dibaca dari config HANYA di sini.
+        $this->app->singleton(ChannelPolicy::class, fn (): ChannelPolicy => new ChannelPolicy(config('notification.channels')));
     }
 
     /**

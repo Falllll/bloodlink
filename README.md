@@ -49,6 +49,8 @@ app/
 
 Modules never reach into each other's internals; only domain events cross a module boundary. `deptrac.yaml` encodes that rule and CI fails on any violation, including code that no layer covers.
 
+**Notification channels: email and push only.** SMS and the WhatsApp Business API are billed per message, while donor call-up campaigns fan out to dozens or hundreds of recipients at once — an unbounded cost on a project with no revenue. Email over a free SMTP provider and FCM push carry no per-message cost, so they are the only channels the system sends on. The restriction lives in one place, `ChannelPolicy`, fed from `config/notification.php`; adding a channel means adding its enum case and its sender on the same day, and a config line alone is rejected at boot.
+
 ## API conventions
 
 Every successful response is enveloped:

@@ -77,6 +77,17 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   dilonggarkan. Bucket tidak pernah dibuat publik — berkas keluar hanya lewat
   URL bertanda tangan yang diterbitkan aplikasi.
 
+## Kanal notifikasi
+
+Sistem ini hanya mengirim lewat email (SMTP) dan FCM push. SMS dan WhatsApp
+Business API dibayar per pesan, sementara kampanye panggilan donor mengirim ke
+banyak penerima sekaligus — biaya tanpa batas atas pada proyek tanpa pemasukan.
+Pembatasannya dijaga `ChannelPolicy`, bersumber dari `config/notification.php`.
+Menambah kanal berarti menambah case enum **dan** implementasi pengirimnya di hari
+yang sama; menambah baris di config saja tidak cukup dan memang disengaja begitu
+(`ChannelPolicy` gagal dibangun untuk nilai config tanpa case enum, dan
+`ChannelPolicyTest` merah untuk case enum tanpa pengirim).
+
 ## Perintah yang sering dipakai
 
 ```bash

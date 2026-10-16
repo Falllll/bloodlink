@@ -3687,6 +3687,7 @@ components:
         - CROSSMATCH_REJECTED
         - TRANSFUSION_REJECTED
         - NOTIFICATION_TEMPLATE_REJECTED
+        - NOTIFICATION_CHANNEL_NOT_PERMITTED
     Error:
       type: object
       properties:
