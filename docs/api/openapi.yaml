@@ -446,6 +446,85 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /me/devices:
+    post:
+      summary: Daftarkan token push perangkat ini
+      description: >-
+        Token unik secara GLOBAL. Token yang sudah terdaftar milik pengguna
+        lain DIPINDAHKAN ke pengguna yang sedang masuk (perangkat berpindah
+        tangan); milik sendiri diperbarui `last_seen_at`-nya dan diaktifkan
+        lagi bila pernah dicabut. Tidak pernah membuat baris kedua. Token
+        tidak pernah dikembalikan di respons. Tidak menuntut fasilitas --
+        donor pun bisa mendaftar.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  maxLength: 512
+                platform:
+                  type: string
+                  enum: [android, ios, web]
+              required: [token, platform]
+      responses:
+        '201':
+          description: Token terdaftar (baru, diperbarui, atau dipindahkan).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DeviceToken'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /me/devices/{deviceToken}:
+    parameters:
+      - in: path
+        name: deviceToken
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID token perangkat (`id` dari respons pendaftaran).
+    delete:
+      summary: Cabut token push perangkat ini
+      description: >-
+        Menulis `revoked_at`, tidak menghapus baris. Idempoten. Hanya token
+        milik pengguna yang sedang masuk; token milik orang lain dibalas 404,
+        sama dengan token yang tidak ada.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token dicabut.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DeviceToken'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /eligibility/self-check:
     post:
       summary: Cek kelayakan donor mandiri (anonim)
@@ -3607,6 +3686,7 @@ components:
         - BLOOD_REQUEST_NOT_ALLOCATABLE
         - CROSSMATCH_REJECTED
         - TRANSFUSION_REJECTED
+        - NOTIFICATION_TEMPLATE_REJECTED
     Error:
       type: object
       properties:
@@ -4304,6 +4384,26 @@ components:
           type: string
           format: date-time
       required: [id, allocation_id, result, method, note, performed_at]
+    DeviceToken:
+      type: object
+      description: >-
+        Satu perangkat penerima push. Nilai token sendiri tidak pernah keluar
+        ke API -- ia kredensial pengiriman.
+      properties:
+        id:
+          type: string
+          format: uuid
+        platform:
+          type: string
+          enum: [android, ios, web]
+        last_seen_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, platform, last_seen_at, revoked_at]
     Transfusion:
       type: object
       description: >-

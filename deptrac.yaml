@@ -144,7 +144,7 @@ deptrac:
   ruleset:
     BloodKernel: ~
     Shared: [Framework, BloodKernel]
-    Models: [Framework, Shared, BloodKernel, DomIdentity, DomDonor, DomInventory, DomRequest]
+    Models: [Framework, Shared, BloodKernel, DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
 
     ModIdentity:     [Framework, Shared, BloodKernel, Models, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
     ModDonor:        [Framework, Shared, BloodKernel, Models, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]

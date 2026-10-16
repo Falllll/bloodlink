@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
         $this->call(TtiTestTypeSeeder::class);
         $this->call(CompatibilityRuleSeeder::class);
         $this->call(TransfusionReactionTypeSeeder::class);
+        $this->call(NotificationTemplateSeeder::class);
         $this->call(DevDataSeeder::class);
         $this->call(DevUserSeeder::class);
         $this->call(DevDonorHistorySeeder::class);

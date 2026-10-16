@@ -21,6 +21,7 @@ use App\Modules\Inventory\Http\Controllers\LabTestController;
 use App\Modules\Inventory\Http\Controllers\StockTransferController;
 use App\Modules\Inventory\Http\Controllers\StorageLocationController;
 use App\Modules\Inventory\Http\Controllers\UnitReleaseController;
+use App\Modules\Notification\Http\Controllers\DeviceTokenController;
 use App\Modules\Request\Http\Controllers\BloodRequestController;
 use App\Modules\Request\Http\Controllers\CompatibilityController;
 use App\Modules\Request\Http\Controllers\TransfusionController;
@@ -48,6 +49,8 @@ Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function ():
     Route::get('/donor/appointments', [MeAppointmentController::class, 'index'])->name('donor.appointments.index');
     Route::post('/donor/appointments', [MeAppointmentController::class, 'store'])->name('donor.appointments.store');
     Route::patch('/donor/appointments/{appointment}/status', [MeAppointmentController::class, 'cancel'])->whereUuid('appointment')->name('donor.appointments.cancel');
+    Route::post('/devices', [DeviceTokenController::class, 'store'])->name('devices.store');
+    Route::delete('/devices/{deviceToken}', [DeviceTokenController::class, 'destroy'])->whereUuid('deviceToken')->name('devices.destroy');
 });
 
 Route::get('/ping', fn () => ['pong' => true]);
