@@ -18,6 +18,8 @@ use App\Models\DonorScreening;
 use App\Models\Facility;
 use App\Models\StockTransfer;
 use App\Models\StorageLocation;
+use App\Models\Transfusion;
+use App\Models\TransfusionReaction;
 use App\Models\TtiTestResult;
 use App\Models\User;
 use App\Modules\Donor\Domain\EligibilityEngine;
@@ -88,7 +90,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(StockTransfer::class, StockTransferPolicy::class);
         Gate::policy(BloodRequest::class, BloodRequestPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class, BloodRequestAllocation::class, Crossmatch::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class, BloodRequestAllocation::class, Crossmatch::class, Transfusion::class, TransfusionReaction::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 

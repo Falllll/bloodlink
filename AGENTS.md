@@ -64,6 +64,13 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   kembali ke `released` (atau `expired` bila sudah lewat `expires_at`), tidak pernah
   lebih mundur, dan unit `issued` tidak pernah ditarik. Jalur kompensasi baru wajib
   memanggilnya, lalu `RecomputeRequestStatus`.
+- Rantai telusur hemovigilans kini lengkap: donor → donasi → unit → alokasi →
+  transfusi → reaksi, seluruhnya lewat relasi (`Transfusion::batch()`), bukan kolom
+  salinan seperti `donor_id` yang bisa bohong setelah `MergeDonors`. Tabel
+  `transfusion_reactions` **sengaja** tidak memuat identitas pasien maupun derajat
+  keparahan; jenis reaksi hanya dari master data `transfusion_reaction_types`
+  berprovenans `cited`, dan seeder-nya kosong sampai Rujukan Pedoman Medis
+  memuat kutipannya.
 - Object storage: berkas lampiran masuk disk `s3` (Garage self-hosted, lihat
   service `garage` di docker-compose), bukan disk `local` dan bukan ke dalam
   working tree. Disk itu `visibility => private` dan `throw => true`; jangan

@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
         $this->call(ComponentTypeSeeder::class);
         $this->call(TtiTestTypeSeeder::class);
         $this->call(CompatibilityRuleSeeder::class);
+        $this->call(TransfusionReactionTypeSeeder::class);
         $this->call(DevDataSeeder::class);
         $this->call(DevUserSeeder::class);
         $this->call(DevDonorHistorySeeder::class);

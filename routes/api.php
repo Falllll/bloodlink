@@ -23,6 +23,7 @@ use App\Modules\Inventory\Http\Controllers\StorageLocationController;
 use App\Modules\Inventory\Http\Controllers\UnitReleaseController;
 use App\Modules\Request\Http\Controllers\BloodRequestController;
 use App\Modules\Request\Http\Controllers\CompatibilityController;
+use App\Modules\Request\Http\Controllers\TransfusionController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
 use Illuminate\Support\Facades\Route;
@@ -90,6 +91,9 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::delete('/allocations/{allocation}/reservation', [BloodRequestController::class, 'releaseReservation'])->name('allocations.reservation.release');
     Route::post('/allocations/{allocation}/crossmatches', [BloodRequestController::class, 'recordCrossmatch'])->name('allocations.crossmatches.store');
     Route::post('/allocations/{allocation}/issue', [BloodRequestController::class, 'issue'])->name('allocations.issue');
+    Route::post('/allocations/{allocation}/transfusion', [TransfusionController::class, 'store'])->name('allocations.transfusion.store');
+    Route::post('/transfusions/{transfusion}/reactions', [TransfusionController::class, 'reportReaction'])->name('transfusions.reactions.store');
+    Route::get('/transfusions/{transfusion}', [TransfusionController::class, 'show'])->name('transfusions.show');
     Route::get('/compatibility', CompatibilityController::class)->name('compatibility.show');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');

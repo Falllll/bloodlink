@@ -92,6 +92,18 @@ final class BloodRequestPolicy
         return $this->stockAction($user, $request);
     }
 
+    /** Mencatat transfusi unit yang sudah diterbitkan untuk permintaan ini. */
+    public function recordTransfusion(User $user, BloodRequest $request): bool
+    {
+        return $this->stockAction($user, $request);
+    }
+
+    /** Melaporkan reaksi pasca-transfusi, dan membaca transfusi beserta reaksinya. */
+    public function reportReaction(User $user, BloodRequest $request): bool
+    {
+        return $this->stockAction($user, $request);
+    }
+
     /** Urutan cek: izin dulu, lalu operator global, lalu kecocokan fasilitas. */
     private function stockAction(User $user, BloodRequest $request): bool
     {

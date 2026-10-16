@@ -2992,6 +2992,173 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /allocations/{allocation}/transfusion:
+    parameters:
+      - in: path
+        name: allocation
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID alokasi (`public_id`).
+    post:
+      summary: Catat transfusi satu unit yang sudah diterbitkan
+      description: >-
+        Hemovigilans: mencatat bahwa kantong benar-benar masuk ke pasien.
+        Hanya unit berstatus `issued`; selain itu 409 `TRANSFUSION_REJECTED`.
+        Satu alokasi, satu transfusi -- pencatatan kedua juga 409. Status unit
+        TIDAK berubah (`issued` terminal). `completed_at` null berarti
+        transfusi masih berjalan, dan volume hanya boleh diisi bila sudah
+        selesai. Butuh `inventory.release` di fasilitas peminta.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                started_at:
+                  type: string
+                  format: date-time
+                completed_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Tidak boleh sebelum `started_at` (juga CHECK di database).
+                volume_transfused_ml:
+                  type: integer
+                  minimum: 1
+                  nullable: true
+                  description: Hanya bersama `completed_at`.
+                note:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+              required: [started_at]
+      responses:
+        '201':
+          description: Transfusi tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Transfusion'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /transfusions/{transfusion}:
+    parameters:
+      - in: path
+        name: transfusion
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID transfusi (`public_id`).
+    get:
+      summary: Satu transfusi beserta laporan reaksinya
+      description: >-
+        Reaksi diurutkan menurut `observed_at` (waktu kejadian), bukan waktu
+        laporan. Butuh `inventory.release` di fasilitas peminta.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Transfusi dan reaksinya.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Transfusion'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /transfusions/{transfusion}/reactions:
+    parameters:
+      - in: path
+        name: transfusion
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID transfusi (`public_id`).
+    post:
+      summary: Laporkan reaksi pasca-transfusi
+      description: >-
+        Pengamatan, bukan tindakan: tidak ada status unit maupun permintaan
+        yang berubah. Satu transfusi boleh punya banyak laporan (segera dan
+        tertunda). Tidak ada derajat keparahan dan tidak ada identitas pasien
+        -- disengaja. `reaction_type_code` opsional dan hanya menerima jenis
+        terkutip dari master data; tanpanya laporan tetap sah sebagai
+        naratif. Memancarkan event domain `TransfusionReactionReported`.
+        Butuh `inventory.release` di fasilitas peminta.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                observed_at:
+                  type: string
+                  format: date-time
+                  description: Kapan reaksi terjadi, bukan kapan dilaporkan. Tidak boleh di masa depan.
+                reaction_type_code:
+                  type: string
+                  nullable: true
+                description:
+                  type: string
+                  maxLength: 5000
+              required: [observed_at, description]
+      responses:
+        '201':
+          description: Reaksi tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TransfusionReaction'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /compatibility:
     get:
       summary: Donor yang lolos gerbang kompatibilitas ABO/RhD untuk satu penerima
@@ -3439,6 +3606,7 @@ components:
         - INVENTORY_RELEASE_REJECTED
         - BLOOD_REQUEST_NOT_ALLOCATABLE
         - CROSSMATCH_REJECTED
+        - TRANSFUSION_REJECTED
     Error:
       type: object
       properties:
@@ -4136,6 +4304,60 @@ components:
           type: string
           format: date-time
       required: [id, allocation_id, result, method, note, performed_at]
+    Transfusion:
+      type: object
+      description: >-
+        Satu kantong yang ditransfusikan. Satu-ke-satu dengan alokasi. `id`
+        numerik internal dan petugas pencatat tidak pernah keluar ke API.
+      properties:
+        id:
+          type: string
+          format: uuid
+        allocation_id:
+          type: string
+          format: uuid
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        volume_transfused_ml:
+          type: integer
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        reactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransfusionReaction'
+      required: [id, allocation_id, started_at, completed_at, volume_transfused_ml, note, reactions]
+    TransfusionReaction:
+      type: object
+      description: >-
+        Satu laporan reaksi pasca-transfusi. Tanpa derajat keparahan dan tanpa
+        identitas pasien, disengaja. Pelapor tidak pernah keluar ke API.
+      properties:
+        id:
+          type: string
+          format: uuid
+        transfusion_id:
+          type: string
+          format: uuid
+        reaction_type_code:
+          type: string
+          nullable: true
+        observed_at:
+          type: string
+          format: date-time
+        reported_at:
+          type: string
+          format: date-time
+        description:
+          type: string
+      required: [id, transfusion_id, reaction_type_code, observed_at, reported_at, description]
     BloodBatch:
       type: object
       description: >-
