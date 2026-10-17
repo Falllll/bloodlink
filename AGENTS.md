@@ -71,6 +71,11 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   keparahan; jenis reaksi hanya dari master data `transfusion_reaction_types`
   berprovenans `cited`, dan seeder-nya kosong sampai Rujukan Pedoman Medis
   memuat kutipannya.
+- Pindaian stok terdekat (`POST /blood-requests/urgent`) mengembalikan **agregat
+  per fasilitas saja** — tidak pernah `public_id` kantong, nomor unit, atau
+  kedaluwarsa per kantong — dan itu disengaja: `ScopedToFacility` tidak dilubangi;
+  detail unit hanya lewat alur transfer (kartu 300). Golongan yang dicari datang
+  dari `CheckBloodCompatibility`, tidak pernah ditulis di query.
 - Object storage: berkas lampiran masuk disk `s3` (Garage self-hosted, lihat
   service `garage` di docker-compose), bukan disk `local` dan bukan ke dalam
   working tree. Disk itu `visibility => private` dan `throw => true`; jangan

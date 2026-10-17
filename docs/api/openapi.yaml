@@ -2586,6 +2586,96 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /blood-requests/urgent:
+    post:
+      summary: Buat permintaan darurat dan pindai stok terdekat
+      description: >-
+        Membuat permintaan seperti `POST /blood-requests` (aturan validasi
+        identik), tetapi `urgency` hanya `urgent` atau `emergency`. Dalam
+        panggilan yang sama, stok fasilitas dalam radius operasional
+        (`config/matching.php`, default 30 km) dipindai lebih dulu -- sebelum
+        donor dipanggil. Pindaian mengembalikan AGREGAT per fasilitas saja:
+        tidak ada identitas kantong, nomor unit, atau kedaluwarsa per kantong;
+        detail unit hanya lewat alur transfer stok. Pencocokan memakai gerbang
+        kompatibilitas ABO/RhD (bukan kesamaan golongan); hanya unit
+        `released`, belum kedaluwarsa sebelum `needed_by`, dan tanpa transfer
+        terbuka yang dihitung. Fasilitas peminta selalu pertama (jarak 0).
+        Tidak mengalokasikan apa pun. Pindaian yang tidak bisa dijalankan
+        tidak pernah menggagalkan permintaan -- lihat `nearby_stock_status`.
+        Butuh `request.create` dan fasilitas.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                patient_reference:
+                  type: string
+                  maxLength: 64
+                component:
+                  type: string
+                  enum: [whole_blood, packed_red_cells, fresh_frozen_plasma, platelet_concentrate, cryoprecipitate]
+                blood_group:
+                  type: string
+                  enum: [A, B, AB, O]
+                rh_factor:
+                  type: string
+                  enum: [positive, negative]
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                urgency:
+                  type: string
+                  enum: [urgent, emergency]
+                needed_by:
+                  type: string
+                  format: date-time
+                note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+              required: [patient_reference, component, blood_group, rh_factor, quantity, urgency, needed_by]
+      responses:
+        '201':
+          description: Permintaan dibuat; hasil pindaian disertakan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      request:
+                        $ref: '#/components/schemas/BloodRequest'
+                      nearby_stock_status:
+                        type: string
+                        enum: [scanned, no_requester_location, no_sourced_rule]
+                        description: >-
+                          `no_requester_location`: fasilitas peminta belum punya
+                          koordinat. `no_sourced_rule`: komponen tanpa aturan
+                          kompatibilitas bersumber (trombosit). Keduanya berarti
+                          daftar kosong BUKAN "tidak ada stok".
+                      nearby_stock:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NearbyStockEntry'
+                    required: [request, nearby_stock_status, nearby_stock]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /blood-requests/{bloodRequest}/cancel:
     parameters:
       - in: path
@@ -4385,6 +4475,23 @@ components:
           type: string
           format: date-time
       required: [id, allocation_id, result, method, note, performed_at]
+    NearbyStockEntry:
+      type: object
+      description: >-
+        Agregat stok satu fasilitas. SENGAJA tanpa identitas kantong.
+      properties:
+        facility_id:
+          type: string
+          format: uuid
+        facility_name:
+          type: string
+        distance_meters:
+          type: integer
+        compatible_units:
+          type: integer
+        is_self:
+          type: boolean
+      required: [facility_id, facility_name, distance_meters, compatible_units, is_self]
     DeviceToken:
       type: object
       description: >-

@@ -66,7 +66,19 @@ final class ReservationRaceTest extends TestCase
 
     private function truncateEverything(): void
     {
-        $tables = collect(DB::select("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'migrations'"))
+        // Tabel milik ekstensi (spatial_ref_sys dari PostGIS) DIKECUALIKAN: migrate:fresh
+        // tidak pernah menyentuhnya, jadi sekali dikosongkan ia kosong selamanya dan
+        // setiap query SRID 4326 di test lain gagal ("Cannot find SRID").
+        $tables = collect(DB::select(<<<'SQL'
+            SELECT t.tablename FROM pg_tables t
+            WHERE t.schemaname = 'public'
+              AND t.tablename <> 'migrations'
+              AND NOT EXISTS (
+                  SELECT 1 FROM pg_depend d
+                  WHERE d.objid = ('public.' || quote_ident(t.tablename))::regclass
+                    AND d.deptype = 'e'
+              )
+        SQL))
             ->map(fn (object $row): string => '"'.$row->tablename.'"')
             ->implode(', ');
 

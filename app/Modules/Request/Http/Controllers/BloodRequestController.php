@@ -8,6 +8,7 @@ use App\Models\BloodBatch;
 use App\Models\BloodRequest;
 use App\Models\BloodRequestAllocation;
 use App\Models\Crossmatch;
+use App\Models\Facility;
 use App\Models\User;
 use App\Modules\Request\Application\AllocateUnitsFefo;
 use App\Modules\Request\Application\CancelBloodRequest;
@@ -15,6 +16,8 @@ use App\Modules\Request\Application\CreateBloodRequest;
 use App\Modules\Request\Application\IssueAllocatedUnit;
 use App\Modules\Request\Application\RecordCrossmatch;
 use App\Modules\Request\Application\ReserveAllocatedUnits;
+use App\Modules\Request\Application\ScanNearbyStock;
+use App\Modules\Request\Domain\NearbyStockEntry;
 use App\Modules\Request\Domain\RequestUrgency;
 use App\Modules\Request\Http\Requests\AllocateRequest;
 use App\Modules\Request\Http\Requests\BloodRequestListRequest;
@@ -23,6 +26,7 @@ use App\Modules\Request\Http\Requests\RecordCrossmatchRequest;
 use App\Modules\Request\Http\Requests\ReleaseAllocationRequest;
 use App\Modules\Request\Http\Requests\ReserveRequest;
 use App\Modules\Request\Http\Requests\StoreBloodRequestRequest;
+use App\Modules\Request\Http\Requests\StoreUrgentBloodRequestRequest;
 use App\Shared\Blood\BloodComponent;
 use App\Shared\Blood\BloodGroup;
 use App\Shared\Blood\RhFactor;
@@ -73,6 +77,44 @@ final class BloodRequestController
         );
 
         return ApiResponse::success($bloodRequest->load('facility')->toApiArray())->setStatusCode(201);
+    }
+
+    /**
+     * Permintaan darurat (kartu 380): permintaan dibuat DAN stok terdekat dipindai
+     * dalam satu panggilan, supaya "lihat stok yang ada dulu" tidak bisa dilewati.
+     * Tidak mengalokasikan apa pun -- FEFO tetap dipanggil manusia.
+     */
+    public function storeUrgent(
+        StoreUrgentBloodRequestRequest $request,
+        CreateBloodRequest $createBloodRequest,
+        ScanNearbyStock $scanNearbyStock,
+    ): JsonResponse {
+        Gate::authorize('create', BloodRequest::class);
+
+        /** @var User $user */
+        $user = $request->user();
+        $facility = Facility::query()->findOrFail((int) $user->facilityId());
+
+        $bloodRequest = $createBloodRequest->handle(
+            $facility->id,
+            $user->id,
+            BloodComponent::from($request->validated('component')),
+            BloodGroup::from($request->validated('blood_group')),
+            RhFactor::from($request->validated('rh_factor')),
+            (int) $request->validated('quantity'),
+            RequestUrgency::from($request->validated('urgency')),
+            new DateTimeImmutable($request->validated('needed_by')),
+            $request->validated('patient_reference'),
+            $request->validated('note'),
+        );
+
+        $scan = $scanNearbyStock->handle($bloodRequest, $facility);
+
+        return ApiResponse::success([
+            'request' => $bloodRequest->load('facility')->toApiArray(),
+            'nearby_stock_status' => $scan->status,
+            'nearby_stock' => array_map(fn (NearbyStockEntry $entry): array => $entry->toApiArray(), $scan->entries),
+        ])->setStatusCode(201);
     }
 
     /** Saga pembatalan (kartu 360): semua alokasi yang belum terbit dilepas dalam satu transaksi. */
