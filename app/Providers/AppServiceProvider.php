@@ -22,8 +22,10 @@ use App\Models\Transfusion;
 use App\Models\TransfusionReaction;
 use App\Models\TtiTestResult;
 use App\Models\User;
+use App\Modules\Donor\Application\Listeners\SyncDonorGeoIndex;
 use App\Modules\Donor\Domain\EligibilityEngine;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
+use App\Modules\Donor\Domain\Events\DonorLocationChanged;
 use App\Modules\Donor\Domain\Events\DonorPermanentlyDeferred;
 use App\Modules\Donor\Infrastructure\Policies\DonorPolicy;
 use App\Modules\Donor\Infrastructure\RecordPermanentDeferral;
@@ -102,6 +104,8 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(DonationCompleted::class, CreateQuarantinedUnit::class);
         Event::listen(DonorPermanentlyDeferred::class, RecordPermanentDeferral::class);
+        // Write-through cache GEO (kartu 390): sinkron, dan tidak pernah menggagalkan penulisnya.
+        Event::listen(DonorLocationChanged::class, SyncDonorGeoIndex::class);
         // Reservasi (kartu 330): sinkron, di transaksi pemesanan/pelepasan.
         Event::listen(UnitReservationPlaced::class, MarkUnitReserved::class);
         Event::listen(UnitReservationLifted::class, ReturnReservedUnitToStock::class);

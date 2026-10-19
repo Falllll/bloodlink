@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 $radius = env('MATCHING_NEARBY_RADIUS_METERS');
+$geoEnabled = env('MATCHING_REDIS_GEO_ENABLED');
+$geoKey = env('MATCHING_REDIS_GEO_KEY');
 
 return [
     /*
@@ -12,4 +14,18 @@ return [
      | Baris kosong di .env dibaca sebagai string kosong, bukan null.
      */
     'nearby_stock_radius_meters' => $radius === null || $radius === '' ? 30000 : (int) $radius,
+
+    /*
+     | Kill-switch indeks GEO Redis untuk lokasi donor (kartu 390). Default MATI:
+     | selama mati, pencarian donor memakai PostGIS saja, jadi cache yang rusak
+     | tidak pernah bisa menghentikan permintaan darurat. PostGIS tetap otoritatif.
+     | Baris kosong dibaca sebagai mati; env() sudah mengubah "true"/"false" jadi bool.
+     */
+    'redis_geo_enabled' => $geoEnabled === null || $geoEnabled === '' ? false : (bool) $geoEnabled,
+
+    /*
+     | Nama key sorted set GEO. Laravel menambahkan prefix koneksi Redis
+     | (database.redis.options.prefix) di depannya.
+     */
+    'redis_geo_key' => $geoKey === null || $geoKey === '' ? 'geo:donors' : (string) $geoKey,
 ];

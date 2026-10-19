@@ -13,6 +13,11 @@ domain terasa berlebihan untuk aplikasi biasa, itu memang disengaja.
 - Laravel 13, PHP 8.5
 - PostgreSQL 17 + PostGIS (image `postgis/postgis`, bukan `postgres` polos)
 - Redis — cache, session, dan queue
+  - Indeks GEO lokasi donor di Redis (`DonorGeoIndex`, kartu 390) adalah **cache**;
+    kolom PostGIS `donors.location` tetap otoritatif, dan jalur PostGIS
+    (`DonorLocationQuery`) tidak boleh dihapus. Kill-switch
+    `matching.redis_geo_enabled` default mati; `donor:reconcile-geo` membangun ulang
+    indeks dari PostGIS. Tidak ada data level kantong darah di Redis.
 - Docker Compose untuk dev; `app` dan `worker` adalah service terpisah
 
 ## Keputusan arsitektur yang sudah dikunci
