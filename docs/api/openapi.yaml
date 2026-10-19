@@ -525,6 +525,80 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+  /me/campaign-invitations:
+    get:
+      summary: Undangan kampanye milik donor yang sedang masuk
+      description: 50 terbaru. Tanpa data pasien apa pun. Tidak menuntut fasilitas.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Undangan donor.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CampaignInvitation'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /me/campaign-invitations/{contact}/respond:
+    parameters:
+      - in: path
+        name: contact
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID undangan.
+    post:
+      summary: Jawab satu undangan kampanye
+      description: >-
+        Sekali jawab: jawaban kedua 409. Undangan milik orang lain 404 (bukan
+        403). Kampanye yang sudah berhenti 409. Menerima berarti bersedia
+        datang -- TIDAK mengalokasikan atau membuat unit apa pun.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                response:
+                  type: string
+                  enum: [accepted, declined]
+              required: [response]
+      responses:
+        '200':
+          description: Jawaban tercatat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CampaignInvitation'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /eligibility/self-check:
     post:
       summary: Cek kelayakan donor mandiri (anonim)
@@ -2798,6 +2872,112 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /blood-requests/{bloodRequest}/campaign:
+    parameters:
+      - in: path
+        name: bloodRequest
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID permintaan (`public_id`).
+    post:
+      summary: Mulai kampanye panggilan donor berjenjang
+      description: >-
+        Dimulai oleh MANUSIA; penjadwal hanya memajukan dan menutup. Tahap
+        pertama (radius terkecil `matching.staged_radii_meters`) langsung
+        dihubungi: hanya donor yang layak DAN bisa dihubungi yang dicatat.
+        Paling banyak satu kampanye aktif per permintaan. Permintaan yang
+        tidak `open`/`partially_fulfilled` ditolak 409 `CAMPAIGN_REJECTED`.
+        Butuh `request.approve` di fasilitas peminta.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Kampanye dimulai.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorCampaign'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      summary: Ringkasan kampanye terbaru untuk permintaan ini
+      description: >-
+        AGREGAT saja -- tahap sekarang dan jumlah dihubungi/menerima/menolak
+        per tahap. Tidak pernah memuat identitas donor.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Ringkasan kampanye.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorCampaign'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /campaigns/{campaign}/stop:
+    parameters:
+      - in: path
+        name: campaign
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID kampanye.
+    post:
+      summary: Hentikan kampanye secara manual
+      description: Menutup dengan `end_reason` = `stopped_manually`. Kampanye yang sudah berhenti dibalas 409.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Kampanye dihentikan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorCampaign'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /blood-requests/{bloodRequest}/candidates:
     parameters:
       - in: path
@@ -3841,6 +4021,7 @@ components:
         - TRANSFUSION_REJECTED
         - NOTIFICATION_TEMPLATE_REJECTED
         - NOTIFICATION_CHANNEL_NOT_PERMITTED
+        - CAMPAIGN_REJECTED
     Error:
       type: object
       properties:
@@ -4538,6 +4719,89 @@ components:
           type: string
           format: date-time
       required: [id, allocation_id, result, method, note, performed_at]
+    DonorCampaign:
+      type: object
+      description: Ringkasan agregat satu kampanye. SENGAJA tanpa identitas donor.
+      properties:
+        id:
+          type: string
+          format: uuid
+        blood_request_id:
+          type: string
+          format: uuid
+        current_radius_meters:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        stage_entered_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        end_reason:
+          type: string
+          nullable: true
+          enum: [request_fulfilled, request_cancelled, request_expired, stages_exhausted, stopped_manually, null]
+        stages:
+          type: array
+          items:
+            type: object
+            properties:
+              radius_meters:
+                type: integer
+              contacted:
+                type: integer
+              accepted:
+                type: integer
+              declined:
+                type: integer
+            required: [radius_meters, contacted, accepted, declined]
+        totals:
+          type: object
+          properties:
+            contacted:
+              type: integer
+            accepted:
+              type: integer
+            declined:
+              type: integer
+          required: [contacted, accepted, declined]
+      required: [id, blood_request_id, current_radius_meters, started_at, stage_entered_at, ended_at, end_reason, stages, totals]
+    CampaignInvitation:
+      type: object
+      description: Undangan yang dilihat donor. Tanpa data pasien.
+      properties:
+        id:
+          type: string
+          format: uuid
+        facility_name:
+          type: string
+        component:
+          type: string
+        urgency:
+          type: string
+        needed_by:
+          type: string
+          format: date-time
+        distance_meters:
+          type: integer
+        contacted_at:
+          type: string
+          format: date-time
+        responded_at:
+          type: string
+          format: date-time
+          nullable: true
+        response:
+          type: string
+          nullable: true
+          enum: [accepted, declined, null]
+        is_open:
+          type: boolean
+      required: [id, facility_name, component, urgency, needed_by, distance_meters, contacted_at, responded_at, response, is_open]
     DonorCandidate:
       type: object
       description: >-

@@ -5,6 +5,7 @@ declare(strict_types=1);
 $radius = env('MATCHING_NEARBY_RADIUS_METERS');
 $geoEnabled = env('MATCHING_REDIS_GEO_ENABLED');
 $geoKey = env('MATCHING_REDIS_GEO_KEY');
+$dwell = env('MATCHING_STAGE_DWELL_MINUTES');
 
 return [
     /*
@@ -21,6 +22,13 @@ return [
      | satunya (endpoint pratinjau menolak radius di luar daftar ini).
      */
     'staged_radii_meters' => [5000, 15000, 30000],
+
+    /*
+     | Lama tiap tahap menunggu sebelum radius dinaikkan, dalam menit. Angka
+     | OPERASIONAL murni -- dipilih dari perkiraan waktu orang membaca notifikasi,
+     | bukan dari pedoman medis mana pun.
+     */
+    'stage_dwell_minutes' => $dwell === null || $dwell === '' ? 15 : (int) $dwell,
 
     /*
      | Kill-switch indeks GEO Redis untuk lokasi donor (kartu 390). Default MATI:

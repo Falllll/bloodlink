@@ -77,6 +77,15 @@ final class BloodRequestPolicy
         return $user->facilityId() !== null && $user->facilityId() === $request->ownerFacilityId();
     }
 
+    /**
+     * Memulai, melihat, dan menghentikan kampanye panggilan donor (kartu 400).
+     * Sama ketatnya dengan pratinjau kandidat: memanggil orang di luar fasilitas.
+     */
+    public function manageCampaign(User $user, BloodRequest $request): bool
+    {
+        return $this->viewDonorCandidates($user, $request);
+    }
+
     /** Melihat kandidat dan mengalokasikan unit dari stok fasilitas peminta. */
     public function allocate(User $user, BloodRequest $request): bool
     {

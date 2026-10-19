@@ -92,6 +92,17 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   dilonggarkan. Bucket tidak pernah dibuat publik — berkas keluar hanya lewat
   URL bertanda tangan yang diterbitkan aplikasi.
 
+## Pencarian spasial
+
+PostGIS (`geography` + GiST) adalah sumber kebenaran **otoritatif** untuk lokasi
+donor dan fasilitas. Kampanye panggilan donor berjenjang 5/15/30 km (kartu 400)
+dan pemilihan kandidatnya (kartu 410) memakai PostGIS **saja**: indeksnya sudah
+ada, dan kelayakan donor dihitung di database yang sama. Indeks GEO Redis (kartu
+390) hanya cache opsional di balik kill-switch yang default mati, dan **tidak
+dipakai** kampanye — Redis yang di-flush atau basi tidak boleh bisa menghentikan
+atau membelokkan panggilan untuk permintaan darurat. Kampanye dimulai oleh
+manusia; penjadwal (`matching:advance-campaigns`) hanya memajukan dan menutup.
+
 ## Kanal notifikasi
 
 Sistem ini hanya mengirim lewat email (SMTP) dan FCM push. SMS dan WhatsApp

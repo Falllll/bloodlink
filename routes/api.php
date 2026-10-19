@@ -24,6 +24,7 @@ use App\Modules\Inventory\Http\Controllers\UnitReleaseController;
 use App\Modules\Notification\Http\Controllers\DeviceTokenController;
 use App\Modules\Request\Http\Controllers\BloodRequestController;
 use App\Modules\Request\Http\Controllers\CompatibilityController;
+use App\Modules\Request\Http\Controllers\DonorCampaignController;
 use App\Modules\Request\Http\Controllers\TransfusionController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
@@ -51,6 +52,8 @@ Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function ():
     Route::patch('/donor/appointments/{appointment}/status', [MeAppointmentController::class, 'cancel'])->whereUuid('appointment')->name('donor.appointments.cancel');
     Route::post('/devices', [DeviceTokenController::class, 'store'])->name('devices.store');
     Route::delete('/devices/{deviceToken}', [DeviceTokenController::class, 'destroy'])->whereUuid('deviceToken')->name('devices.destroy');
+    Route::get('/campaign-invitations', [DonorCampaignController::class, 'myInvitations'])->name('campaign-invitations.index');
+    Route::post('/campaign-invitations/{contact}/respond', [DonorCampaignController::class, 'respond'])->whereUuid('contact')->name('campaign-invitations.respond');
 });
 
 Route::get('/ping', fn () => ['pong' => true]);
@@ -90,6 +93,9 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::post('/blood-requests/{bloodRequest}/cancel', [BloodRequestController::class, 'cancel'])->name('blood-requests.cancel');
     Route::get('/blood-requests/{bloodRequest}/candidates', [BloodRequestController::class, 'candidates'])->name('blood-requests.candidates');
     Route::get('/blood-requests/{bloodRequest}/donor-candidates', [BloodRequestController::class, 'donorCandidates'])->name('blood-requests.donor-candidates');
+    Route::post('/blood-requests/{bloodRequest}/campaign', [DonorCampaignController::class, 'start'])->name('blood-requests.campaign.start');
+    Route::get('/blood-requests/{bloodRequest}/campaign', [DonorCampaignController::class, 'show'])->name('blood-requests.campaign.show');
+    Route::post('/campaigns/{campaign}/stop', [DonorCampaignController::class, 'stop'])->name('campaigns.stop');
     Route::post('/blood-requests/{bloodRequest}/allocations', [BloodRequestController::class, 'allocate'])->name('blood-requests.allocate');
     Route::delete('/allocations/{allocation}', [BloodRequestController::class, 'releaseAllocation'])->name('allocations.release');
     Route::post('/blood-requests/{bloodRequest}/reservations', [BloodRequestController::class, 'reserve'])->name('blood-requests.reserve');
