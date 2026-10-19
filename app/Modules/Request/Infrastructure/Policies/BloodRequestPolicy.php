@@ -60,6 +60,23 @@ final class BloodRequestPolicy
         return $user->facilityId() !== null && $user->facilityId() === $request->ownerFacilityId();
     }
 
+    /**
+     * Melihat kandidat DONOR (kartu 410). Lebih ketat dari request.create: memanggil
+     * donor menyentuh orang di luar fasilitas, dan role donor tidak boleh melihatnya.
+     */
+    public function viewDonorCandidates(User $user, BloodRequest $request): bool
+    {
+        if (! $user->hasPermissionTo(self::APPROVE)) {
+            return false;
+        }
+
+        if ($user->isGlobalOperator()) {
+            return true;
+        }
+
+        return $user->facilityId() !== null && $user->facilityId() === $request->ownerFacilityId();
+    }
+
     /** Melihat kandidat dan mengalokasikan unit dari stok fasilitas peminta. */
     public function allocate(User $user, BloodRequest $request): bool
     {

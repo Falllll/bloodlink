@@ -81,6 +81,11 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   kedaluwarsa per kantong — dan itu disengaja: `ScopedToFacility` tidak dilubangi;
   detail unit hanya lewat alur transfer (kartu 300). Golongan yang dicari datang
   dari `CheckBloodCompatibility`, tidak pernah ditulis di query.
+- Pemilihan kandidat donor (`SelectDonorCandidates`) diurutkan **murni menurut
+  jarak**, tanpa skor atau pembobotan, dan kandidat **tidak pernah** membawa data
+  kontak. Modul Request membaca modul Donor hanya lewat port `App\Shared\Matching\DonorDirectory`
+  (implementasi `EloquentDonorDirectory` di modul Donor, diikat di `AppServiceProvider`)
+  — bukan dengan menambah izin deptrac.
 - Object storage: berkas lampiran masuk disk `s3` (Garage self-hosted, lihat
   service `garage` di docker-compose), bukan disk `local` dan bukan ke dalam
   working tree. Disk itu `visibility => private` dan `throw => true`; jangan

@@ -16,6 +16,13 @@ return [
     'nearby_stock_radius_meters' => $radius === null || $radius === '' ? 30000 : (int) $radius,
 
     /*
+     | Tangga radius kampanye panggilan donor, dalam meter. Angka OPERASIONAL,
+     | bukan medis. Kartu 400 menaiki tangga ini; kartu 410 cuma menerima salah
+     | satunya (endpoint pratinjau menolak radius di luar daftar ini).
+     */
+    'staged_radii_meters' => [5000, 15000, 30000],
+
+    /*
      | Kill-switch indeks GEO Redis untuk lokasi donor (kartu 390). Default MATI:
      | selama mati, pencarian donor memakai PostGIS saja, jadi cache yang rusak
      | tidak pernah bisa menghentikan permintaan darurat. PostGIS tetap otoritatif.

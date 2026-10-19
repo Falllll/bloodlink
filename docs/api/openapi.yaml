@@ -2735,6 +2735,69 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /blood-requests/{bloodRequest}/donor-candidates:
+    parameters:
+      - in: path
+        name: bloodRequest
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID permintaan (`public_id`).
+    get:
+      summary: Pratinjau kandidat donor pada satu anak tangga radius
+      description: >-
+        Donor di sekitar fasilitas peminta yang golongannya kompatibel
+        (gerbang ABO/RhD, arah donor -> pasien), terurut murni menurut jarak
+        -- tanpa skor. Donor yang tidak layak TETAP dikembalikan dengan
+        `is_eligible` false dan kodenya; donor tanpa kanal (device token aktif
+        atau email) dikembalikan dengan `is_reachable` false. Paling banyak
+        `max_recipients_per_campaign` baris. TIDAK pernah memuat nama,
+        telepon, email, alamat, atau golongan donor. Berbeda dari
+        `/candidates` (kandidat UNIT). Tidak menulis apa pun. Butuh
+        `request.approve` di fasilitas peminta.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: radius_meters
+          required: true
+          schema:
+            type: integer
+            enum: [5000, 15000, 30000]
+          description: Salah satu anak tangga `matching.staged_radii_meters`; nilai lain 422.
+      responses:
+        '200':
+          description: Kandidat donor.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      blood_request_id:
+                        type: string
+                        format: uuid
+                      radius_meters:
+                        type: integer
+                      candidates:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DonorCandidate'
+                    required: [blood_request_id, radius_meters, candidates]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /blood-requests/{bloodRequest}/candidates:
     parameters:
       - in: path
@@ -4475,6 +4538,26 @@ components:
           type: string
           format: date-time
       required: [id, allocation_id, result, method, note, performed_at]
+    DonorCandidate:
+      type: object
+      description: >-
+        Satu kandidat donor. SENGAJA tanpa nama, telepon, email, alamat, atau
+        golongan darah -- pengiriman dilakukan server.
+      properties:
+        donor_id:
+          type: string
+          format: uuid
+        distance_meters:
+          type: integer
+        is_eligible:
+          type: boolean
+        ineligible_reason_code:
+          type: string
+          nullable: true
+          description: Kode temuan mesin kelayakan; null bila layak.
+        is_reachable:
+          type: boolean
+      required: [donor_id, distance_meters, is_eligible, ineligible_reason_code, is_reachable]
     NearbyStockEntry:
       type: object
       description: >-

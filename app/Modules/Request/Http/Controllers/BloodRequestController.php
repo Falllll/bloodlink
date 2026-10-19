@@ -17,11 +17,14 @@ use App\Modules\Request\Application\IssueAllocatedUnit;
 use App\Modules\Request\Application\RecordCrossmatch;
 use App\Modules\Request\Application\ReserveAllocatedUnits;
 use App\Modules\Request\Application\ScanNearbyStock;
+use App\Modules\Request\Application\SelectDonorCandidates;
 use App\Modules\Request\Domain\NearbyStockEntry;
+use App\Modules\Request\Domain\DonorCandidate;
 use App\Modules\Request\Domain\RequestUrgency;
 use App\Modules\Request\Http\Requests\AllocateRequest;
 use App\Modules\Request\Http\Requests\BloodRequestListRequest;
 use App\Modules\Request\Http\Requests\CancelBloodRequestRequest;
+use App\Modules\Request\Http\Requests\DonorCandidateQueryRequest;
 use App\Modules\Request\Http\Requests\RecordCrossmatchRequest;
 use App\Modules\Request\Http\Requests\ReleaseAllocationRequest;
 use App\Modules\Request\Http\Requests\ReserveRequest;
@@ -125,6 +128,24 @@ final class BloodRequestController
         $bloodRequest = $cancelBloodRequest->handle($bloodRequest, $request->validated('reason'));
 
         return ApiResponse::success($bloodRequest->load('facility')->toApiArray());
+    }
+
+    /**
+     * Pratinjau kandidat DONOR pada satu anak tangga radius (kartu 410), dari lokasi
+     * fasilitas peminta. Bukan blood-requests.candidates (kandidat UNIT, kartu 320).
+     * Tidak menulis apa pun; tidak membawa data kontak.
+     */
+    public function donorCandidates(DonorCandidateQueryRequest $request, BloodRequest $bloodRequest, SelectDonorCandidates $select): JsonResponse
+    {
+        Gate::authorize('viewDonorCandidates', $bloodRequest);
+
+        $candidates = $select->handle($bloodRequest, $bloodRequest->facility, $request->radiusMeters());
+
+        return ApiResponse::success([
+            'blood_request_id' => $bloodRequest->public_id,
+            'radius_meters' => $request->radiusMeters(),
+            'candidates' => array_map(fn (DonorCandidate $candidate): array => $candidate->toApiArray(), $candidates),
+        ]);
     }
 
     /** Kandidat FEFO yang lolos gerbang kompatibilitas, sebanyak sisa kuantitas. Tidak menulis apa pun. */

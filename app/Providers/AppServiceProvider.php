@@ -27,6 +27,7 @@ use App\Modules\Donor\Domain\EligibilityEngine;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
 use App\Modules\Donor\Domain\Events\DonorLocationChanged;
 use App\Modules\Donor\Domain\Events\DonorPermanentlyDeferred;
+use App\Modules\Donor\Infrastructure\EloquentDonorDirectory;
 use App\Modules\Donor\Infrastructure\Policies\DonorPolicy;
 use App\Modules\Donor\Infrastructure\RecordPermanentDeferral;
 use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
@@ -47,6 +48,7 @@ use App\Modules\Request\Domain\Events\AllocatedUnitIssued;
 use App\Modules\Request\Domain\Events\UnitReservationLifted;
 use App\Modules\Request\Domain\Events\UnitReservationPlaced;
 use App\Modules\Request\Infrastructure\Policies\BloodRequestPolicy;
+use App\Shared\Matching\DonorDirectory;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -67,6 +69,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(EligibilityEngine::class, fn (): EligibilityEngine => EligibilityEngine::who());
         $this->app->bind(ComponentExpiryPolicy::class, AssignStorageProfile::class);
+        // Port baca Donor untuk pencocokan (kartu 410): Request bergantung pada kontrak Shared.
+        $this->app->bind(DonorDirectory::class, EloquentDonorDirectory::class);
         // Satu pintu kebijakan kanal (kartu 455): daftar izin dibaca dari config HANYA di sini.
         $this->app->singleton(ChannelPolicy::class, fn (): ChannelPolicy => new ChannelPolicy(config('notification.channels')));
     }

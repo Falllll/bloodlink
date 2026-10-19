@@ -89,6 +89,7 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::post('/blood-requests/urgent', [BloodRequestController::class, 'storeUrgent'])->name('blood-requests.store-urgent');
     Route::post('/blood-requests/{bloodRequest}/cancel', [BloodRequestController::class, 'cancel'])->name('blood-requests.cancel');
     Route::get('/blood-requests/{bloodRequest}/candidates', [BloodRequestController::class, 'candidates'])->name('blood-requests.candidates');
+    Route::get('/blood-requests/{bloodRequest}/donor-candidates', [BloodRequestController::class, 'donorCandidates'])->name('blood-requests.donor-candidates');
     Route::post('/blood-requests/{bloodRequest}/allocations', [BloodRequestController::class, 'allocate'])->name('blood-requests.allocate');
     Route::delete('/allocations/{allocation}', [BloodRequestController::class, 'releaseAllocation'])->name('allocations.release');
     Route::post('/blood-requests/{bloodRequest}/reservations', [BloodRequestController::class, 'reserve'])->name('blood-requests.reserve');
