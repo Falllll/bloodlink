@@ -2750,6 +2750,20 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+        '429':
+          description: >-
+            Limiter `urgent-requests`: dua bucket per jam, per petugas dan per
+            fasilitas (angka operasional di `config/security.php`). Amplop error
+            standar dengan `error.code` `TOO_MANY_REQUESTS`.
+          headers:
+            Retry-After:
+              description: Detik sampai boleh mencoba lagi.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /blood-requests/{bloodRequest}/cancel:
     parameters:
       - in: path

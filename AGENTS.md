@@ -81,6 +81,10 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   kedaluwarsa per kantong — dan itu disengaja: `ScopedToFacility` tidak dilubangi;
   detail unit hanya lewat alur transfer (kartu 300). Golongan yang dicari datang
   dari `CheckBloodCompatibility`, tidak pernah ditulis di query.
+- `POST /blood-requests/urgent` dijaga limiter bernama `urgent-requests` (di atas limiter
+  global `api`): **dua bucket per jam**, per petugas dan per fasilitas, keduanya harus
+  lolos, dengan prefix key berbeda. Angkanya operasional di `config/security.php` —
+  jangan dinaikkan tiap kali terasa sempit.
 - Pemilihan kandidat donor (`SelectDonorCandidates`) diurutkan **murni menurut
   jarak**, tanpa skor atau pembobotan, dan kandidat **tidak pernah** membawa data
   kontak. Modul Request membaca modul Donor hanya lewat port `App\Shared\Matching\DonorDirectory`

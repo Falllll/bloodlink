@@ -48,6 +48,7 @@ use App\Modules\Request\Domain\Events\AllocatedUnitIssued;
 use App\Modules\Request\Domain\Events\UnitReservationLifted;
 use App\Modules\Request\Domain\Events\UnitReservationPlaced;
 use App\Modules\Request\Infrastructure\Policies\BloodRequestPolicy;
+use App\Shared\Auth\FacilityMember;
 use App\Shared\Matching\DonorDirectory;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -87,6 +88,28 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(
             (int) config('security.rate_limit.auth_per_minute')
         )->by($request->ip()));
+
+        // Dua bucket sekaligus: satu petugas tidak boleh membanjiri, dan satu
+        // fasilitas tidak boleh membanjiri lewat banyak akun petugas (kartu 420).
+        // Angka OPERASIONAL, bukan medis -- lihat config/security.php.
+        // Prefix WAJIB dan berbeda: key di-hash bersama nama limiter saja, jadi tanpa
+        // prefix bucket pengguna 7 dan bucket fasilitas 7 jadi satu bucket LINTAS
+        // permintaan tanpa satu pun error. (Laravel hanya memisahkan key kembar di
+        // dalam SATU permintaan, lewat Limit::fallbackKey().)
+        RateLimiter::for('urgent-requests', function (Request $request): array {
+            $user = $request->user();
+            $userKey = $user === null ? 'ip:'.$request->ip() : 'id:'.$user->getAuthIdentifier();
+            $facilityId = $user instanceof FacilityMember ? $user->facilityId() : null;
+
+            return [
+                Limit::perHour((int) config('security.rate_limit.urgent_per_user_per_hour'))
+                    ->by('urgent-user:'.$userKey),
+                // Limiter jalan SEBELUM policy: akun tanpa fasilitas sampai ke sini walau
+                // nanti 403. Fallback-nya tetap per akun, bukan satu bucket global.
+                Limit::perHour((int) config('security.rate_limit.urgent_per_facility_per_hour'))
+                    ->by($facilityId === null ? 'urgent-facility:none:'.$userKey : 'urgent-facility:'.$facilityId),
+            ];
+        });
 
         Model::preventSilentlyDiscardingAttributes(! app()->isProduction());
         Model::preventAccessingMissingAttributes(! app()->isProduction());
