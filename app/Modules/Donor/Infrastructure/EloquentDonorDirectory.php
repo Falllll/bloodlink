@@ -41,6 +41,10 @@ final class EloquentDonorDirectory implements DonorDirectory
     ): array {
         $rows = $this->locations->withinRadiusOrderedByDistance($latitude, $longitude, $radiusMeters)
             ->whereNull('donors.deleted_at')
+            // Baris hasil merge adalah batu nisan (ResolveDonorForUser, FindSimilarDonors):
+            // MergeDonors tidak men-soft-delete sumber, dan deferral-nya sudah pindah ke
+            // target -- tanpa filter ini batu nisan tampil LAYAK dan dipanggil dua kali.
+            ->whereNull('donors.merged_into_id')
             ->where(function (Builder $q) use ($acceptablePairs): void {
                 // Daftar kosong berarti tidak ada yang sah: WHERE FALSE, bukan "semua".
                 $q->whereRaw('FALSE');

@@ -12,12 +12,14 @@ use App\Modules\Donor\Application\Exceptions\DonorIdentityConflict;
 use App\Modules\Donor\Application\FindSimilarDonors;
 use App\Modules\Donor\Application\MergeDonors;
 use App\Modules\Donor\Application\RegisterDonor;
+use App\Modules\Donor\Infrastructure\EloquentDonorDirectory;
 use App\Shared\Auth\FacilityScope;
 use App\Shared\Errors\ErrorCode;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -257,6 +259,32 @@ final class DonorIdentityTest extends TestCase
 
         $this->assertNotSame($first->id, $second->id);
         $this->assertDatabaseHas('donors', ['id' => $second->id, 'nik_hash' => Donor::nikHash($nik)]);
+    }
+
+    /**
+     * Revisi kartu 410: MergeDonors tidak men-soft-delete baris sumber, dan deferral-nya
+     * pindah ke target. Batu nisan yang lolos ke pencarian kandidat akan tampil LAYAK
+     * dan memakan slot kedua untuk orang yang sama.
+     */
+    public function test_a_merged_donor_row_never_appears_as_a_matching_candidate(): void
+    {
+        $facility = Facility::factory()->create();
+        $source = Donor::factory()->create(['registered_facility_id' => $facility->id]);
+        $target = Donor::factory()->create(['registered_facility_id' => $facility->id]);
+
+        // Keduanya di titik yang sama, offset 0.010 (~1 km) dari Monas.
+        foreach ([$source, $target] as $donor) {
+            $donor->forceFill(['blood_group' => 'O', 'rh_factor' => 'negative'])->save();
+            DB::table('donors')->where('id', $donor->id)->update([
+                'location' => DB::raw('ST_SetSRID(ST_MakePoint(106.8272, -6.1654), 4326)::geography'),
+            ]);
+        }
+
+        (new MergeDonors)->handle($source, $target);
+
+        $found = app(EloquentDonorDirectory::class)->nearest(-6.1754, 106.8272, 5000, [['group' => 'O', 'rh' => 'negative']], [], 10);
+
+        $this->assertSame([$target->public_id], array_map(fn ($donor): string => $donor->donorPublicId, $found));
     }
 
     public function test_hospital_staff_cannot_merge(): void
