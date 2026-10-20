@@ -8,7 +8,10 @@ use DateTimeImmutable;
 
 final readonly class DonorEligibilitySnapshot
 {
-    /** @param list<DeferralWindow> $deferrals */
+    /**
+     * @param  list<DeferralWindow>  $deferrals
+     * @param  list<DonorFlagWindow>  $flags  flag administratif (kartu 430); paling akhir supaya pemanggil lama tidak bergeser
+     */
     public function __construct(
         public DateTimeImmutable $dateOfBirth,
         public string $sex,                      // 'male' | 'female' — enum kolom donors.sex
@@ -16,6 +19,7 @@ final readonly class DonorEligibilitySnapshot
         public ?float $weightKg,
         public array $deferrals = [],
         public int $plannedVolumeMl = 450,
+        public array $flags = [],
     ) {}
 
     public function ageOn(DateTimeImmutable $today): int

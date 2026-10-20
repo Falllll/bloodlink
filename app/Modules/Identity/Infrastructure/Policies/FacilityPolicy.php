@@ -38,6 +38,22 @@ final class FacilityPolicy
         return $user->hasRole(Role::ADMIN->value) && $user->facility_id === $facility->id;
     }
 
+    /**
+     * Verifikasi: operator global SAJA (admin tanpa fasilitas) -- admin yang terikat
+     * satu fasilitas tidak boleh memverifikasi fasilitas mana pun. Pemakaian pertama
+     * facility.manage (literal: ModIdentity sengaja tidak mengimpor enum Permission di sini).
+     */
+    public function verify(User $user, Facility $facility): bool
+    {
+        return $user->isGlobalOperator() && $user->hasPermissionTo('facility.manage');
+    }
+
+    /** Menghidupkan kembali: aturan yang sama dengan menonaktifkan. */
+    public function activate(User $user, Facility $facility): bool
+    {
+        return $this->deactivate($user, $facility);
+    }
+
     public function deactivate(User $user, Facility $facility): bool
     {
         if ($user->isGlobalOperator()) {

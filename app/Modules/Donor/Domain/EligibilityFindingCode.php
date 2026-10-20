@@ -12,4 +12,6 @@ enum EligibilityFindingCode: string
     case BODY_WEIGHT_BELOW_MINIMUM = 'BODY_WEIGHT_BELOW_MINIMUM';
     case ACTIVE_DEFERRAL = 'ACTIVE_DEFERRAL';
     case DATA_MISSING = 'DATA_MISSING';
+    // Sanksi administratif (kartu 430), BUKAN deferral medis.
+    case ACTIVE_ADMIN_FLAG = 'ACTIVE_ADMIN_FLAG';
 }

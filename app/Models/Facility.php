@@ -8,7 +8,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property Carbon|null $verified_at verifikasi (kartu 430), terpisah dari is_active
+ */
 class Facility extends Model
 {
     /** @use HasFactory<FacilityFactory> */
@@ -22,7 +26,7 @@ class Facility extends Model
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return ['is_active' => 'boolean', 'verified_at' => 'datetime'];
     }
 
     public function getRouteKeyName(): string
@@ -44,6 +48,9 @@ class Facility extends Model
             'phone' => $this->phone,
             'email' => $this->email,
             'is_active' => $this->is_active,
+            // Verifikasi (kartu 430) TERPISAH dari is_active. verified_by tidak keluar.
+            'is_verified' => $this->verified_at !== null,
+            'verified_at' => $this->verified_at?->toIso8601String(),
         ];
     }
 

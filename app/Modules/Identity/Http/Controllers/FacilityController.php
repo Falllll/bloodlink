@@ -8,6 +8,7 @@ use App\Models\Facility;
 use App\Modules\Identity\Http\Requests\FacilityListRequest;
 use App\Modules\Identity\Http\Requests\StoreFacilityRequest;
 use App\Modules\Identity\Http\Requests\UpdateFacilityRequest;
+use App\Modules\Identity\Http\Requests\VerifyFacilityRequest;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\AppliesListQuery;
 use Illuminate\Http\JsonResponse;
@@ -86,6 +87,44 @@ final class FacilityController
         Gate::authorize('deactivate', $facility);
 
         $facility->is_active = false;
+        $facility->save();
+
+        return ApiResponse::success($facility->toApiArray());
+    }
+
+    /**
+     * Verifikasi fasilitas (kartu 430): "boleh ikut sistem", terpisah dari is_active.
+     * Sekali jalan: verifikasi ulang 409, bukan menimpa siapa dan kapan.
+     */
+    public function verify(Facility $facility, VerifyFacilityRequest $request): JsonResponse
+    {
+        Gate::authorize('verify', $facility);
+
+        $verified = DB::transaction(function () use ($facility, $request): Facility {
+            $fresh = Facility::query()->whereKey($facility->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($fresh->verified_at !== null) {
+                abort(409, 'This facility has already been verified.');
+            }
+
+            $fresh->forceFill([
+                'verified_at' => now(),
+                'verified_by' => $request->user()?->getAuthIdentifier(),
+                'verification_note' => $request->validated('note'),
+            ])->save();
+
+            return $fresh;
+        });
+
+        return ApiResponse::success($verified->toApiArray());
+    }
+
+    /** Pasangan deactivate() yang hilang: menghidupkan kembali operasional, bukan memverifikasi. */
+    public function activate(Facility $facility): JsonResponse
+    {
+        Gate::authorize('activate', $facility);
+
+        $facility->is_active = true;
         $facility->save();
 
         return ApiResponse::success($facility->toApiArray());

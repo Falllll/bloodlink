@@ -778,6 +778,97 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /facilities/{facility}/verify:
+    parameters:
+      - in: path
+        name: facility
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID fasilitas.
+    post:
+      summary: Verifikasi fasilitas
+      description: >-
+        "Boleh ikut sistem" -- terpisah dari `is_active` ("sedang beroperasi").
+        Hanya operator global (admin tanpa fasilitas) dengan `facility.manage`;
+        admin yang terikat satu fasilitas ditolak 403. Sekali jalan: verifikasi
+        ulang dibalas 409. `verified_at` dan verifikatornya diisi server.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+      responses:
+        '200':
+          description: Fasilitas terverifikasi.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Facility'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /facilities/{facility}/activate:
+    parameters:
+      - in: path
+        name: facility
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID fasilitas.
+    post:
+      summary: Aktifkan kembali fasilitas
+      description: >-
+        Pasangan `deactivate`: menyetel `is_active` = true. Tidak menyentuh
+        verifikasi. Aturan izinnya sama dengan menonaktifkan.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Fasilitas aktif kembali.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Facility'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /facilities/{facility}/deactivate:
     patch:
       summary: Nonaktifkan fasilitas
@@ -3882,6 +3973,157 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /donors/{donor}/flags:
+    parameters:
+      - in: path
+        name: donor
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID donor.
+    get:
+      summary: Daftar flag administratif donor
+      description: >-
+        Sanksi ADMINISTRATIF -- kanal terpisah dari deferral medis. `filter[active]`
+        memakai definisi "aktif" yang sama dengan mesin kelayakan. Butuh
+        `donor.update` dan operator global atau fasilitas tempat donor terdaftar.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: filter[active]
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Flag donor (cursor pagination).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DonorFlag'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    post:
+      summary: Tempatkan flag administratif
+      description: >-
+        Memblokir kelayakan dengan kode temuan `ACTIVE_ADMIN_FLAG` (bukan
+        `ACTIVE_DEFERRAL`) dan tidak pernah menulis ke deferral. Donor SELALU
+        dari path: `donor_id` di body ditolak 422. Satu flag aktif per donor;
+        yang kedua 409 `DONOR_FLAG_REJECTED`. `ends_at` kosong = tanpa batas
+        waktu (tetap bisa dicabut). Hanya operator global.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  enum: [identity_fraud, repeated_no_show, staff_safety, other]
+                note:
+                  type: string
+                  maxLength: 2000
+                ends_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+              required: [reason, note]
+      responses:
+        '201':
+          description: Flag ditempatkan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorFlag'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /donor-flags/{donorFlag}/lift:
+    parameters:
+      - in: path
+        name: donorFlag
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID flag.
+    post:
+      summary: Cabut flag administratif
+      description: >-
+        Sekali jalan: pencabutan kedua 409 `DONOR_FLAG_REJECTED` tanpa mengubah
+        baris. Hanya operator global.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 1000
+              required: [reason]
+      responses:
+        '200':
+          description: Flag dicabut.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorFlag'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /deferrals/{deferral}/lift:
     patch:
       summary: Cabut deferral
@@ -4036,6 +4278,7 @@ components:
         - NOTIFICATION_TEMPLATE_REJECTED
         - NOTIFICATION_CHANNEL_NOT_PERMITTED
         - CAMPAIGN_REJECTED
+        - DONOR_FLAG_REJECTED
     Error:
       type: object
       properties:
@@ -4146,7 +4389,48 @@ components:
           nullable: true
         is_active:
           type: boolean
-      required: [id, code, name, type, address, city, province, phone, email, is_active]
+          description: Sedang beroperasi. TERPISAH dari verifikasi.
+        is_verified:
+          type: boolean
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, code, name, type, address, city, province, phone, email, is_active, is_verified, verified_at]
+    DonorFlag:
+      type: object
+      description: >-
+        Sanksi ADMINISTRATIF satu donor, bukan deferral medis. Penempat dan
+        pencabutnya tidak keluar ke API.
+      properties:
+        id:
+          type: string
+          format: uuid
+        donor_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [identity_fraud, repeated_no_show, staff_safety, other]
+        note:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_active:
+          type: boolean
+        lifted_at:
+          type: string
+          format: date-time
+          nullable: true
+        lift_note:
+          type: string
+          nullable: true
+      required: [id, donor_id, reason, note, starts_at, ends_at, is_active, lifted_at, lift_note]
     FacilityWithCoordinates:
       allOf:
         - $ref: '#/components/schemas/Facility'

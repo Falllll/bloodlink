@@ -173,6 +173,16 @@ class Donor extends Model implements FacilityScoped
     }
 
     /**
+     * Flag ADMINISTRATIF (kartu 430) -- kanal terpisah dari deferral medis.
+     *
+     * @return HasMany<DonorFlag, $this>
+     */
+    public function flags(): HasMany
+    {
+        return $this->hasMany(DonorFlag::class);
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo

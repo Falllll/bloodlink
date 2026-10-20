@@ -8,6 +8,7 @@ use App\Modules\Donor\Domain\Rules\ActiveDeferralRule;
 use App\Modules\Donor\Domain\Rules\AgeRule;
 use App\Modules\Donor\Domain\Rules\BodyWeightRule;
 use App\Modules\Donor\Domain\Rules\DonationIntervalRule;
+use App\Modules\Donor\Domain\Rules\DonorFlagRule;
 use DateTimeImmutable;
 
 final readonly class EligibilityEngine
@@ -22,6 +23,7 @@ final readonly class EligibilityEngine
             new DonationIntervalRule,
             new BodyWeightRule,
             new ActiveDeferralRule,
+            new DonorFlagRule,
         ]);
     }
 

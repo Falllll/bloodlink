@@ -14,6 +14,7 @@ use App\Models\DeferralReason;
 use App\Models\Donation;
 use App\Models\Donor;
 use App\Models\DonorConsent;
+use App\Models\DonorFlag;
 use App\Models\DonorScreening;
 use App\Models\Facility;
 use App\Models\StockTransfer;
@@ -28,6 +29,7 @@ use App\Modules\Donor\Domain\Events\DonationCompleted;
 use App\Modules\Donor\Domain\Events\DonorLocationChanged;
 use App\Modules\Donor\Domain\Events\DonorPermanentlyDeferred;
 use App\Modules\Donor\Infrastructure\EloquentDonorDirectory;
+use App\Modules\Donor\Infrastructure\Policies\DonorFlagPolicy;
 use App\Modules\Donor\Infrastructure\Policies\DonorPolicy;
 use App\Modules\Donor\Infrastructure\RecordPermanentDeferral;
 use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
@@ -116,13 +118,16 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(Facility::class, FacilityPolicy::class);
         Gate::policy(Donor::class, DonorPolicy::class);
+        // Wajib manual: tanpa ini SEMUA orang ditolak, termasuk admin (kartu 430).
+        Gate::policy(DonorFlag::class, DonorFlagPolicy::class);
+
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
         Gate::policy(BloodBatch::class, BloodBatchPolicy::class);
         Gate::policy(StorageLocation::class, StorageLocationPolicy::class);
         Gate::policy(StockTransfer::class, StockTransferPolicy::class);
         Gate::policy(BloodRequest::class, BloodRequestPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class, BloodRequestAllocation::class, Crossmatch::class, Transfusion::class, TransfusionReaction::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DonorFlag::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class, BloodRequestAllocation::class, Crossmatch::class, Transfusion::class, TransfusionReaction::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 

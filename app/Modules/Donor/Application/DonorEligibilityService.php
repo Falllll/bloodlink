@@ -6,12 +6,15 @@ namespace App\Modules\Donor\Application;
 
 use App\Models\Deferral;
 use App\Models\Donor;
+use App\Models\DonorFlag;
 use App\Modules\Donor\Domain\DeferralWindow;
 use App\Modules\Donor\Domain\DonorEligibilitySnapshot;
+use App\Modules\Donor\Domain\DonorFlagWindow;
 use App\Modules\Donor\Domain\EligibilityDecision;
 use App\Modules\Donor\Domain\EligibilityEngine;
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 final readonly class DonorEligibilityService
@@ -72,6 +75,12 @@ final readonly class DonorEligibilityService
             weightKg: $donor->weight_kg === null ? null : (float) $donor->weight_kg,
             deferrals: $donor->deferrals->map(fn (Deferral $deferral): DeferralWindow => $this->toWindow($deferral))->all(),
             plannedVolumeMl: $plannedVolumeMl,
+            // loadMissing tidak memuat ulang relasi yang sudah termuat TANPA filter:
+            // flag yang sudah dicabut tetap dibuang di sini, jangan diandalkan ke query saja.
+            flags: $donor->flags->filter(fn (DonorFlag $flag): bool => $flag->lifted_at === null)->values()->map(fn (DonorFlag $flag): DonorFlagWindow => new DonorFlagWindow(
+                reason: $flag->reason,
+                endsAt: $flag->ends_at?->toDateTimeImmutable(),
+            ))->all(),
         );
     }
 
@@ -83,6 +92,8 @@ final readonly class DonorEligibilityService
                 ->whereNull('lifted_at')
                 ->where(fn ($w) => $w->whereNull('ends_at')->orWhere('ends_at', '>', $today))
                 ->with('reason:id,code'),
+            // Flag administratif aktif: predikat yang SAMA dengan FlagDonor (satu definisi).
+            'flags' => fn (HasMany $query) => FlagDonor::whereActive($query, $today),
         ];
     }
 
