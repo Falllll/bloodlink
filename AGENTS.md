@@ -90,6 +90,10 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   kontak. Modul Request membaca modul Donor hanya lewat port `App\Shared\Matching\DonorDirectory`
   (implementasi `EloquentDonorDirectory` di modul Donor, diikat di `AppServiceProvider`)
   — bukan dengan menambah izin deptrac.
+- `BloodRequestController::candidates()` **sengaja** dua round-trip (`COUNT` lalu
+  `candidatesFor()`): `COUNT`-nya Index Only Scan atas `(blood_request_id, released_at)`,
+  murah. Jangan digabung (kartu 445). Anggaran query dan `EXPLAIN` di test memakai
+  `Tests\Concerns\InspectsQueries`; index baru hanya dengan rencana sebelum/sesudah yang berbeda.
 - Object storage: berkas lampiran masuk disk `s3` (Garage self-hosted, lihat
   service `garage` di docker-compose), bukan disk `local` dan bukan ke dalam
   working tree. Disk itu `visibility => private` dan `throw => true`; jangan

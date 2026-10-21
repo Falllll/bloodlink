@@ -118,6 +118,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Slow Query Threshold
+    |--------------------------------------------------------------------------
+    |
+    | Kartu 445. Total waktu query (ms) per request atau per job sebelum
+    | SlowQueryLog mencatat warning. Hanya aktif di luar produksi. Angka
+    | OPERASIONAL: 0 membuat setiap request tercatat (dipakai verifikasi).
+    |
+    */
+
+    'slow_query_ms' => (int) env('DB_SLOW_QUERY_MS', 500),
+
+    /*
+    |--------------------------------------------------------------------------
     | Migration Repository Table
     |--------------------------------------------------------------------------
     |

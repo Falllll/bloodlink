@@ -10,13 +10,14 @@ use App\Modules\Identity\Domain\Role as RoleEnum;
 use App\Shared\Auth\FacilityScope;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\InspectsQueries;
 use Tests\TestCase;
 
 final class FacilityCrudTest extends TestCase
 {
+    use InspectsQueries;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -245,11 +246,8 @@ final class FacilityCrudTest extends TestCase
         // Planner sudah memilih index scan secara alami di sini (dibuktikan
         // dengan menghapus baris ini dan test tetap hijau), tapi seq scan
         // tetap dimatikan agar hasil tidak goyah kalau data test membesar.
-        DB::statement('SET enable_seqscan = off;');
+        $plan = $this->queryPlan(Facility::query()->nearby(-6.2, 106.81, 5000));
 
-        $sql = Facility::query()->nearby(-6.2, 106.81, 5000)->toSql();
-        $plan = DB::select('EXPLAIN '.$sql, [106.81, -6.2, 5000]);
-
-        $this->assertStringContainsString('facilities_location_gist', json_encode($plan));
+        $this->assertStringContainsString('facilities_location_gist', $plan);
     }
 }

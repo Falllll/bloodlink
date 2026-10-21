@@ -19,6 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\InspectsQueries;
 use Tests\TestCase;
 
 /**
@@ -27,6 +28,7 @@ use Tests\TestCase;
  */
 final class DonorFlagTest extends TestCase
 {
+    use InspectsQueries;
     use RefreshDatabase;
 
     private int $deferralsBefore;
@@ -309,12 +311,7 @@ final class DonorFlagTest extends TestCase
                 $ids[] = $donor->id;
             }
 
-            DB::flushQueryLog();
-            DB::enableQueryLog();
-            DonorEligibilityService::who()->forMany(Donor::query()->whereKey($ids)->get());
-            DB::disableQueryLog();
-
-            return count(DB::getQueryLog());
+            return $this->countQueries(fn () => DonorEligibilityService::who()->forMany(Donor::query()->whereKey($ids)->get()));
         };
 
         $this->assertSame($count(3), $count(20));

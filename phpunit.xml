@@ -33,6 +33,10 @@
         <env name="DB_USERNAME" value="bloodlink"/>
         <env name="DB_PASSWORD" value="secret"/>
         <env name="DB_URL" value=""/>
+        <!-- Siklus hidup satu test ikut menghitung seeding, jadi ambang 500 ms
+             memunculkan warning di hampir setiap test. Penjaganya tetap terpasang
+             dan diuji eksplisit di SlowQueryLogTest. -->
+        <env name="DB_SLOW_QUERY_MS" value="60000"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

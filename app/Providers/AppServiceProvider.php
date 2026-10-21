@@ -51,6 +51,7 @@ use App\Modules\Request\Domain\Events\UnitReservationLifted;
 use App\Modules\Request\Domain\Events\UnitReservationPlaced;
 use App\Modules\Request\Infrastructure\Policies\BloodRequestPolicy;
 use App\Shared\Auth\FacilityMember;
+use App\Shared\Database\SlowQueryLog;
 use App\Shared\Matching\DonorDirectory;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -115,6 +116,11 @@ class AppServiceProvider extends ServiceProvider
 
         Model::preventSilentlyDiscardingAttributes(! app()->isProduction());
         Model::preventAccessingMissingAttributes(! app()->isProduction());
+
+        // Kartu 445: hanya non-produksi, dan hanya mencatat -- lihat SlowQueryLog.
+        if (! app()->isProduction()) {
+            SlowQueryLog::register((int) config('database.slow_query_ms'));
+        }
 
         Gate::policy(Facility::class, FacilityPolicy::class);
         Gate::policy(Donor::class, DonorPolicy::class);

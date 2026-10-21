@@ -18,10 +18,12 @@ use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\InspectsQueries;
 use Tests\TestCase;
 
 final class DonorEligibilityServiceTest extends TestCase
 {
+    use InspectsQueries;
     use RefreshDatabase;
 
     public function test_a_lifted_deferral_no_longer_blocks_the_donor(): void
@@ -180,12 +182,7 @@ final class DonorEligibilityServiceTest extends TestCase
     {
         $donors = Donor::factory()->count(10)->create(['weight_kg' => 70]);
 
-        $queryCount = 0;
-        DB::listen(function () use (&$queryCount): void {
-            $queryCount++;
-        });
-
-        DonorEligibilityService::who()->forMany($donors);
+        $queryCount = $this->countQueries(fn () => DonorEligibilityService::who()->forMany($donors));
 
         $this->assertLessThanOrEqual(3, $queryCount);
     }

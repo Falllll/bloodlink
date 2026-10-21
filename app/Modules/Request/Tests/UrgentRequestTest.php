@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\HttpFoundation\Response;
+use Tests\Concerns\InspectsQueries;
 use Tests\TestCase;
 
 /**
@@ -29,6 +30,7 @@ use Tests\TestCase;
  */
 final class UrgentRequestTest extends TestCase
 {
+    use InspectsQueries;
     use RefreshDatabase;
 
     private const float LAT = -6.1754;
@@ -329,13 +331,7 @@ final class UrgentRequestTest extends TestCase
     public function test_the_scan_uses_the_spatial_index(): void
     {
         // Tabel test terlalu kecil: tanpa ini planner memilih seq scan (pola FefoAllocationTest).
-        DB::statement('SET enable_seqscan = off;');
-
-        $query = app(NearbyStockQuery::class)->aggregate(self::LAT, self::LNG, 30000, 'packed_red_cells', [['group' => 'O', 'rh' => 'negative']], now());
-        $plan = implode("\n", array_map(
-            fn (object $row): string => (string) $row->{'QUERY PLAN'},
-            DB::select('EXPLAIN '.$query->toSql(), $query->getBindings()),
-        ));
+        $plan = $this->queryPlan(app(NearbyStockQuery::class)->aggregate(self::LAT, self::LNG, 30000, 'packed_red_cells', [['group' => 'O', 'rh' => 'negative']], now()));
 
         $this->assertStringContainsString('facilities_location_gist', $plan);
     }

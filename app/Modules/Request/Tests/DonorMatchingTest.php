@@ -27,6 +27,7 @@ use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\HttpFoundation\Response;
+use Tests\Concerns\InspectsQueries;
 use Tests\TestCase;
 
 /**
@@ -36,6 +37,7 @@ use Tests\TestCase;
  */
 final class DonorMatchingTest extends TestCase
 {
+    use InspectsQueries;
     use RefreshDatabase;
 
     private const float LAT = -6.1754;
@@ -261,12 +263,7 @@ final class DonorMatchingTest extends TestCase
             }
             $request = $this->request();
 
-            DB::flushQueryLog();
-            DB::enableQueryLog();
-            app(SelectDonorCandidates::class)->handle($request, $this->facility, 15000);
-            DB::disableQueryLog();
-
-            return count(DB::getQueryLog());
+            return $this->countQueries(fn () => app(SelectDonorCandidates::class)->handle($request, $this->facility, 15000));
         };
 
         $this->assertSame($count(5), $count(50));
@@ -297,15 +294,9 @@ final class DonorMatchingTest extends TestCase
 
     public function test_the_candidate_query_uses_the_spatial_index(): void
     {
-        DB::statement('SET enable_seqscan = off;');
-
-        $query = DB::table('donors')
+        $plan = $this->queryPlan(DB::table('donors')
             ->whereNotNull('location')
-            ->whereRaw('ST_DWithin(location, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)', [self::LNG, self::LAT, 5000]);
-        $plan = implode("\n", array_map(
-            fn (object $row): string => (string) $row->{'QUERY PLAN'},
-            DB::select('EXPLAIN '.$query->toSql(), $query->getBindings()),
-        ));
+            ->whereRaw('ST_DWithin(location, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)', [self::LNG, self::LAT, 5000]));
 
         $this->assertStringContainsString('donors_location_gist', $plan);
     }

@@ -19,8 +19,8 @@ use Database\Seeders\DeferralReasonSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\InspectsQueries;
 use Tests\TestCase;
 
 /**
@@ -29,6 +29,7 @@ use Tests\TestCase;
  */
 final class DonorListTest extends TestCase
 {
+    use InspectsQueries;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -150,12 +151,10 @@ final class DonorListTest extends TestCase
             $this->defer($donor, 'PREGNANT_OR_LACTATING');
         }
 
-        $queries = 0;
-        DB::listen(function () use (&$queries): void {
-            $queries++;
+        $statuses = [];
+        $queries = $this->countQueries(function () use ($donors, &$statuses): void {
+            $statuses = (new SummariseDeferralStatus)->forDonorIds($donors->pluck('id')->all(), new DateTimeImmutable);
         });
-
-        $statuses = (new SummariseDeferralStatus)->forDonorIds($donors->pluck('id')->all(), new DateTimeImmutable);
 
         $this->assertLessThanOrEqual(3, $queries);
         $this->assertCount(10, array_filter($statuses, fn (string $s): bool => $s === SummariseDeferralStatus::TEMPORARY));
@@ -169,16 +168,10 @@ final class DonorListTest extends TestCase
         }
         $headers = $this->bearer($this->userOf($facility->id));
 
-        $deferralQueries = 0;
-        DB::listen(function ($query) use (&$deferralQueries): void {
-            if (str_contains($query->sql, '"deferrals"')) {
-                $deferralQueries++;
-            }
+        $deferralQueries = $this->countQueriesOn('deferrals', function () use ($headers): void {
+            $this->getJson('/api/v1/donors', $headers)->assertOk()->assertJsonCount(10, 'data');
         });
 
-        $response = $this->getJson('/api/v1/donors', $headers);
-
-        $response->assertOk()->assertJsonCount(10, 'data');
         $this->assertSame(1, $deferralQueries);
     }
 

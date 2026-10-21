@@ -32,7 +32,8 @@ final class BloodBatchController
 
         /** @var CursorPaginator<int, BloodBatch> $page */
         $page = $this->listing(
-            BloodBatch::query()->visibleTo($user)->with(['facility', 'donor', 'storageProfile']),
+            // Harus memuat SETIAP relasi yang dibaca toApiArray(); dijaga QueryBudgetTest.
+            BloodBatch::query()->visibleTo($user)->with(['facility', 'donor', 'storageProfile', 'parent']),
             $request,
         );
 

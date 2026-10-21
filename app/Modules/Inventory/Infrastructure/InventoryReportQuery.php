@@ -9,6 +9,7 @@ use App\Shared\Auth\FacilityMember;
 use App\Shared\Reporting\Ratio;
 use App\Shared\Reporting\ReportScope;
 use App\Shared\Reporting\ReportWindow;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -43,20 +44,7 @@ final class InventoryReportQuery
      */
     public function wastage(ReportWindow $window, ?FacilityMember $user): array
     {
-        $unit = $window->granularity->sqlUnit();
-
-        $query = DB::table('blood_batch_events')
-            // $unit dari literal enum ReportGranularity::sqlUnit(), lihat peringatan di sana.
-            ->selectRaw("date_trunc('{$unit}', occurred_at)::date AS period_start")
-            ->selectRaw('COUNT(*) FILTER (WHERE to_status = ?) AS discarded', [BatchStatus::DISCARDED->value])
-            ->selectRaw('COUNT(*) FILTER (WHERE to_status = ?) AS expired', [BatchStatus::EXPIRED->value])
-            ->selectRaw('COUNT(*) FILTER (WHERE to_status = ? AND from_status = ?) AS released', [BatchStatus::RELEASED->value, BatchStatus::TESTING->value])
-            ->whereIn('to_status', [BatchStatus::DISCARDED->value, BatchStatus::EXPIRED->value, BatchStatus::RELEASED->value])
-            ->where('occurred_at', '>=', $window->start)
-            ->where('occurred_at', '<', $window->end)
-            ->groupByRaw('1');
-
-        $rows = ReportScope::apply($query, 'facility_id', $user)->get();
+        $rows = $this->wastageQuery($window, $user)->get();
 
         return array_map(function (array $bucket): array {
             $wasted = $bucket['discarded'] + $bucket['expired'];
@@ -71,6 +59,25 @@ final class InventoryReportQuery
         }, $window->fill($rows, ['discarded', 'expired', 'released']));
     }
 
+    /** Publik supaya EXPLAIN di test memeriksa query yang sama persis (kartu 445). */
+    public function wastageQuery(ReportWindow $window, ?FacilityMember $user): Builder
+    {
+        $unit = $window->granularity->sqlUnit();
+
+        $query = DB::table('blood_batch_events')
+            // $unit dari literal enum ReportGranularity::sqlUnit(), lihat peringatan di sana.
+            ->selectRaw("date_trunc('{$unit}', occurred_at)::date AS period_start")
+            ->selectRaw('COUNT(*) FILTER (WHERE to_status = ?) AS discarded', [BatchStatus::DISCARDED->value])
+            ->selectRaw('COUNT(*) FILTER (WHERE to_status = ?) AS expired', [BatchStatus::EXPIRED->value])
+            ->selectRaw('COUNT(*) FILTER (WHERE to_status = ? AND from_status = ?) AS released', [BatchStatus::RELEASED->value, BatchStatus::TESTING->value])
+            ->whereIn('to_status', [BatchStatus::DISCARDED->value, BatchStatus::EXPIRED->value, BatchStatus::RELEASED->value])
+            ->where('occurred_at', '>=', $window->start)
+            ->where('occurred_at', '<', $window->end)
+            ->groupByRaw('1');
+
+        return ReportScope::apply($query, 'facility_id', $user);
+    }
+
     /**
      * Arus stok per bucket: jumlah transisi KE tiap status.
      *
@@ -83,12 +90,30 @@ final class InventoryReportQuery
      */
     public function stockFlow(ReportWindow $window, ?FacilityMember $user): array
     {
+        $statuses = self::statuses();
+        $rows = $this->stockFlowQuery($window, $user)->get();
+
+        return array_map(fn (array $bucket): array => [
+            'period_start' => $bucket['period_start'],
+            'transitions_to' => array_intersect_key($bucket, array_flip($statuses)),
+        ], $window->fill($rows, $statuses));
+    }
+
+    /** Publik supaya EXPLAIN di test memeriksa query yang sama persis (kartu 445). */
+    public function stockFlowQuery(ReportWindow $window, ?FacilityMember $user): Builder
+    {
         $unit = $window->granularity->sqlUnit();
-        $statuses = array_map(fn (BatchStatus $s): string => $s->value, BatchStatus::cases());
+        $statuses = self::statuses();
 
         $query = DB::table('blood_batch_events')
             // $unit dari literal enum ReportGranularity::sqlUnit(), lihat peringatan di sana.
             ->selectRaw("date_trunc('{$unit}', occurred_at)::date AS period_start")
+            // Secara logika tidak menyaring apa pun (to_status NOT NULL dan selalu salah
+            // satu kasus ini), tapi tanpa predikat ini index (to_status, occurred_at) tidak
+            // bisa dipakai dan jalur operator global memindai SELURUH riwayat event.
+            // Kartu 445, 600k baris: Seq Scan cost 16970 -> Bitmap Index Scan cost 9080,
+            // dan selisihnya tumbuh bersama riwayat. Jangan dihapus sebagai "redundan".
+            ->whereIn('to_status', $statuses)
             ->where('occurred_at', '>=', $window->start)
             ->where('occurred_at', '<', $window->end)
             ->groupByRaw('1');
@@ -98,11 +123,12 @@ final class InventoryReportQuery
             $query->selectRaw("COUNT(*) FILTER (WHERE to_status = ?) AS \"{$status}\"", [$status]);
         }
 
-        $rows = ReportScope::apply($query, 'facility_id', $user)->get();
+        return ReportScope::apply($query, 'facility_id', $user);
+    }
 
-        return array_map(fn (array $bucket): array => [
-            'period_start' => $bucket['period_start'],
-            'transitions_to' => array_intersect_key($bucket, array_flip($statuses)),
-        ], $window->fill($rows, $statuses));
+    /** @return list<string> */
+    private static function statuses(): array
+    {
+        return array_map(fn (BatchStatus $s): string => $s->value, BatchStatus::cases());
     }
 }

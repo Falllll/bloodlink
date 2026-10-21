@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\InspectsQueries;
 use Tests\TestCase;
 
 /**
@@ -36,6 +37,7 @@ use Tests\TestCase;
  */
 final class FefoAllocationTest extends TestCase
 {
+    use InspectsQueries;
     use RefreshDatabase;
 
     private Facility $facility;
@@ -459,15 +461,7 @@ final class FefoAllocationTest extends TestCase
         // Sort juga dimatikan supaya hasilnya tidak bergantung statistik tabel yang
         // baru dimigrasi: index yang TIDAK bisa memberi urutan tetap memaksa node
         // Sort muncul, jadi assertion di bawah tetap menggigit.
-        DB::statement('SET enable_seqscan = off;');
-        DB::statement('SET enable_sort = off;');
-        DB::statement('SET enable_incremental_sort = off;');
-
-        $query = $this->fefo()->candidateQuery($request)->limit(50);
-        $plan = implode("\n", array_map(
-            fn (object $row): string => (string) $row->{'QUERY PLAN'},
-            DB::select('EXPLAIN '.$query->toSql(), $query->getBindings()),
-        ));
+        $plan = $this->queryPlan($this->fefo()->candidateQuery($request)->limit(50), disableSort: true);
 
         $this->assertStringContainsString('blood_batches_fefo_index', $plan);
         // Urutan dilayani index, bukan sort terpisah.

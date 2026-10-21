@@ -43,8 +43,12 @@ final class CrossmatchTransfusionReportQuery
         ], $crossmatches, $transfusions);
     }
 
-    /** @param 'crossmatches'|'transfusions' $table */
-    private function countPerBucket(string $table, string $timeColumn, ReportWindow $window, ?FacilityMember $user): Builder
+    /**
+     * Publik supaya EXPLAIN di test memeriksa query yang sama persis (kartu 445).
+     *
+     * @param  'crossmatches'|'transfusions'  $table
+     */
+    public function countPerBucket(string $table, string $timeColumn, ReportWindow $window, ?FacilityMember $user): Builder
     {
         $unit = $window->granularity->sqlUnit();
 
