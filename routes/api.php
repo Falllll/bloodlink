@@ -18,6 +18,7 @@ use App\Modules\Identity\Http\Controllers\FacilityController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchBarcodeController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchController;
 use App\Modules\Inventory\Http\Controllers\ComponentSeparationController;
+use App\Modules\Inventory\Http\Controllers\InventoryReportController;
 use App\Modules\Inventory\Http\Controllers\LabTestController;
 use App\Modules\Inventory\Http\Controllers\StockTransferController;
 use App\Modules\Inventory\Http\Controllers\StorageLocationController;
@@ -26,6 +27,7 @@ use App\Modules\Notification\Http\Controllers\DeviceTokenController;
 use App\Modules\Request\Http\Controllers\BloodRequestController;
 use App\Modules\Request\Http\Controllers\CompatibilityController;
 use App\Modules\Request\Http\Controllers\DonorCampaignController;
+use App\Modules\Request\Http\Controllers\RequestReportController;
 use App\Modules\Request\Http\Controllers\TransfusionController;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\EnsureIdempotency;
@@ -111,6 +113,10 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::get('/compatibility', CompatibilityController::class)->name('compatibility.show');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+
+    Route::get('/reports/wastage', [InventoryReportController::class, 'wastage'])->name('reports.wastage');
+    Route::get('/reports/stock-trend', [InventoryReportController::class, 'stockTrend'])->name('reports.stock-trend');
+    Route::get('/reports/crossmatch-transfusion', [RequestReportController::class, 'crossmatchTransfusion'])->name('reports.crossmatch-transfusion');
 
     Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
     Route::post('/donors/{donor}/appointments', [AppointmentController::class, 'store'])->name('donors.appointments.store');

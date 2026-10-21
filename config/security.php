@@ -14,6 +14,11 @@ return [
         'urgent_per_user_per_hour' => (int) env('URGENT_RATE_LIMIT_PER_USER_PER_HOUR', 6),
         'urgent_per_facility_per_hour' => (int) env('URGENT_RATE_LIMIT_PER_FACILITY_PER_HOUR', 20),
     ],
+
+    // Batas bucket per permintaan laporan (kartu 440). Angka OPERASIONAL: satu
+    // tahun harian. Tanpa batas, granularity=day&from=2000-01-01 adalah DoS.
+    'report_max_buckets' => (int) env('REPORT_MAX_BUCKETS', 366),
+
     'hsts_max_age' => env('HSTS_MAX_AGE', 31536000),
 
     'trusted_proxies' => env('TRUSTED_PROXIES', ''),

@@ -18,4 +18,5 @@ enum Permission: string
     case FACILITY_MANAGE = 'facility.manage';
     case USER_MANAGE = 'user.manage';
     case AUDIT_VIEW = 'audit.view';
+    case REPORT_VIEW = 'report.view';
 }

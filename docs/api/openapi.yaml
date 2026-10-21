@@ -446,6 +446,124 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /reports/wastage:
+    get:
+      summary: Wastage rate periodik
+      description: >-
+        Dihitung dari riwayat transisi (`blood_batch_events`), bukan dari status
+        unit saat ini. Pembilang = transisi ke `discarded` atau `expired`;
+        penyebut = transisi `testing` -> `released`. Satu kantong bisa muncul di
+        dua bucket (dirilis di satu periode, kedaluwarsa di periode lain) --
+        disengaja untuk rasio periodik. Penyebut 0 menghasilkan `ratio: null`.
+        Butuh izin `report.view`. Pembaca ber-fasilitas hanya menghitung
+        fasilitasnya sendiri; operator global menghitung seluruh fasilitas.
+        Tidak memuat ambang mutu apa pun: angka "baik" vs "buruk" adalah aturan
+        medis dan belum ada di Rujukan Pedoman Medis.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReportFrom'
+        - $ref: '#/components/parameters/ReportTo'
+        - $ref: '#/components/parameters/ReportGranularity'
+      responses:
+        '200':
+          description: Satu baris per bucket, berurutan, bucket kosong berisi nol.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WastageBucket'
+                  meta:
+                    $ref: '#/components/schemas/ReportMeta'
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /reports/stock-trend:
+    get:
+      summary: Arus transisi stok per periode
+      description: >-
+        Jumlah transisi KE tiap status per bucket, dari `blood_batch_events`.
+        Ini arus, bukan level stok: transfer antarfasilitas memindah unit tanpa
+        transisi status, sehingga level per fasilitas tidak bisa direkonstruksi
+        jujur dari riwayat. Level stok saat ini ada di `GET /blood-batches`.
+        Butuh izin `report.view`. Pembaca ber-fasilitas hanya menghitung
+        fasilitasnya sendiri; operator global menghitung seluruh fasilitas.
+        Tidak memuat ambang mutu apa pun: angka "baik" vs "buruk" adalah aturan
+        medis dan belum ada di Rujukan Pedoman Medis.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReportFrom'
+        - $ref: '#/components/parameters/ReportTo'
+        - $ref: '#/components/parameters/ReportGranularity'
+      responses:
+        '200':
+          description: Satu baris per bucket, berurutan, bucket kosong berisi nol.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockTrendBucket'
+                  meta:
+                    $ref: '#/components/schemas/ReportMeta'
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /reports/crossmatch-transfusion:
+    get:
+      summary: Rasio crossmatch-ke-transfusi (C:T)
+      description: >-
+        Pembilang = SEMUA crossmatch yang dikerjakan (`performed_at`), apa pun
+        hasilnya; penyebut = transfusi yang dimulai (`started_at`). Scope
+        fasilitas = fasilitas PEMINTA (`blood_requests.facility_id`), bukan
+        pemilik kantong. Penyebut 0 menghasilkan `ratio: null`.
+        Butuh izin `report.view`. Pembaca ber-fasilitas hanya menghitung
+        fasilitasnya sendiri; operator global menghitung seluruh fasilitas.
+        Tidak memuat ambang mutu apa pun: angka "baik" vs "buruk" adalah aturan
+        medis dan belum ada di Rujukan Pedoman Medis.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReportFrom'
+        - $ref: '#/components/parameters/ReportTo'
+        - $ref: '#/components/parameters/ReportGranularity'
+      responses:
+        '200':
+          description: Satu baris per bucket, berurutan, bucket kosong berisi nol.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CrossmatchTransfusionBucket'
+                  meta:
+                    $ref: '#/components/schemas/ReportMeta'
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /me/devices:
     post:
       summary: Daftarkan token push perangkat ini
@@ -4184,6 +4302,33 @@ components:
       scheme: bearer
       description: 'Token Sanctum, dikirim lewat header `Authorization: Bearer <token>`.'
   parameters:
+    ReportFrom:
+      in: query
+      name: from
+      required: true
+      schema:
+        type: string
+        format: date
+      description: Hari pertama (UTC, inklusif). Diratakan mundur ke awal bucket-nya.
+    ReportTo:
+      in: query
+      name: to
+      required: true
+      schema:
+        type: string
+        format: date
+      description: >-
+        Hari terakhir (UTC, inklusif), >= `from`. Bucket-nya ikut dihitung
+        penuh. Jumlah bucket dibatasi (`security.report_max_buckets`, default
+        366); lebih dari itu 422 dengan aturan `too_many_buckets` di `to`.
+    ReportGranularity:
+      in: query
+      name: granularity
+      required: true
+      schema:
+        type: string
+        enum: [day, week, month]
+      description: Lebar bucket. Minggu dimulai Senin (ISO). Nilai lain 422.
     Cursor:
       in: query
       name: cursor
@@ -4242,6 +4387,98 @@ components:
         membuatnya sendiri dan mengembalikannya di header respons serta di
         `error.trace_id`.
   schemas:
+    ReportMeta:
+      type: object
+      properties:
+        granularity:
+          type: string
+          enum: [day, week, month]
+        from:
+          type: string
+          format: date
+          description: Awal bucket pertama (sesudah perataan).
+        to_exclusive:
+          type: string
+          format: date
+          description: Awal bucket SESUDAH bucket terakhir.
+        timezone:
+          type: string
+          enum: [UTC]
+        numerator:
+          type: string
+          description: Definisi pembilang, hanya di laporan berasio.
+        denominator:
+          type: string
+          description: Definisi penyebut, hanya di laporan berasio.
+      required: [granularity, from, to_exclusive, timezone]
+    WastageBucket:
+      type: object
+      properties:
+        period_start:
+          type: string
+          format: date
+        discarded:
+          type: integer
+        expired:
+          type: integer
+        released:
+          type: integer
+        numerator:
+          type: integer
+          description: discarded + expired.
+        denominator:
+          type: integer
+          description: Sama dengan released.
+        ratio:
+          type: number
+          nullable: true
+          description: numerator / denominator, 4 desimal; null bila penyebut 0.
+      required: [period_start, discarded, expired, released, numerator, denominator, ratio]
+    CrossmatchTransfusionBucket:
+      type: object
+      properties:
+        period_start:
+          type: string
+          format: date
+        numerator:
+          type: integer
+          description: Crossmatch yang dikerjakan, semua hasil.
+        denominator:
+          type: integer
+          description: Transfusi yang dimulai.
+        ratio:
+          type: number
+          nullable: true
+          description: numerator / denominator, 4 desimal; null bila penyebut 0.
+      required: [period_start, numerator, denominator, ratio]
+    StockTrendBucket:
+      type: object
+      properties:
+        period_start:
+          type: string
+          format: date
+        transitions_to:
+          type: object
+          description: Jumlah transisi KE tiap status unit dalam bucket.
+          properties:
+            quarantined:
+              type: integer
+            testing:
+              type: integer
+            released:
+              type: integer
+            reserved:
+              type: integer
+            issued:
+              type: integer
+            discarded:
+              type: integer
+            expired:
+              type: integer
+            separated:
+              type: integer
+          required: [quarantined, testing, released, reserved, issued, discarded, expired, separated]
+      required: [period_start, transitions_to]
     ErrorCode:
       type: string
       enum:

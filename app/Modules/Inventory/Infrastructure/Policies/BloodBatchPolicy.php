@@ -17,6 +17,17 @@ final class BloodBatchPolicy
 
     private const string RELEASE = 'inventory.release';
 
+    private const string REPORT = 'report.view';
+
+    /**
+     * Laporan agregat (kartu 440). Fasilitas mana yang dihitung diurus ReportScope,
+     * sama seperti visibleTo() untuk baris.
+     */
+    public function viewReports(User $user): bool
+    {
+        return $user->hasPermissionTo(self::REPORT);
+    }
+
     /** Gerbang jenis data: boleh melihat inventori sama sekali? Baris mana diurus visibleTo(). */
     public function viewAny(User $user): bool
     {
