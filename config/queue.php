@@ -13,7 +13,8 @@ return [
     |
     */
 
-    'default' => env('QUEUE_CONNECTION', 'database'),
+    // Redis, bukan database: Horizon (kartu 460) hanya bekerja di atas driver redis.
+    'default' => env('QUEUE_CONNECTION', 'redis'),
 
     /*
     |--------------------------------------------------------------------------

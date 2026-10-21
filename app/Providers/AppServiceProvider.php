@@ -46,6 +46,9 @@ use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StockTransferPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
 use App\Modules\Notification\Application\ChannelPolicy;
+use App\Modules\Notification\Application\ResolveSender;
+use App\Modules\Notification\Infrastructure\FcmNotificationSender;
+use App\Modules\Notification\Infrastructure\MailNotificationSender;
 use App\Modules\Request\Domain\Events\AllocatedUnitIssued;
 use App\Modules\Request\Domain\Events\UnitReservationLifted;
 use App\Modules\Request\Domain\Events\UnitReservationPlaced;
@@ -54,6 +57,7 @@ use App\Shared\Auth\FacilityMember;
 use App\Shared\Database\SlowQueryLog;
 use App\Shared\Matching\DonorDirectory;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\Looping;
@@ -77,6 +81,17 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DonorDirectory::class, EloquentDonorDirectory::class);
         // Satu pintu kebijakan kanal (kartu 455): daftar izin dibaca dari config HANYA di sini.
         $this->app->singleton(ChannelPolicy::class, fn (): ChannelPolicy => new ChannelPolicy(config('notification.channels')));
+        // Jalur kirim (kartu 460): singleton supaya access token FCM bertahan di memori worker.
+        $this->app->singleton(FcmNotificationSender::class, fn (): FcmNotificationSender => new FcmNotificationSender(
+            config('services.fcm.credentials_path'),
+            config('services.fcm.project_id'),
+            (string) config('app.name'),
+        ));
+        // Pengirim HANYA diresolusi lewat ResolveSender; tidak ada yang meminta kelasnya langsung.
+        $this->app->singleton(ResolveSender::class, fn (Application $app): ResolveSender => new ResolveSender(
+            [$app->make(MailNotificationSender::class), $app->make(FcmNotificationSender::class)],
+            $app->make(ChannelPolicy::class),
+        ));
     }
 
     /**
@@ -84,6 +99,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Kartu 455/460: singleton di register() itu LAZY -- tanpa baris ini, 'sms' di
+        // config/notification.php baru meledak saat kirim pertama, bukan saat boot.
+        $this->app->make(ChannelPolicy::class);
+
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(
             (int) config('security.rate_limit.per_minute')
         )->by(Auth::id() ?? $request->ip()));

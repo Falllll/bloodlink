@@ -122,6 +122,28 @@ yang sama; menambah baris di config saja tidak cukup dan memang disengaja begitu
 (`ChannelPolicy` gagal dibangun untuk nilai config tanpa case enum, dan
 `ChannelPolicyTest` merah untuk case enum tanpa pengirim).
 
+## Jalur kirim notifikasi dan Horizon
+
+- Pintu masuknya `DispatchNotification`: satu baris `notification_deliveries`
+  berstatus `pending` per alamat per kanal, ditulis **sebelum** mengirim, lalu satu
+  job `SendNotification` per baris di antrean `notifications`. Satu job per
+  penerima per kanal, tidak pernah satu job per kampanye.
+- Pengirim **hanya** diresolusi lewat `ResolveSender`, yang memeriksa `ChannelPolicy`
+  lebih dulu. Tidak ada kode yang meminta `MailNotificationSender` atau
+  `FcmNotificationSender` langsung.
+- Payload job **hanya** `public_id` delivery — tidak pernah model, alamat, atau
+  variabel template (semua itu berakhir di Redis dan `failed_jobs.payload`).
+  `SendNotification` menyetel `afterCommit()` di constructor-nya sendiri karena
+  `after_commit => false` di `config/queue.php`.
+- Isi pesan yang sudah dirender dan alamat penerima tidak pernah disimpan. Variabel
+  template disimpan terenkripsi (`encrypted:array`) dan dikosongkan saat `sent`.
+- Queue berjalan di Redis dan dikelola **Horizon saja** (service `worker` menjalankan
+  `php artisan horizon`). Jangan jalankan `queue:work` di samping Horizon. Dashboard
+  `/horizon` hanya terbuka di `APP_ENV=local`; di lingkungan lain 403 untuk siapa pun.
+- FCM HTTP v1: access token OAuth2 ditukar manual dari service account (JWT RS256),
+  bukan server key. Berkas service account tidak pernah di repo; path-nya dari
+  `FCM_CREDENTIALS_PATH`.
+
 ## Perintah yang sering dipakai
 
 ```bash

@@ -31,3 +31,8 @@ dc.bat
 /.phpunit.cache 
 .claude
 gitleaks-history.json
+# Service account Google/Firebase (FCM, kartu 460): kredensial, tidak pernah di-commit.
+*service-account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+/storage/fcm/

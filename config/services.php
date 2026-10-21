@@ -28,6 +28,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // FCM HTTP v1 (kartu 460). Legacy server key sudah dimatikan Google: pengirim
+    // menukar service account JSON menjadi access token OAuth2. Berkas JSON-nya
+    // TIDAK PERNAH di repo -- hanya path-nya yang dibaca dari env.
+    'fcm' => [
+        'credentials_path' => env('FCM_CREDENTIALS_PATH'),
+        'project_id' => env('FCM_PROJECT_ID'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

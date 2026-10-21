@@ -22,7 +22,10 @@ services:
       dockerfile: docker/php/Dockerfile
     volumes:
       - .:/var/www/html
-    command: php artisan queue:work --tries=3 --max-time=3600
+    # Horizon adalah SATU-SATUNYA manajer worker (kartu 460). Jangan tambahkan
+    # queue:work di service lain: dua manajer atas satu antrean = job diambil dua kali.
+    # tries/max-time pindah ke config/horizon.php.
+    command: php artisan horizon
     restart: unless-stopped
     depends_on:
       db:
