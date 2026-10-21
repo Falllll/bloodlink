@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Controllers;
 
+use App\Models\Facility;
 use App\Models\User;
 use App\Modules\Identity\Domain\Role as RoleEnum;
 use App\Modules\Identity\Http\Requests\LoginRequest;
@@ -82,6 +83,12 @@ final class AuthController
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->getRoleNames()->first(),
+                // public_id fasilitas, bukan bigint internal (kartu 535). null = tidak
+                // terikat fasilitas: donor atau operator global -- bukan kesalahan.
+                // Satu query, hanya di jalur login/register (sekali per sesi).
+                'facility_id' => $user->facility_id === null
+                    ? null
+                    : Facility::query()->whereKey($user->facility_id)->value('public_id'),
             ],
         ];
     }

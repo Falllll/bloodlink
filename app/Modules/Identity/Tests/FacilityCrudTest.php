@@ -10,6 +10,7 @@ use App\Modules\Identity\Domain\Role as RoleEnum;
 use App\Shared\Auth\FacilityScope;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Concerns\InspectsQueries;
@@ -239,6 +240,71 @@ final class FacilityCrudTest extends TestCase
             array_column($first->json('data'), 'id'),
             array_column($second->json('data'), 'id'),
         ));
+    }
+
+    private function locate(Facility $facility, float $latitude, float $longitude): void
+    {
+        DB::table('facilities')->where('id', $facility->id)->update([
+            'location' => DB::raw(sprintf('ST_SetSRID(ST_MakePoint(%F, %F), 4326)::geography', $longitude, $latitude)),
+        ]);
+    }
+
+    public function test_the_listing_carries_coordinates_and_null_stays_null(): void
+    {
+        $located = Facility::factory()->create();
+        $this->locate($located, -6.9175, 107.6191);
+        $unlocated = Facility::factory()->create();
+        DB::table('facilities')->where('id', $unlocated->id)->update(['location' => null]);
+
+        $admin = User::factory()->create(['facility_id' => null]);
+        $this->assignRole($admin, RoleEnum::ADMIN);
+
+        /** @var list<array<string, mixed>> $data */
+        $data = $this->getJson('/api/v1/facilities?per_page=50', $this->bearer($admin))->assertOk()->json('data');
+        $rows = collect($data)->keyBy('id');
+
+        // ST_Y = latitude, ST_X = longitude -- terbalik dari dugaan pertama.
+        $this->assertEqualsWithDelta(-6.9175, $rows[$located->public_id]['latitude'], 1e-9);
+        $this->assertEqualsWithDelta(107.6191, $rows[$located->public_id]['longitude'], 1e-9);
+
+        // null, BUKAN 0: (0,0) adalah titik nyata di Teluk Guinea.
+        $this->assertArrayHasKey('latitude', $rows[$unlocated->public_id]);
+        $this->assertNull($rows[$unlocated->public_id]['latitude']);
+        $this->assertNull($rows[$unlocated->public_id]['longitude']);
+    }
+
+    public function test_listing_coordinates_cost_one_query_whatever_the_page_size(): void
+    {
+        $admin = User::factory()->create(['facility_id' => null]);
+        $this->assignRole($admin, RoleEnum::ADMIN);
+        $headers = $this->bearer($admin);
+
+        foreach (Facility::factory()->count(2)->create() as $facility) {
+            $this->locate($facility, -6.2, 106.8);
+        }
+        $small = $this->getCost('/api/v1/facilities?per_page=50', $headers);
+
+        foreach (Facility::factory()->count(18)->create() as $facility) {
+            $this->locate($facility, -6.2, 106.8);
+        }
+        $large = $this->getCost('/api/v1/facilities?per_page=50', $headers);
+
+        // Selisih nol: selectRaw di dalam transform: akan menambah satu query per baris.
+        $this->assertSame($small, $large);
+        $this->assertSame(20, count($this->getJson('/api/v1/facilities?per_page=50', $headers)->json('data')));
+    }
+
+    public function test_an_empty_listing_runs_no_coordinate_query(): void
+    {
+        $admin = User::factory()->create(['facility_id' => null]);
+        $this->assignRole($admin, RoleEnum::ADMIN);
+        Facility::query()->delete();
+
+        $headers = $this->bearer($admin);
+        $this->getJson('/api/v1/facilities', $headers)->assertOk()->assertJsonPath('data', []);
+
+        // Hanya query daftar itu sendiri: halaman kosong tidak menjalankan whereIn([]).
+        $this->assertSame(1, $this->countQueriesOn('facilities', fn () => $this->getJson('/api/v1/facilities', $headers)->assertOk()));
     }
 
     public function test_nearby_uses_the_gist_index(): void

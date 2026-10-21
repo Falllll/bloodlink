@@ -774,7 +774,10 @@ paths:
   /facilities:
     get:
       summary: Daftar fasilitas
-      description: Master data seluruh fasilitas, tidak tersaring ke fasilitas pemegang token.
+      description: >-
+        Master data seluruh fasilitas, tidak tersaring ke fasilitas pemegang token.
+        Setiap baris memuat latitude/longitude (null bila fasilitas belum punya lokasi),
+        diambil dengan satu query untuk seluruh halaman.
       security:
         - bearerAuth: []
       parameters:
@@ -792,7 +795,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Facility'
+                      $ref: '#/components/schemas/FacilityWithCoordinates'
                   links:
                     $ref: '#/components/schemas/PaginationLinks'
                   meta:
@@ -4514,6 +4517,7 @@ components:
         - TRANSFUSION_REJECTED
         - NOTIFICATION_TEMPLATE_REJECTED
         - NOTIFICATION_CHANNEL_NOT_PERMITTED
+        - NOTIFICATION_DELIVERY_FAILED
         - CAMPAIGN_REJECTED
         - DONOR_FLAG_REJECTED
     Error:
@@ -4597,7 +4601,14 @@ components:
               format: email
             role:
               type: string
-          required: [id, name, email, role]
+            facility_id:
+              type: string
+              format: uuid
+              nullable: true
+              description: >-
+                public_id fasilitas pengguna. null berarti tidak terikat fasilitas --
+                donor atau operator global -- dan itu bukan kesalahan.
+          required: [id, name, email, role, facility_id]
       required: [token, token_type, user]
     Facility:
       type: object
@@ -4681,6 +4692,7 @@ components:
               type: number
               format: double
               nullable: true
+          required: [latitude, longitude]
     FacilityWrite:
       type: object
       properties:

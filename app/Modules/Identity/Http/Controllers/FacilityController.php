@@ -28,7 +28,22 @@ final class FacilityController
         /** @var CursorPaginator<int, Facility> $page */
         $page = $this->listing(Facility::query(), $request);
 
-        return ApiResponse::paginated($page, transform: fn (Facility $f): array => $f->toApiArray());
+        // Koordinat SATU query untuk seluruh halaman (kartu 535), bukan per baris di
+        // transform: -- itu N+1. Preseden penggabungannya show() di bawah; toApiArray()
+        // sengaja tidak memuatnya (store/update/deactivate tidak punya hasil spasial).
+        // ST_Y = latitude, ST_X = longitude. location nullable: null tetap null, bukan 0.
+        $ids = array_map(fn (Facility $f): int => $f->id, $page->items());
+        $coordinates = $ids === []
+            ? collect()
+            : DB::table('facilities')->whereIn('id', $ids)
+                ->selectRaw('id, ST_Y(location::geometry) AS latitude, ST_X(location::geometry) AS longitude')
+                ->get()
+                ->keyBy('id');
+
+        return ApiResponse::paginated($page, transform: fn (Facility $f): array => array_merge($f->toApiArray(), [
+            'latitude' => $coordinates->get($f->id)?->latitude,
+            'longitude' => $coordinates->get($f->id)?->longitude,
+        ]));
     }
 
     public function show(Facility $facility): JsonResponse

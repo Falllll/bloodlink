@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Tests;
 
+use App\Models\Facility;
 use App\Models\User;
 use App\Modules\Identity\Domain\Role;
 use App\Shared\Auth\FacilityScope;
@@ -114,7 +115,52 @@ final class AuthTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.user.email', 'admin@example.com')
-            ->assertJsonPath('data.user.role', 'admin');
+            ->assertJsonPath('data.user.role', 'admin')
+            // Operator global: tidak terikat fasilitas, dan itu bukan kesalahan.
+            ->assertJsonPath('data.user.facility_id', null);
+    }
+
+    public function test_a_staff_login_carries_the_public_id_of_their_facility(): void
+    {
+        $facility = Facility::factory()->create();
+        $user = User::factory()->create([
+            'email' => 'petugas@example.com',
+            'password' => Hash::make('password123'),
+            'facility_id' => $facility->id,
+            'is_active' => true,
+        ]);
+        FacilityScope::bind($user->facility_id);
+        $user->assignRole(Role::ADMIN->value);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => 'petugas@example.com',
+            'password' => 'password123',
+        ], ['Idempotency-Key' => (string) Str::uuid()]);
+
+        $response->assertOk()->assertJsonPath('data.user.facility_id', $facility->public_id);
+        // UUID, bukan bigint internal: id urutan baris tidak boleh bocor ke permukaan API.
+        $this->assertTrue(Str::isUuid((string) $response->json('data.user.facility_id')));
+        $this->assertNotSame($facility->id, $response->json('data.user.facility_id'));
+    }
+
+    public function test_a_donor_gets_a_null_facility_on_register_and_login(): void
+    {
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Donor Satu',
+            'email' => 'donor1@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ], ['Idempotency-Key' => (string) Str::uuid()])
+            ->assertOk()
+            ->assertJsonPath('data.user.facility_id', null);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'donor1@example.com',
+            'password' => 'password123',
+        ], ['Idempotency-Key' => (string) Str::uuid()])
+            ->assertOk()
+            ->assertJsonPath('data.user.role', 'donor')
+            ->assertJsonPath('data.user.facility_id', null);
     }
 
     public function test_it_refuses_to_log_in_an_inactive_account(): void
