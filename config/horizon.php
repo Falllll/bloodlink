@@ -200,8 +200,10 @@ return [
     // Satu supervisor, dua antrean. Horizon adalah SATU-SATUNYA manajer worker
     // (service `worker` di docker-compose menjalankan `php artisan horizon`, bukan
     // queue:work): dua manajer atas antrean yang sama mengambil job dua kali.
-    // tries/maxTime menyamai `queue:work --tries=3 --max-time=3600` sebelumnya;
-    // $tries/$backoff per job adalah urusan kartu 470.
+    // maxTime menyamai `queue:work --max-time=3600` sebelumnya. 'tries' di bawah
+    // hanya berlaku untuk job TANPA $tries sendiri; SendNotification membawa $tries
+    // dari config/notification.php (kartu 470), yang mengalahkannya.
+    // 'timeout' (60) wajib < retry_after koneksi redis (config/queue.php, 210).
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',

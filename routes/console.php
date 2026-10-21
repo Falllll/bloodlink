@@ -19,3 +19,5 @@ Schedule::command('matching:advance-campaigns --force')->everyFiveMinutes();
 Schedule::command('privacy:purge-expired --force')->monthlyOn(1, '03:00');
 // Jaring pengaman untuk event DonorLocationChanged yang hilang -- bukan jalur utamanya.
 Schedule::command('donor:reconcile-geo --force')->dailyAt('03:30');
+// Laporan dead-letter notifikasi 24 jam terakhir (kartu 470). Hanya membaca.
+Schedule::command('notification:failed-report')->dailyAt('06:00');

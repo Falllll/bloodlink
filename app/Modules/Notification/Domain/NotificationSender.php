@@ -13,11 +13,12 @@ interface NotificationSender
     public function channel(): NotificationChannel;
 
     /**
-     * Kirim satu pesan. Melempar SendFailed bila gagal; kembalikan void bila berhasil.
+     * Kirim satu pesan; kembalikan void bila berhasil. Bila gagal, melempar
+     * Application\Exceptions\DeliveryFailed yang jenisnya (TRANSIENT/PERMANENT)
+     * diputuskan pengirim (kartu 470). Tidak ditulis sebagai @throws: layer Domain
+     * hanya boleh bergantung pada BloodKernel.
      *
      * @param  string  $address  Alamat email, atau nilai token push.
-     *
-     * @throws SendFailed
      */
     public function send(string $address, RenderedNotification $message): void;
 }

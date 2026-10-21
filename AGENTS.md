@@ -143,6 +143,15 @@ yang sama; menambah baris di config saja tidak cukup dan memang disengaja begitu
 - FCM HTTP v1: access token OAuth2 ditukar manual dari service account (JWT RS256),
   bukan server key. Berkas service account tidak pernah di repo; path-nya dari
   `FCM_CREDENTIALS_PATH`.
+- Ketahanan (kartu 470): pengirim melempar `DeliveryFailed` dan **memutuskan**
+  jenisnya. `TRANSIENT` diulang dengan backoff eksponensial berjitter sampai
+  `$tries` milik job; `PERMANENT` langsung dead-letter lewat `$this->fail()`.
+  **Kode yang tidak dikenal = `TRANSIENT`**: menyerah terlalu cepat pada notifikasi
+  darurat lebih mahal daripada satu percobaan berlebih. Status `failed` ditulis
+  **hanya** di `SendNotification::failed()`. FCM `UNREGISTERED` mencabut tokennya.
+  Total jeda backoff maksimum (bawaan 195 detik) wajib di bawah `retry_after`
+  koneksi redis (210), dan `DeliveryResilienceTest` membandingkan keduanya: naikkan
+  angka `delivery_*` di `config/notification.php` = periksa `config/queue.php`.
 
 ## Perintah yang sering dipakai
 

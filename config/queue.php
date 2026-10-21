@@ -69,7 +69,14 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            // 210, bukan 90 (kartu 470). Dua batas yang wajib dijaga:
+            //  - > total jeda backoff maksimum SendNotification: 195 detik dengan nilai
+            //    bawaan config/notification.php (delivery_*). Naikkan backoff di sana =
+            //    periksa angka ini. DeliveryResilienceTest membandingkan keduanya.
+            //  - > timeout supervisor Horizon (config/horizon.php, 60 detik): job yang
+            //    BERJALAN lebih lama dari retry_after dianggap hilang dan diambil lagi.
+            // Harga angka besar: job milik worker yang crash baru diambil ulang 210 detik kemudian.
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 210),
             'block_for' => null,
             'after_commit' => false,
         ],

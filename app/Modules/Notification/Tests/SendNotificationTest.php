@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Modules\Notification\Application\ChannelPolicy;
 use App\Modules\Notification\Application\DispatchNotification;
 use App\Modules\Notification\Application\Exceptions\ChannelNotPermitted;
+use App\Modules\Notification\Application\Exceptions\DeliveryFailed;
 use App\Modules\Notification\Application\Exceptions\NotificationTemplateRejected;
 use App\Modules\Notification\Application\RegisterDeviceToken;
 use App\Modules\Notification\Application\ResolveSender;
@@ -17,15 +18,16 @@ use App\Modules\Notification\Application\RevokeDeviceToken;
 use App\Modules\Notification\Domain\DeliveryStatus;
 use App\Modules\Notification\Domain\DevicePlatform;
 use App\Modules\Notification\Domain\NotificationChannel;
-use App\Modules\Notification\Domain\SendFailed;
 use App\Modules\Notification\Infrastructure\FcmNotificationSender;
 use App\Modules\Notification\Infrastructure\Jobs\SendNotification;
 use App\Modules\Notification\Infrastructure\Mail\RenderedNotificationMail;
 use App\Modules\Notification\Infrastructure\MailNotificationSender;
+use App\Modules\Notification\Tests\Concerns\FakesFcm;
 use Database\Seeders\NotificationTemplateSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -39,15 +41,10 @@ use Tests\TestCase;
  */
 final class SendNotificationTest extends TestCase
 {
+    use FakesFcm;
     use RefreshDatabase;
 
     private const string CODE = 'donor.permanently_deferred';
-
-    private const string FCM_SEND_URL = 'https://fcm.googleapis.com/v1/projects/bloodlink-test/messages:send';
-
-    private const string TOKEN_URI = 'https://oauth2.googleapis.com/token';
-
-    private ?string $credentialsPath = null;
 
     protected function setUp(): void
     {
@@ -55,15 +52,6 @@ final class SendNotificationTest extends TestCase
 
         $this->seed(NotificationTemplateSeeder::class);
         Mail::fake();
-    }
-
-    protected function tearDown(): void
-    {
-        if ($this->credentialsPath !== null && is_file($this->credentialsPath)) {
-            unlink($this->credentialsPath);
-        }
-
-        parent::tearDown();
     }
 
     /** @return array<string, string> */
@@ -91,32 +79,6 @@ final class SendNotificationTest extends TestCase
     private function device(User $user, string $token): DeviceToken
     {
         return app(RegisterDeviceToken::class)->handle($user, $token, DevicePlatform::ANDROID);
-    }
-
-    /** Service account palsu dengan kunci RSA sungguhan, dibuat per test dan dihapus sesudahnya. */
-    private function configureFcm(bool $sendFails = false): void
-    {
-        $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
-        $this->assertNotFalse($key);
-        openssl_pkey_export($key, $pem);
-
-        $this->credentialsPath = (string) tempnam(sys_get_temp_dir(), 'fcm-test-');
-        file_put_contents($this->credentialsPath, json_encode([
-            'type' => 'service_account',
-            'client_email' => 'sender@bloodlink-test.iam.gserviceaccount.com',
-            'private_key' => $pem,
-            'token_uri' => self::TOKEN_URI,
-        ]));
-
-        config(['services.fcm.credentials_path' => $this->credentialsPath, 'services.fcm.project_id' => 'bloodlink-test']);
-
-        Http::preventStrayRequests();
-        Http::fake([
-            self::TOKEN_URI => Http::response(['access_token' => 'ya29.test', 'expires_in' => 3599, 'token_type' => 'Bearer']),
-            self::FCM_SEND_URL => $sendFails
-                ? Http::response(['error' => ['status' => 'NOT_FOUND']], 404)
-                : Http::response(['name' => 'projects/bloodlink-test/messages/1']),
-        ]);
     }
 
     public function test_dispatch_writes_one_pending_row_per_address_before_any_job_runs(): void
@@ -209,7 +171,7 @@ final class SendNotificationTest extends TestCase
     public function test_a_push_job_exchanges_a_service_account_token_and_posts_to_fcm_v1(): void
     {
         Queue::fake();
-        $this->configureFcm();
+        $this->fakeFcm();
         $user = User::factory()->create();
         $this->device($user, 'device-token-xyz');
 
@@ -245,7 +207,7 @@ final class SendNotificationTest extends TestCase
     public function test_a_failed_send_leaves_the_row_pending_and_rethrows(): void
     {
         Queue::fake();
-        $this->configureFcm(sendFails: true);
+        $this->fakeFcm(404);
         $user = User::factory()->create();
         $device = $this->device($user, 'stale-token');
 
@@ -254,13 +216,15 @@ final class SendNotificationTest extends TestCase
 
         try {
             app()->call([new SendNotification($push->public_id), 'handle']);
-            $this->fail('SendFailed was not thrown.');
-        } catch (SendFailed $e) {
+            $this->fail('DeliveryFailed was not thrown.');
+        } catch (DeliveryFailed $e) {
+            // 404 tanpa FcmError di details: kode tak dikenal, jadi TRANSIENT (kartu 470).
+            $this->assertFalse($e->isPermanent());
             $this->assertSame('fcm_http_404', $e->failureCode);
             $this->assertStringNotContainsString('stale-token', $e->getMessage());
         }
 
-        // Kartu 470 yang menulis 'failed'; di sini barisnya tetap jejak 'pending'.
+        // Kegagalan sementara: baris tetap jejak 'pending', worker yang menjadwalkan ulang.
         $this->assertSame(DeliveryStatus::PENDING, $push->fresh()?->status);
     }
 
@@ -280,8 +244,10 @@ final class SendNotificationTest extends TestCase
 
     public function test_a_token_that_moved_to_another_user_is_never_sent_the_old_owners_message(): void
     {
-        Queue::fake();
-        $this->configureFcm();
+        // Worker sungguhan (antrean database): 'failed' hanya ditulis lewat fail() -> failed(),
+        // dan fail() butuh job antrean yang nyata.
+        config(['queue.default' => 'database']);
+        $this->fakeFcm();
         $a = User::factory()->create();
         $b = User::factory()->create();
         $device = $this->device($a, 'shared-device');
@@ -289,7 +255,7 @@ final class SendNotificationTest extends TestCase
         $this->dispatch($a);
         // Perangkat berpindah tangan di antara dispatch dan eksekusi job.
         $this->device($b, 'shared-device');
-        $this->runQueuedJobs();
+        Artisan::call('queue:work', ['connection' => 'database', '--queue' => SendNotification::QUEUE, '--stop-when-empty' => true]);
 
         $push = NotificationDelivery::query()->where('device_token_id', $device->id)->sole();
         $this->assertSame(DeliveryStatus::FAILED, $push->status);

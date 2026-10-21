@@ -24,7 +24,7 @@ services:
       - .:/var/www/html
     # Horizon adalah SATU-SATUNYA manajer worker (kartu 460). Jangan tambahkan
     # queue:work di service lain: dua manajer atas satu antrean = job diambil dua kali.
-    # tries/max-time pindah ke config/horizon.php.
+    # Jumlah percobaan ditentukan job itu sendiri (kartu 470), bukan flag worker.
     command: php artisan horizon
     restart: unless-stopped
     depends_on:

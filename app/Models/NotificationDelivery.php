@@ -31,6 +31,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $failure_detail
  * @property Carbon $queued_at
  * @property Carbon|null $settled_at
+ * @property int $attempts
+ * @property Carbon|null $last_attempt_at
  */
 final class NotificationDelivery extends Model
 {
@@ -53,6 +55,8 @@ final class NotificationDelivery extends Model
             'variables' => 'encrypted:array',
             'queued_at' => 'datetime',
             'settled_at' => 'datetime',
+            'attempts' => 'integer',
+            'last_attempt_at' => 'datetime',
         ];
     }
 
@@ -77,6 +81,7 @@ final class NotificationDelivery extends Model
             'channel' => $this->channel->value,
             'status' => $this->status->value,
             'failure_code' => $this->failure_code,
+            'attempts' => $this->attempts,
             'queued_at' => $this->queued_at->format(DateTimeInterface::ATOM),
             'settled_at' => $this->settled_at?->format(DateTimeInterface::ATOM),
         ];
