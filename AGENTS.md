@@ -90,6 +90,15 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   kontak. Modul Request membaca modul Donor hanya lewat port `App\Shared\Matching\DonorDirectory`
   (implementasi `EloquentDonorDirectory` di modul Donor, diikat di `AppServiceProvider`)
   — bukan dengan menambah izin deptrac.
+- Ada **dua** mekanisme idempotensi, di lapisan berbeda, untuk masalah berbeda —
+  **jangan disatukan**. `EnsureIdempotency` + `idempotency_keys` melindungi satu
+  permintaan HTTP yang diulang klien. `ClaimDonorCalls` (port
+  `App\Shared\Matching\DonorCallGuard`) + `donor_call_claims` menjamin satu donor
+  dipanggil paling banyak sekali per permintaan darah, lintas jenjang radius **dan**
+  lintas kampanye. Penjaganya unique index `(blood_request_id, donor_id)` lewat
+  `INSERT … ON CONFLICT DO NOTHING RETURNING`, bukan `if` di PHP: test satu proses
+  tidak pernah berlomba, jadi `if` hijau di test dan bocor di produksi
+  (`DonorCallClaimRaceTest`). Kampanye mengklaim dulu, baru menulis kontak.
 - `BloodRequestController::candidates()` **sengaja** dua round-trip (`COUNT` lalu
   `candidatesFor()`): `COUNT`-nya Index Only Scan atas `(blood_request_id, released_at)`,
   murah. Jangan digabung (kartu 445). Anggaran query dan `EXPLAIN` di test memakai

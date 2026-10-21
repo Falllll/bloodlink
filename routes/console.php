@@ -9,6 +9,9 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('idempotency:prune')->dailyAt('02:00');
+// Klaim panggilan donor (kartu 480) -- BUKAN idempotency_keys; jam berbeda supaya
+// dua pembersih tidak bersaing.
+Schedule::command('notification:prune-claims --force')->dailyAt('02:30');
 Schedule::command('inventory:expire-check --force')->dailyAt('01:00');
 // Tiap jam, bukan harian: kantong yang reservasinya habis jam 09:00 tidak boleh
 // menunggu sampai tengah malam untuk kembali ke stok.

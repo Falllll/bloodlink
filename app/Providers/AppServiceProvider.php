@@ -46,6 +46,7 @@ use App\Modules\Inventory\Infrastructure\Policies\BloodBatchPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StockTransferPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
 use App\Modules\Notification\Application\ChannelPolicy;
+use App\Modules\Notification\Application\ClaimDonorCalls;
 use App\Modules\Notification\Application\ResolveSender;
 use App\Modules\Notification\Infrastructure\FcmNotificationSender;
 use App\Modules\Notification\Infrastructure\MailNotificationSender;
@@ -55,6 +56,7 @@ use App\Modules\Request\Domain\Events\UnitReservationPlaced;
 use App\Modules\Request\Infrastructure\Policies\BloodRequestPolicy;
 use App\Shared\Auth\FacilityMember;
 use App\Shared\Database\SlowQueryLog;
+use App\Shared\Matching\DonorCallGuard;
 use App\Shared\Matching\DonorDirectory;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
@@ -79,6 +81,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ComponentExpiryPolicy::class, AssignStorageProfile::class);
         // Port baca Donor untuk pencocokan (kartu 410): Request bergantung pada kontrak Shared.
         $this->app->bind(DonorDirectory::class, EloquentDonorDirectory::class);
+        // Penjaga satu panggilan per donor per permintaan (kartu 480): Request memanggil, Notification menjaga.
+        $this->app->bind(DonorCallGuard::class, ClaimDonorCalls::class);
         // Satu pintu kebijakan kanal (kartu 455): daftar izin dibaca dari config HANYA di sini.
         $this->app->singleton(ChannelPolicy::class, fn (): ChannelPolicy => new ChannelPolicy(config('notification.channels')));
         // Jalur kirim (kartu 460): singleton supaya access token FCM bertahan di memori worker.
