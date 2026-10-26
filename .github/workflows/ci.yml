@@ -33,21 +33,34 @@ jobs:
         ports: ['6379:6379']
 
     steps:
-      - uses: actions/checkout@v7
+      # Setiap action dipin ke SHA commit, versi di komentar: tag (bahkan v7.0.1) bisa
+      # dipindah pemiliknya, SHA tidak. Dependabot (github-actions) yang menaikkannya.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Secret scan
         run: >-
           docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1
           detect --source=/repo --no-banner --redact --exit-code 1
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
           extensions: pdo_pgsql, redis, pcntl, bcmath
           coverage: none
 
+      # Kartu 698. Membaca composer.lock saja (--locked), jadi jalan SEBELUM composer
+      # install yang mahal. Ambang yang DISENGAJA: hanya dependensi runtime (--no-dev)
+      # dan hanya CRITICAL yang memblokir. low/medium/high dilaporkan Dependabot
+      # mingguan, bukan di sini: gerbang yang merah karena advisory tooling tanpa fix
+      # adalah gerbang yang akan dimatikan orang. Advisory TANPA severity tidak
+      # terfilter dan tetap memblokir -- yang tidak dikenal dianggap serius.
+      - name: Dependency audit
+        run: >-
+          composer audit --locked --no-dev --abandoned=report
+          --ignore-severity=low --ignore-severity=medium --ignore-severity=high
+
       - name: Cache composer
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/composer/files
           key: composer-${{ hashFiles('composer.lock') }}
