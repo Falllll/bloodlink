@@ -10,89 +10,58 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  # Id job `check` ADALAH nama required status check di ruleset branch (lihat
+  # bloodlink/docs/branch-protection.md). Jangan tambahkan kunci `name:` di sini:
+  # check-nya akan dilaporkan dengan nama itu dan setiap PR menggantung selamanya.
+  check:
     runs-on: ubuntu-latest
 
-    services:
-      db:
-        image: postgis/postgis:17-3.5
-        env:
-          POSTGRES_DB: bloodlink
-          POSTGRES_USER: bloodlink
-          POSTGRES_PASSWORD: secret
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U bloodlink -d bloodlink"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-
-      redis:
-        image: redis:7-alpine
-        ports: ['6379:6379']
-
+    # Termurah dan terfatal dulu, urutan yang sama dengan CI backend.
     steps:
-      # Setiap action dipin ke SHA commit, versi di komentar: tag (bahkan v7.0.1) bisa
-      # dipindah pemiliknya, SHA tidak. Dependabot (github-actions) yang menaikkannya.
+      # Setiap action dipin ke SHA commit, versi di komentar: tag bisa dipindah
+      # pemiliknya, SHA tidak. Dependabot (github-actions) yang menaikkan keduanya.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Secret scan
         run: >-
           docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1
-          detect --source=/repo --no-banner --redact --exit-code 1
+          detect --source=/repo --config=/repo/.gitleaks.toml --no-banner --redact --exit-code 1
 
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          php-version: '8.5'
-          extensions: pdo_pgsql, redis, pcntl, bcmath
-          coverage: none
+          node-version-file: .nvmrc
+          cache: npm
 
-      # Kartu 698. Membaca composer.lock saja (--locked), jadi jalan SEBELUM composer
-      # install yang mahal. Ambang yang DISENGAJA: hanya dependensi runtime (--no-dev)
-      # dan hanya CRITICAL yang memblokir. low/medium/high dilaporkan Dependabot
-      # mingguan, bukan di sini: gerbang yang merah karena advisory tooling tanpa fix
-      # adalah gerbang yang akan dimatikan orang. Advisory TANPA severity tidak
-      # terfilter dan tetap memblokir -- yang tidak dikenal dianggap serius.
+      - run: npm ci --no-audit --no-fund
+
+      # Ambang yang DISENGAJA (kartu 698): hanya advisory CRITICAL di dependensi
+      # RUNTIME yang memblokir merge. Advisory high kebanyakan ada di tooling build
+      # (eslint, rantai CLI shadcn) yang tidak pernah dikirim ke pengguna dan sering
+      # tanpa fix non-mayor; gerbang yang merah terus akan dimatikan orang dalam dua
+      # minggu. Semua di bawah critical datang sebagai PR Dependabot mingguan.
       - name: Dependency audit
-        run: >-
-          composer audit --locked --no-dev --abandoned=report
-          --ignore-severity=low --ignore-severity=medium --ignore-severity=high
+        run: npm audit --omit=dev --audit-level=critical
 
-      - name: Cache composer
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ~/.cache/composer/files
-          key: composer-${{ hashFiles('composer.lock') }}
+      # Next membangkitkan LayoutProps/PageProps dan tipe rute ke .next/ saat build.
+      # Di checkout bersih tipe itu belum ada, jadi tsc wajib didahului typegen --
+      # tanpanya tsc merah di setiap PR (dan hijau di lokal hanya karena sisa .next/).
+      - name: Route types
+        run: npx next typegen
 
-      - run: composer install --prefer-dist --no-progress --no-interaction
+      - name: Type check
+        run: npx tsc --noEmit
 
-      - name: Prepare env
-        run: |
-          cp .env.example .env
-          php artisan key:generate
+      - name: Lint
+        run: npm run lint
 
-      - name: No duplicate env keys
-        run: |
-          dupes=$(grep -oE '^[A-Z_][A-Z0-9_]*=' .env.example | sort | uniq -d)
-          if [ -n "$dupes" ]; then
-            echo "Keys yang duplikat di .env.example:"; echo "$dupes"; exit 1
-          fi
+      - name: i18n messages
+        run: npm run i18n:check
 
-      - name: Create test database
-        run: PGPASSWORD=secret createdb -h 127.0.0.1 -U bloodlink bloodlink_test
-
-      - name: Format check
-        run: ./vendor/bin/pint --test
-
-      - name: Module boundaries
-        run: ./vendor/bin/deptrac analyse --fail-on-uncovered
-
-      - name: Static analysis
-        run: ./vendor/bin/phpstan analyse
-
-      - name: Tests
-        run: php artisan test
+      - name: Build
+        run: npm run build
         env:
-          DB_HOST: 127.0.0.1
-          REDIS_HOST: 127.0.0.1
+          NEXT_TELEMETRY_DISABLED: '1'
