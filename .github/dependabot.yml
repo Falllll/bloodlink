@@ -1,0 +1,33 @@
+# Kartu 698. Dependabot (gratis) membuka PR pembaruan; CI memutuskan apakah aman.
+# Pasangannya `composer audit` di ci.yml, yang hanya MEMBLOKIR advisory critical
+# di dependensi runtime -- low/medium/high datang lewat PR dari sini, bukan lewat
+# CI yang merah.
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Jakarta
+    open-pull-requests-limit: 5
+    # Minor/patch dikelompokkan jadi satu PR; mayor tetap PR sendiri supaya
+    # breaking change tidak tersembunyi di dalam PR gabungan.
+    groups:
+      composer-minor-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)
+
+  # Action di ci.yml dipin per SHA commit; ini yang menaikkannya, beserta komentar versinya.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Jakarta
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci(deps)

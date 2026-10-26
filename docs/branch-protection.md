@@ -12,6 +12,26 @@ Aturan ini diatur lewat GitHub Settings → Rules → Rulesets. GitHub tidak men
 - Block force pushes
 - Restrict deletions
 
+## Repo lain (kartu 698)
+
+Ruleset yang sama dipasang di `bloodlink-web` dan `bloodlink-mobile`, masing-masing
+dengan check wajibnya sendiri — lagi-lagi **nama job**, bukan nama workflow:
+
+| Repo | Workflow | Check wajib (nama job) |
+| --- | --- | --- |
+| `bloodlink` | `CI` | `test` |
+| `bloodlink-web` | `CI` | `check` |
+| `bloodlink-mobile` | `CI` | `check` |
+
+Job-job ini sengaja **tanpa** kunci `name:`. Begitu sebuah job diberi `name:`, nilai
+itulah yang muncul sebagai status check, dan check wajib yang terdaftar dengan id
+job lama menggantung selamanya tanpa pesan error.
+
+Check baru hanya bisa dipilih di Settings setelah workflow-nya pernah jalan sekali
+di repo itu. Urutannya: merge workflow-nya dulu lewat PR, baru daftarkan check-nya,
+lalu buktikan dengan PR yang sengaja merah (error TypeScript) bahwa tombol merge
+benar-benar terkunci.
+
 ## Bypass list
 
 Kosong, tidak ada yang boleh menembus, termasuk repository admin. Penjaga yang bisa disuruh minggir bukan penjaga; kalau benar-benar buntu, rule-nya dimatikan lewat Settings — keputusan sadar yang meninggalkan jejak, bukan tombol merge yang diam-diam tetap hijau.
