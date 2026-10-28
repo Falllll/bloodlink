@@ -221,6 +221,35 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+  /me/donor/eligibility:
+    get:
+      summary: Kelayakan donor milik akun yang login (berbasis riwayat)
+      description: >-
+        Yang ini memperhitungkan deferral aktif dan flag administratif dari
+        database, sedangkan `POST /eligibility/self-check` tidak -- karena itu
+        `is_provisional: false` di sini. Bentuk payload sama dengan self-check.
+        Donor diselesaikan dari token; akun yang belum tertaut ke baris donor
+        dibalas 404 `DONOR_ACCOUNT_NOT_LINKED`. Data kesehatan: jangan disimpan
+        ke cache disk di klien.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Keputusan kelayakan donor ini.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DonorEligibility'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /me/donor/appointments:
     get:
       summary: Janji temu milik akun yang login
@@ -4876,6 +4905,51 @@ components:
                   - BODY_WEIGHT_BELOW_MINIMUM
                   - ACTIVE_DEFERRAL
                   - DATA_MISSING
+              outcome:
+                type: string
+                enum: [eligible, not_eligible, undetermined]
+              retry_after_date:
+                type: string
+                format: date
+                nullable: true
+              detail:
+                type: string
+                nullable: true
+            required: [code, outcome, retry_after_date, detail]
+      required: [outcome, is_provisional, retry_after_date, findings]
+    DonorEligibility:
+      type: object
+      description: >-
+        Bentuk sama dengan EligibilitySelfCheck, tapi berbasis riwayat donor:
+        `is_provisional` selalu false, dan `ACTIVE_DEFERRAL` maupun
+        `ACTIVE_ADMIN_FLAG` dapat muncul. `outcome` bertiga-nilai, jangan
+        diperas jadi boolean.
+      properties:
+        outcome:
+          type: string
+          enum: [eligible, not_eligible, undetermined]
+        is_provisional:
+          type: boolean
+          enum: [false]
+        retry_after_date:
+          type: string
+          format: date
+          nullable: true
+        findings:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                enum:
+                  - AGE_BELOW_MINIMUM
+                  - AGE_ABOVE_MAXIMUM
+                  - DONATION_INTERVAL_NOT_MET
+                  - BODY_WEIGHT_BELOW_MINIMUM
+                  - ACTIVE_DEFERRAL
+                  - DATA_MISSING
+                  - ACTIVE_ADMIN_FLAG
               outcome:
                 type: string
                 enum: [eligible, not_eligible, undetermined]

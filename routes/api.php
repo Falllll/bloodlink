@@ -50,6 +50,7 @@ Route::prefix('auth')->name('auth.')->group(function (): void {
 Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function (): void {
     Route::get('/donor', [MeDonorController::class, 'show'])->name('donor.show');
     Route::get('/donor/donations', [MeDonorController::class, 'donations'])->name('donor.donations.index');
+    Route::get('/donor/eligibility', [MeDonorController::class, 'eligibility'])->name('donor.eligibility');
     Route::get('/donor/appointments', [MeAppointmentController::class, 'index'])->name('donor.appointments.index');
     Route::post('/donor/appointments', [MeAppointmentController::class, 'store'])->name('donor.appointments.store');
     Route::patch('/donor/appointments/{appointment}/status', [MeAppointmentController::class, 'cancel'])->whereUuid('appointment')->name('donor.appointments.cancel');

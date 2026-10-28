@@ -6,7 +6,9 @@ namespace App\Modules\Donor\Http\Controllers;
 
 use App\Models\Donation;
 use App\Models\User;
+use App\Modules\Donor\Application\DonorEligibilityService;
 use App\Modules\Donor\Application\ResolveDonorForUser;
+use App\Modules\Donor\Domain\EligibilityDecision;
 use App\Shared\Http\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +26,42 @@ final class MeDonorController
         $donor = $this->resolve->handle($this->user($request));
 
         return ApiResponse::success($donor->toApiArray());
+    }
+
+    /**
+     * Kelayakan berbasis RIWAYAT, bukan kuesioner (kartu 537). Berbeda dari
+     * POST /eligibility/self-check: di sini deferral aktif dan flag administratif
+     * ikut diperhitungkan, karena itu is_provisional false.
+     *
+     * Data kesehatan: tidak ditulis ke log maupun audit_logs (endpoint ini hanya membaca).
+     */
+    public function eligibility(Request $request, DonorEligibilityService $eligibility): JsonResponse
+    {
+        $donor = $this->resolve->handle($this->user($request));
+
+        return ApiResponse::success($this->present($eligibility->for($donor)));
+    }
+
+    /**
+     * Duplikasi SADAR dari EligibilitySelfCheckController::present(): bentuknya harus
+     * identik supaya klien cukup punya satu parser, bedanya hanya is_provisional.
+     * Belasan baris duplikat lebih murah daripada abstraksi bersama yang salah.
+     *
+     * @return array<string, mixed>
+     */
+    private function present(EligibilityDecision $decision): array
+    {
+        return [
+            'outcome' => $decision->outcome->value,
+            'is_provisional' => false,
+            'retry_after_date' => $decision->retryAfterDate?->format('Y-m-d'),
+            'findings' => array_map(fn ($f) => [
+                'code' => $f->code->value,
+                'outcome' => $f->outcome->value,
+                'retry_after_date' => $f->retryAfterDate?->format('Y-m-d'),
+                'detail' => $f->detail,
+            ], $decision->findings),
+        ];
     }
 
     public function donations(Request $request): JsonResponse

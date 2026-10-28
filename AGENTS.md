@@ -90,6 +90,10 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   kontak. Modul Request membaca modul Donor hanya lewat port `App\Shared\Matching\DonorDirectory`
   (implementasi `EloquentDonorDirectory` di modul Donor, diikat di `AppServiceProvider`)
   — bukan dengan menambah izin deptrac.
+- Ada **dua** jalur kelayakan donor dengan payload yang sama, dibedakan `is_provisional`:
+  `POST /eligibility/self-check` (anonim, kuesioner, `true` — tidak melihat deferral
+  maupun flag) dan `GET /me/donor/eligibility` (riwayat via `DonorEligibilityService`,
+  `false`). Klien yang menampilkan "boleh mendonor" untuk donor terdaftar wajib memakai yang kedua.
 - Ada **dua** mekanisme idempotensi, di lapisan berbeda, untuk masalah berbeda —
   **jangan disatukan**. `EnsureIdempotency` + `idempotency_keys` melindungi satu
   permintaan HTTP yang diulang klien. `ClaimDonorCalls` (port
