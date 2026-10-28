@@ -168,6 +168,12 @@ yang sama; menambah baris di config saja tidak cukup dan memang disengaja begitu
   variabel template (semua itu berakhir di Redis dan `failed_jobs.payload`).
   `SendNotification` menyetel `afterCommit()` di constructor-nya sendiri karena
   `after_commit => false` di `config/queue.php`.
+- Preferensi penerima (kartu 488) per **kategori** template (`notification_templates.category`,
+  satu kode satu kategori, dijaga `EXCLUDE`), bukan per kode. Default ikut-serta. Ditegakkan
+  **hanya** di `DispatchNotification`: yang ditolak tetap menjadi baris berstatus `suppressed`
+  tanpa job, tidak pernah dilewati diam-diam. `account_security` dan `facility_operations`
+  tidak bisa ditolak. Menolak `emergency_call` = keluar dari daftar panggilan
+  (`DonorDirectory::reachability` false) dan wajib dikonfirmasi eksplisit di request.
 - Isi pesan yang sudah dirender dan alamat penerima tidak pernah disimpan. Variabel
   template disimpan terenkripsi (`encrypted:array`) dan dikosongkan saat `sent`.
 - Queue berjalan di Redis dan dikelola **Horizon saja** (service `worker` menjalankan

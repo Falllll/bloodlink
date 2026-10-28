@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Modules\Notification\Domain\NotificationCategory;
 use App\Modules\Notification\Domain\NotificationChannel;
 use App\Shared\Database\Auditable;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $id
  * @property string $code
  * @property NotificationChannel $channel
+ * @property NotificationCategory $category
  * @property string $locale
  * @property string|null $subject
  * @property string $body
@@ -25,7 +27,7 @@ final class NotificationTemplate extends Model
 {
     use Auditable;
 
-    protected $fillable = ['code', 'channel', 'locale', 'subject', 'body', 'variables', 'is_active'];
+    protected $fillable = ['code', 'channel', 'category', 'locale', 'subject', 'body', 'variables', 'is_active'];
 
     protected $hidden = ['id'];
 
@@ -34,6 +36,7 @@ final class NotificationTemplate extends Model
     {
         return [
             'channel' => NotificationChannel::class,
+            'category' => NotificationCategory::class,
             'variables' => 'array',
             'is_active' => 'boolean',
         ];

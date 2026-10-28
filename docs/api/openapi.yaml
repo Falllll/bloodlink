@@ -793,6 +793,86 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+  /me/notification-preferences:
+    get:
+      summary: Preferensi notifikasi pengguna yang sedang masuk
+      description: >-
+        Per KATEGORI, bukan per template. Default ikut-serta (keputusan sadar:
+        orang yang mendaftar di aplikasi donor darah sudah menyatakan niat).
+        Hanya kategori yang boleh ditolak yang tampil; keamanan akun dan
+        operasional fasilitas selalu dikirim. Tidak menuntut fasilitas.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Preferensi semua kategori yang boleh ditolak.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationPreferences'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /me/notification-preferences/{category}:
+    parameters:
+      - in: path
+        name: category
+        required: true
+        schema:
+          type: string
+          enum: [emergency_call, appointment_reminder, donation_status, general]
+        description: Kategori lain (termasuk yang wajib) dibalas 404.
+    patch:
+      summary: Tolak atau kembali terima satu kategori
+      description: >-
+        Pesan kategori yang ditolak tetap tercatat sebagai pengiriman berstatus
+        `suppressed`, tidak dikirim. Menolak `emergency_call` berarti KELUAR
+        dari daftar panggilan donor darurat (kandidat menjadi
+        `is_reachable: false`) dan wajib disertai
+        `acknowledge_leaving_call_list: true`; tanpanya 422 dengan rule
+        `accepted` -- tanda bagi klien untuk menampilkan konfirmasi. Menolak
+        dua kali tidak memajukan `opted_out_at`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                acknowledge_leaving_call_list:
+                  type: boolean
+                  description: Wajib `true` saat `enabled` false untuk `emergency_call`.
+              required: [enabled]
+      responses:
+        '200':
+          description: Preferensi semua kategori sesudah perubahan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationPreferences'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /me/campaign-invitations:
     get:
       summary: Undangan kampanye milik donor yang sedang masuk
@@ -6171,6 +6251,30 @@ components:
           format: date-time
           nullable: true
       required: [id, platform, last_seen_at, revoked_at]
+    NotificationPreferences:
+      type: object
+      properties:
+        callable_for_emergencies:
+          type: boolean
+          description: >-
+            false bila `emergency_call` ditolak: donor tidak akan dipanggil untuk
+            permintaan darah darurat. Klien wajib menampilkannya mencolok.
+        preferences:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+                enum: [emergency_call, appointment_reminder, donation_status, general]
+              enabled:
+                type: boolean
+              opted_out_at:
+                type: string
+                format: date-time
+                nullable: true
+            required: [category, enabled, opted_out_at]
+      required: [callable_for_emergencies, preferences]
     Transfusion:
       type: object
       description: >-

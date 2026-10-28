@@ -6,10 +6,12 @@ namespace App\Modules\Notification\Application;
 
 use App\Models\DeviceToken;
 use App\Models\NotificationDelivery;
+use App\Models\NotificationPreference;
 use App\Models\NotificationTemplate;
 use App\Models\User;
 use App\Modules\Notification\Application\Exceptions\NotificationTemplateRejected;
 use App\Modules\Notification\Domain\DeliveryStatus;
+use App\Modules\Notification\Domain\NotificationCategory;
 use App\Modules\Notification\Domain\NotificationChannel;
 use App\Modules\Notification\Infrastructure\Jobs\SendNotification;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +21,9 @@ use Illuminate\Support\Str;
  * Pintu masuk jalur kirim (kartu 460): satu baris notification_deliveries 'pending'
  * per alamat per kanal, lalu satu job per baris. Ia mengirim ke penerima yang
  * DIBERIKAN; memilih siapa penerimanya urusan pemanggil (kartu 400).
+ *
+ * Penerima yang menolak kategori template (kartu 488) tetap mendapat barisnya,
+ * berstatus 'suppressed', tanpa job.
  */
 final class DispatchNotification
 {
@@ -31,14 +36,19 @@ final class DispatchNotification
      * @param  array<string, string|int>  $variables  gabungan variabel semua kanal
      * @param  list<NotificationChannel>|null  $only  batasi ke kanal ini (mis. reset password:
      *                                                email saja, kartu 485); null = semua yang diizinkan
-     * @return list<string> public_id setiap delivery yang dibuat
+     * @return list<string> public_id setiap delivery yang dibuat, termasuk yang 'suppressed'
      */
     public function handle(User $user, string $templateCode, array $variables, string $locale = 'id', ?array $only = null): array
     {
         $channels = $this->channels($only);
-        $variablesByChannel = $this->variablesByChannel($templateCode, $variables, $locale, $channels);
+        [$variablesByChannel, $category] = $this->variablesByChannel($templateCode, $variables, $locale, $channels);
 
-        return DB::transaction(function () use ($user, $templateCode, $locale, $variablesByChannel, $channels): array {
+        // Preferensi ditegakkan DI SINI, satu tempat, bukan di tiap pemanggil (kartu 488):
+        // pemanggil yang lupa memeriksa adalah pemanggil yang mengirim ke orang yang
+        // menolaknya. Sesudah validasi template: template rusak tetap gagal di pemanggil.
+        $suppressed = $category !== null && $this->optedOut($user, $category);
+
+        return DB::transaction(function () use ($user, $templateCode, $locale, $variablesByChannel, $channels, $suppressed): array {
             $created = [];
 
             foreach ($channels as $channel) {
@@ -47,15 +57,19 @@ final class DispatchNotification
                     : DeviceToken::query()->deliverable()->where('user_id', $user->id)->orderBy('id')->pluck('id')->all();
 
                 foreach ($targets as $deviceTokenId) {
+                    // Yang ditolak tetap menjadi baris, 'suppressed' dan langsung selesai --
+                    // bukan diam-diam tidak ditulis. Tanpa bahan render: tidak ada yang
+                    // akan merendernya.
                     $delivery = new NotificationDelivery(['template_code' => $templateCode, 'channel' => $channel]);
                     $delivery->forceFill([
                         'public_id' => (string) Str::uuid(),
                         'user_id' => $user->id,
                         'device_token_id' => $deviceTokenId,
                         'locale' => $locale,
-                        'variables' => $variablesByChannel[$channel->value],
-                        'status' => DeliveryStatus::PENDING,
+                        'variables' => $suppressed ? null : $variablesByChannel[$channel->value],
+                        'status' => $suppressed ? DeliveryStatus::SUPPRESSED : DeliveryStatus::PENDING,
                         'queued_at' => now(),
+                        'settled_at' => $suppressed ? now() : null,
                     ])->save();
 
                     $created[] = $delivery->public_id;
@@ -63,12 +77,22 @@ final class DispatchNotification
             }
 
             // Antre SETELAH commit -- SendNotification menyetel afterCommit() sendiri.
-            foreach ($created as $publicId) {
+            foreach ($suppressed ? [] : $created as $publicId) {
                 SendNotification::dispatch($publicId);
             }
 
             return $created;
         });
+    }
+
+    /** Kategori wajib (isOptional() false) tidak pernah ditekan, ada baris atau tidak. */
+    private function optedOut(User $user, NotificationCategory $category): bool
+    {
+        return $category->isOptional() && NotificationPreference::query()
+            ->where('user_id', $user->id)
+            ->where('category', $category->value)
+            ->whereNotNull('opted_out_at')
+            ->exists();
     }
 
     /**
@@ -78,26 +102,34 @@ final class DispatchNotification
      * pemanggil, bukan diam-diam di worker. Variabel yang tidak dipakai kanal mana
      * pun tetap ditolak -- salah nama tetap bug pemanggil.
      *
+     * Kategori ikut terbaca dari baris yang sama. Satu kode satu kategori dijaga
+     * EXCLUDE notification_templates_one_category_per_code, jadi baris kanal mana pun
+     * memberi jawaban yang sama; null hanya bila tidak ada kanal sama sekali.
+     *
      * @param  array<string, string|int>  $variables
      * @param  list<NotificationChannel>  $channels
-     * @return array<string, array<string, string|int>>
+     * @return array{array<string, array<string, string|int>>, NotificationCategory|null}
      */
     private function variablesByChannel(string $templateCode, array $variables, string $locale, array $channels): array
     {
         $byChannel = [];
         $declaredAnywhere = [];
+        $category = null;
 
         foreach ($channels as $channel) {
-            $declared = NotificationTemplate::query()
+            $template = NotificationTemplate::query()
                 ->where('code', $templateCode)
                 ->where('channel', $channel->value)
                 ->where('locale', $locale)
                 ->where('is_active', true)
-                ->value('variables');
+                ->first(['variables', 'category']);
 
-            if (! is_array($declared)) {
+            if ($template === null) {
                 throw NotificationTemplateRejected::notFound($templateCode, $channel, $locale);
             }
+
+            $declared = $template->variables;
+            $category = $template->category;
 
             $subset = array_intersect_key($variables, array_flip(array_map(strval(...), $declared)));
             $this->render->handle($templateCode, $channel, $subset, $locale);
@@ -111,7 +143,7 @@ final class DispatchNotification
             throw NotificationTemplateRejected::unexpectedVariables($templateCode, $unexpected);
         }
 
-        return $byChannel;
+        return [$byChannel, $category];
     }
 
     /**

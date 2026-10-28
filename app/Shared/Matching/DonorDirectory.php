@@ -42,7 +42,8 @@ interface DonorDirectory
     public function ineligibilityReasons(array $donorIds): array;
 
     /**
-     * Apakah donor punya kanal yang bisa dihubungi: device token aktif ATAU email.
+     * Apakah donor punya kanal yang bisa dihubungi: device token aktif ATAU email --
+     * dan tidak menolak panggilan darurat (kartu 488).
      *
      * @param  list<int>  $donorIds
      * @return array<int, bool>

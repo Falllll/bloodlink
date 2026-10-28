@@ -7,6 +7,7 @@ namespace App\Modules\Notification\Tests;
 use App\Models\NotificationTemplate;
 use App\Modules\Notification\Application\Exceptions\NotificationTemplateRejected;
 use App\Modules\Notification\Application\RenderNotification;
+use App\Modules\Notification\Domain\NotificationCategory;
 use App\Modules\Notification\Domain\NotificationChannel;
 use Database\Seeders\NotificationTemplateSeeder;
 use Illuminate\Database\QueryException;
@@ -36,6 +37,7 @@ final class RenderNotificationTest extends TestCase
         NotificationTemplate::query()->create([
             'code' => 'test.template',
             'channel' => NotificationChannel::EMAIL,
+            'category' => NotificationCategory::GENERAL,
             'locale' => 'id',
             'subject' => $subject,
             'body' => $body,
@@ -164,7 +166,7 @@ final class RenderNotificationTest extends TestCase
 
     public function test_the_database_ties_subject_to_the_email_channel(): void
     {
-        $base = ['code' => 'test.shape', 'locale' => 'id', 'body' => 'Isi.', 'variables' => '[]', 'created_at' => now(), 'updated_at' => now()];
+        $base = ['code' => 'test.shape', 'category' => 'general', 'locale' => 'id', 'body' => 'Isi.', 'variables' => '[]', 'created_at' => now(), 'updated_at' => now()];
 
         foreach ([['channel' => 'push', 'subject' => 'Subjek'], ['channel' => 'email', 'subject' => null]] as $row) {
             try {
@@ -182,7 +184,7 @@ final class RenderNotificationTest extends TestCase
         $this->expectExceptionMessage('notification_templates_variables_shape');
 
         DB::table('notification_templates')->insert([
-            'code' => 'test.shape', 'channel' => 'push', 'locale' => 'id', 'body' => 'Isi.',
+            'code' => 'test.shape', 'channel' => 'push', 'category' => 'general', 'locale' => 'id', 'body' => 'Isi.',
             'variables' => '{"donor_name": true}', 'created_at' => now(), 'updated_at' => now(),
         ]);
     }
@@ -190,9 +192,33 @@ final class RenderNotificationTest extends TestCase
     public function test_one_row_per_code_channel_and_locale(): void
     {
         $this->expectException(QueryException::class);
+        $this->expectExceptionMessage('notification_templates_code_channel_locale_unique');
 
         DB::table('notification_templates')->insert([
-            'code' => 'transfusion.reaction_reported', 'channel' => 'push', 'locale' => 'id', 'body' => 'Duplikat.',
+            'code' => 'transfusion.reaction_reported', 'channel' => 'push', 'category' => 'facility_operations', 'locale' => 'id', 'body' => 'Duplikat.',
+            'variables' => '[]', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    /** Kartu 488: satu kode, satu kategori -- lintas kanal dan locale. */
+    public function test_one_category_per_code_across_channels(): void
+    {
+        $this->expectException(QueryException::class);
+        $this->expectExceptionMessage('notification_templates_one_category_per_code');
+
+        DB::table('notification_templates')->insert([
+            'code' => 'donor.permanently_deferred', 'channel' => 'push', 'category' => 'general', 'locale' => 'en', 'body' => 'Other.',
+            'variables' => '[]', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    public function test_every_template_has_a_category(): void
+    {
+        $this->expectException(QueryException::class);
+        $this->expectExceptionMessage('category');
+
+        DB::table('notification_templates')->insert([
+            'code' => 'test.uncategorised', 'channel' => 'push', 'locale' => 'id', 'body' => 'Isi.',
             'variables' => '[]', 'created_at' => now(), 'updated_at' => now(),
         ]);
     }

@@ -6,6 +6,7 @@ namespace App\Modules\Donor\Infrastructure;
 
 use App\Models\DeviceToken;
 use App\Models\Donor;
+use App\Models\NotificationPreference;
 use App\Modules\Donor\Application\DonorEligibilityService;
 use App\Modules\Donor\Domain\EligibilityDecision;
 use App\Modules\Donor\Domain\EligibilityOutcome;
@@ -91,7 +92,7 @@ final class EloquentDonorDirectory implements DonorDirectory
             return [];
         }
 
-        // Dua query tetap, berapa pun jumlah donornya. email terenkripsi, tapi NULL tetap NULL.
+        // Query tetap, berapa pun jumlah donornya. email terenkripsi, tapi NULL tetap NULL.
         $rows = DB::table('donors')->whereIn('id', $donorIds)
             ->select('id', 'user_id')
             ->selectRaw('email IS NOT NULL AS has_email')
@@ -101,9 +102,20 @@ final class EloquentDonorDirectory implements DonorDirectory
         $withToken = $userIds === []
             ? []
             : array_flip(DeviceToken::query()->deliverable()->whereIn('user_id', $userIds)->pluck('user_id')->map(fn ($id): int => (int) $id)->all());
+        // Donor yang menolak panggilan darurat (kartu 488) KELUAR dari daftar panggilan:
+        // punya alamat tidak sama dengan boleh dipanggil. Query ketiga, tetap tidak N+1.
+        $optedOut = $userIds === []
+            ? []
+            : array_flip(NotificationPreference::query()->optedOutOfEmergencyCalls()->whereIn('user_id', $userIds)->pluck('user_id')->map(fn ($id): int => (int) $id)->all());
 
         $reachable = [];
         foreach ($rows as $row) {
+            if ($row->user_id !== null && isset($optedOut[(int) $row->user_id])) {
+                $reachable[(int) $row->id] = false;
+
+                continue;
+            }
+
             $reachable[(int) $row->id] = (bool) $row->has_email || ($row->user_id !== null && isset($withToken[(int) $row->user_id]));
         }
 

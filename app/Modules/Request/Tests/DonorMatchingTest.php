@@ -8,6 +8,7 @@ use App\Models\BloodRequest;
 use App\Models\DeviceToken;
 use App\Models\Donor;
 use App\Models\Facility;
+use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Modules\Request\Application\CreateBloodRequest;
 use App\Modules\Request\Application\SelectDonorCandidates;
@@ -224,6 +225,27 @@ final class DonorMatchingTest extends TestCase
             $unreachable->public_id => false,
             $withToken->public_id => true,
             $revokedOnly->public_id => false,
+        ], $byId);
+    }
+
+    /** Kartu 488: menolak panggilan darurat = keluar dari daftar panggilan, email atau token sekalipun. */
+    public function test_a_donor_who_opted_out_of_emergency_calls_is_not_reachable(): void
+    {
+        $optedOut = $this->donorAt(0.010);
+        $otherCategory = $this->donorAt(0.020);
+
+        // Lewat model, bukan UpdateNotificationPreference: modul Request tidak mengimpor modul Notification.
+        foreach ([[$optedOut, 'emergency_call'], [$otherCategory, 'general']] as [$donor, $category]) {
+            $user = User::factory()->create();
+            $donor->forceFill(['user_id' => $user->id])->save();
+            (new NotificationPreference(['category' => $category]))->forceFill(['user_id' => $user->id, 'opted_out_at' => now()])->save();
+        }
+
+        $byId = array_column($this->preview($this->request())->assertOk()->json('data.candidates'), 'is_reachable', 'donor_id');
+
+        $this->assertSame([
+            $optedOut->public_id => false,
+            $otherCategory->public_id => true,
         ], $byId);
     }
 

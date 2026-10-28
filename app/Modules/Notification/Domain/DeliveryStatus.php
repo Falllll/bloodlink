@@ -10,4 +10,7 @@ enum DeliveryStatus: string
     case PENDING = 'pending';
     case SENT = 'sent';
     case FAILED = 'failed';
+    // Tidak dikirim karena penerima menolak kategorinya (kartu 488). Barisnya tetap
+    // ditulis: "kenapa donor ini tidak dapat kabar" harus punya jawaban.
+    case SUPPRESSED = 'suppressed';
 }
