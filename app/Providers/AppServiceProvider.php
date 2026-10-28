@@ -32,6 +32,8 @@ use App\Modules\Donor\Infrastructure\EloquentDonorDirectory;
 use App\Modules\Donor\Infrastructure\Policies\DonorFlagPolicy;
 use App\Modules\Donor\Infrastructure\Policies\DonorPolicy;
 use App\Modules\Donor\Infrastructure\RecordPermanentDeferral;
+use App\Modules\Identity\Domain\Events\PasswordResetRequested;
+use App\Modules\Identity\Domain\Events\PasswordWasReset;
 use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
 use App\Modules\Identity\Infrastructure\Policies\AuditLogPolicy;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
@@ -47,6 +49,8 @@ use App\Modules\Inventory\Infrastructure\Policies\StockTransferPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
 use App\Modules\Notification\Application\ChannelPolicy;
 use App\Modules\Notification\Application\ClaimDonorCalls;
+use App\Modules\Notification\Application\Listeners\RevokeDevicesOnPasswordReset;
+use App\Modules\Notification\Application\Listeners\SendPasswordResetEmail;
 use App\Modules\Notification\Application\ResolveSender;
 use App\Modules\Notification\Infrastructure\FcmNotificationSender;
 use App\Modules\Notification\Infrastructure\MailNotificationSender;
@@ -137,6 +141,19 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Lupa password (kartu 485): bucket per ALAMAT, di atas `auth` per IP, supaya satu
+        // alamat tidak bisa dibanjiri email reset dari banyak IP. Kunci = hash alamat yang
+        // dinormalisasi (alamat polos tidak masuk cache). Tidak bergantung pada ada-tidaknya
+        // akun, jadi 429-nya tidak membocorkan apa pun. Jalan SEBELUM validasi: input bukan
+        // string tetap menghasilkan kunci, bukan error.
+        RateLimiter::for('forgot-password', function (Request $request): Limit {
+            $email = $request->input('email');
+            $normalized = is_string($email) ? mb_strtolower(trim($email)) : '';
+
+            return Limit::perHour((int) config('security.rate_limit.forgot_password_per_email_per_hour'))
+                ->by('forgot-password-email:'.hash('sha256', $normalized));
+        });
+
         Model::preventSilentlyDiscardingAttributes(! app()->isProduction());
         Model::preventAccessingMissingAttributes(! app()->isProduction());
 
@@ -172,6 +189,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(UnitReservationLifted::class, ReturnReservedUnitToStock::class);
         // Penerbitan bergerbang crossmatch (kartu 350): sinkron, di transaksi penerbitan.
         Event::listen(AllocatedUnitIssued::class, MarkUnitIssued::class);
+        // Reset password (kartu 485): SINKRON keduanya -- event pertama membawa tautan
+        // rahasia, event kedua harus mencabut perangkat di transaksi reset yang sama.
+        Event::listen(PasswordResetRequested::class, SendPasswordResetEmail::class);
+        Event::listen(PasswordWasReset::class, RevokeDevicesOnPasswordReset::class);
 
         Event::listen(Looping::class, function () {
             static $last = 0;

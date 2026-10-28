@@ -94,6 +94,12 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   `POST /eligibility/self-check` (anonim, kuesioner, `true` — tidak melihat deferral
   maupun flag) dan `GET /me/donor/eligibility` (riwayat via `DonorEligibilityService`,
   `false`). Klien yang menampilkan "boleh mendonor" untuk donor terdaftar wajib memakai yang kedua.
+- Lupa password (`POST /auth/forgot-password`) **tidak boleh** menjawab beda untuk akun
+  yang ada dan tidak — termasuk durasinya: controller hanya memvalidasi format lalu
+  mengantrekan `SendPasswordResetLink` (payload terenkripsi). Jangan tambahkan
+  `exists:users` atau pencarian akun di request-nya. Token reset hanya disimpan
+  sebagai hash di `user_password_resets`; reset mencabut semua token Sanctum dan,
+  lewat event `PasswordWasReset`, semua device token push.
 - Ada **dua** mekanisme idempotensi, di lapisan berbeda, untuk masalah berbeda —
   **jangan disatukan**. `EnsureIdempotency` + `idempotency_keys` melindungi satu
   permintaan HTTP yang diulang klien. `ClaimDonorCalls` (port

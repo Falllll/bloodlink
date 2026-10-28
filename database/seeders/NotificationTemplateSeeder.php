@@ -98,6 +98,15 @@ final class NotificationTemplateSeeder extends Seeder
             'body' => 'Reaksi pasca-transfusi dilaporkan di {{facility_name}}.',
             'variables' => ['facility_name'],
         ],
+        // PasswordResetRequested (kartu 485). Penerima: pemilik akun. EMAIL SAJA, sengaja
+        // tanpa baris push: tautan reset tidak boleh tampil di layar kunci.
+        [
+            'code' => 'auth.password_reset',
+            'channel' => 'email',
+            'subject' => 'Atur ulang password BloodLink',
+            'body' => "Ada permintaan untuk mengatur ulang password akun BloodLink Anda.\n\nBuka tautan berikut untuk membuat password baru. Tautan ini hanya berlaku {{ttl_minutes}} menit dan hanya bisa dipakai sekali:\n{{reset_url}}\n\nJika Anda tidak meminta ini, abaikan email ini. Password Anda tidak berubah.",
+            'variables' => ['ttl_minutes', 'reset_url'],
+        ],
     ];
 
     public function run(): void

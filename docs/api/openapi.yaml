@@ -163,6 +163,122 @@ paths:
                 required: [data, meta]
         '401':
           $ref: '#/components/responses/Unauthenticated'
+  /auth/forgot-password:
+    post:
+      summary: Minta tautan reset password
+      description: >-
+        Selalu 202 dengan badan yang sama, untuk email yang terdaftar maupun
+        tidak -- dan dengan kerja yang sama, karena pencarian akun dan pengiriman
+        email dikerjakan antrean, bukan request ini. Tautan dikirim lewat email
+        saja, berlaku `PASSWORD_RESET_TTL_MINUTES` menit dan sekali pakai.
+        Dibatasi per IP (limiter `auth`) dan per alamat email (3/jam bawaan);
+        bucket per email tidak bergantung pada ada-tidaknya akun.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+              required: [email]
+      responses:
+        '202':
+          description: Diterima. Tidak menyatakan apakah akun ada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/reset-password:
+    post:
+      summary: Atur password baru dengan token dari email
+      description: >-
+        Menukar token reset dengan password baru. Berhasil = SEMUA token akses
+        akun ini dicabut dan seluruh device token push-nya dicabut; pengguna
+        masuk lagi lewat login. Token tidak dikenal, kedaluwarsa, sudah dipakai,
+        atau milik akun nonaktif dibalas jawaban yang sama:
+        422 `PASSWORD_RESET_TOKEN_INVALID`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  maxLength: 255
+                password:
+                  type: string
+                  minLength: 8
+                password_confirmation:
+                  type: string
+              required: [token, password, password_confirmation]
+      responses:
+        '200':
+          description: Password diganti; semua sesi dicabut.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageEnvelope'
+        '422':
+          description: Validasi gagal, atau token tidak bisa dipakai (`PASSWORD_RESET_TOKEN_INVALID`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/change-password:
+    post:
+      summary: Ganti password (pengguna yang sedang masuk)
+      description: >-
+        Wajib menyertakan password lama. Password baru harus berbeda dari yang
+        lama. Sesi lain milik akun ini dicabut; sesi yang dipakai request ini
+        tetap hidup.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                current_password:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+                password_confirmation:
+                  type: string
+              required: [current_password, password, password_confirmation]
+      responses:
+        '200':
+          description: Password diganti; sesi lain dicabut.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /me/donor:
     get:
       summary: Profil donor milik akun yang login
@@ -4549,6 +4665,20 @@ components:
         - NOTIFICATION_DELIVERY_FAILED
         - CAMPAIGN_REJECTED
         - DONOR_FLAG_REJECTED
+        - PASSWORD_RESET_TOKEN_INVALID
+    MessageEnvelope:
+      type: object
+      description: Balasan sukses yang hanya membawa pesan untuk ditampilkan.
+      properties:
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+          required: [message]
+        meta:
+          type: object
+      required: [data, meta]
     Error:
       type: object
       properties:

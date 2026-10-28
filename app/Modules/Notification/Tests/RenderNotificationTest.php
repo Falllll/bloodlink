@@ -43,13 +43,16 @@ final class RenderNotificationTest extends TestCase
         ]);
     }
 
-    public function test_the_seed_holds_five_codes_times_two_channels(): void
+    public function test_the_seed_holds_five_codes_times_two_channels_plus_the_email_only_reset(): void
     {
-        $this->assertSame(10, NotificationTemplate::query()->count());
+        $this->assertSame(11, NotificationTemplate::query()->count());
 
         foreach (['donor.permanently_deferred', 'storage.temperature_out_of_range', 'inventory.units_nearing_expiry', 'stock_transfer.requested', 'transfusion.reaction_reported'] as $code) {
             $this->assertEqualsCanonicalizing(['email', 'push'], NotificationTemplate::query()->where('code', $code)->pluck('channel')->map->value->all(), $code);
         }
+
+        // Reset password (kartu 485): email SAJA -- tautan reset tidak boleh tampil di layar kunci.
+        $this->assertSame(['email'], NotificationTemplate::query()->where('code', 'auth.password_reset')->pluck('channel')->map->value->all());
     }
 
     public function test_every_seeded_template_renders_completely_with_its_declared_variables(): void

@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Klien web (repo bloodlink-web). Backend ini headless, jadi tautan di email
+    // (mis. reset password, kartu 485) menunjuk ke sini, bukan ke APP_URL.
+    'frontend_url' => rtrim((string) env('FRONTEND_URL', 'http://localhost:3000'), '/'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

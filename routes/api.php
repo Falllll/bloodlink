@@ -15,6 +15,7 @@ use App\Modules\Donor\Http\Controllers\MeDonorController;
 use App\Modules\Identity\Http\Controllers\AuditLogController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\FacilityController;
+use App\Modules\Identity\Http\Controllers\PasswordController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchBarcodeController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchController;
 use App\Modules\Inventory\Http\Controllers\ComponentSeparationController;
@@ -45,6 +46,10 @@ Route::prefix('auth')->name('auth.')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth')->name('register');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth')->name('login');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('logout');
+    // Kartu 485. Dua limiter: `auth` per IP dan `forgot-password` per alamat email.
+    Route::post('/forgot-password', [PasswordController::class, 'forgot'])->middleware(['throttle:auth', 'throttle:forgot-password'])->name('password.forgot');
+    Route::post('/reset-password', [PasswordController::class, 'reset'])->middleware('throttle:auth')->name('password.reset');
+    Route::post('/change-password', [PasswordController::class, 'change'])->middleware(['auth:sanctum', 'throttle:auth'])->name('password.change');
 });
 
 Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function (): void {

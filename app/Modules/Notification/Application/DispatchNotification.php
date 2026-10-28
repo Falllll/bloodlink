@@ -29,16 +29,19 @@ final class DispatchNotification
 
     /**
      * @param  array<string, string|int>  $variables  gabungan variabel semua kanal
+     * @param  list<NotificationChannel>|null  $only  batasi ke kanal ini (mis. reset password:
+     *                                                email saja, kartu 485); null = semua yang diizinkan
      * @return list<string> public_id setiap delivery yang dibuat
      */
-    public function handle(User $user, string $templateCode, array $variables, string $locale = 'id'): array
+    public function handle(User $user, string $templateCode, array $variables, string $locale = 'id', ?array $only = null): array
     {
-        $variablesByChannel = $this->variablesByChannel($templateCode, $variables, $locale);
+        $channels = $this->channels($only);
+        $variablesByChannel = $this->variablesByChannel($templateCode, $variables, $locale, $channels);
 
-        return DB::transaction(function () use ($user, $templateCode, $locale, $variablesByChannel): array {
+        return DB::transaction(function () use ($user, $templateCode, $locale, $variablesByChannel, $channels): array {
             $created = [];
 
-            foreach ($this->policy->permittedChannels() as $channel) {
+            foreach ($channels as $channel) {
                 $targets = $channel === NotificationChannel::EMAIL
                     ? [null]
                     : DeviceToken::query()->deliverable()->where('user_id', $user->id)->orderBy('id')->pluck('id')->all();
@@ -76,14 +79,15 @@ final class DispatchNotification
      * pun tetap ditolak -- salah nama tetap bug pemanggil.
      *
      * @param  array<string, string|int>  $variables
+     * @param  list<NotificationChannel>  $channels
      * @return array<string, array<string, string|int>>
      */
-    private function variablesByChannel(string $templateCode, array $variables, string $locale): array
+    private function variablesByChannel(string $templateCode, array $variables, string $locale, array $channels): array
     {
         $byChannel = [];
         $declaredAnywhere = [];
 
-        foreach ($this->policy->permittedChannels() as $channel) {
+        foreach ($channels as $channel) {
             $declared = NotificationTemplate::query()
                 ->where('code', $templateCode)
                 ->where('channel', $channel->value)
@@ -108,5 +112,26 @@ final class DispatchNotification
         }
 
         return $byChannel;
+    }
+
+    /**
+     * Kanal yang diminta DIIRIS dengan kebijakan kanal, tidak pernah ditambah: $only
+     * hanya bisa mempersempit. Kanal yang diminta tapi tidak diizinkan ditolak keras
+     * oleh ChannelPolicy, bukan dilewati diam-diam.
+     *
+     * @param  list<NotificationChannel>|null  $only
+     * @return list<NotificationChannel>
+     */
+    private function channels(?array $only): array
+    {
+        if ($only === null) {
+            return $this->policy->permittedChannels();
+        }
+
+        foreach ($only as $channel) {
+            $this->policy->assertDeliverable($channel);
+        }
+
+        return array_values(array_filter($this->policy->permittedChannels(), fn (NotificationChannel $c): bool => in_array($c, $only, true)));
     }
 }
