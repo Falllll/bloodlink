@@ -94,6 +94,14 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   `POST /eligibility/self-check` (anonim, kuesioner, `true` — tidak melihat deferral
   maupun flag) dan `GET /me/donor/eligibility` (riwayat via `DonorEligibilityService`,
   `false`). Klien yang menampilkan "boleh mendonor" untuk donor terdaftar wajib memakai yang kedua.
+- Slot appointment (kartu 503) dihitung dari **pola mingguan** per fasilitas
+  (`facility_appointment_schedules`) plus tanggal tutup — tidak pernah satu baris per
+  slot. Pola memakai jam dinding **lokal** `facilities.timezone`; `scheduled_for` adalah
+  instan **UTC** (`BookAppointment` mengonversi eksplisit). Kapasitas dijaga kunci baris
+  jendela (`AppointmentSlots::assertBookable`, `FOR UPDATE`) di transaksi pemesanan,
+  dibuktikan `AppointmentSlotRaceTest` — jalur pemesanan baru wajib lewat `BookAppointment`.
+  Walk-in tidak memakan slot; fasilitas tanpa pola tidak dibatasi; appointment lama tidak
+  divalidasi ulang.
 - Akun staf (`/users`, kartu 487) selalu terikat satu fasilitas; peran ditulis di team
   Spatie fasilitas **target** lewat `StaffRoles` (yang mengembalikan team aktor), tidak
   pernah lewat `assignRole()` di team request. Akun donor dan operator global tidak

@@ -411,7 +411,12 @@ paths:
         `not_allowed`. Satu donor hanya boleh punya satu janji temu terbuka;
         pesanan kedua dibalas 409 `APPOINTMENT_TRANSITION_REJECTED` -- batalkan
         yang lama lebih dulu untuk menjadwal ulang. Akun yang belum tertaut
-        dibalas 404 `DONOR_ACCOUNT_NOT_LINKED`.
+        dibalas 404 `DONOR_ACCOUNT_NOT_LINKED`. Bila fasilitas punya pola
+        jadwal (lihat `/facilities/{facility}/appointment-slots`),
+        `scheduled_for` harus tepat awal sebuah slot: bukan slot / tanggal
+        tutup dibalas 422 `APPOINTMENT_SLOT_UNAVAILABLE`, slot penuh 409
+        `APPOINTMENT_SLOT_UNAVAILABLE`. `scheduled_for` dibaca sebagai instan
+        (offset dihormati) dan disimpan dalam UTC.
       security:
         - bearerAuth: []
       parameters:
@@ -1348,6 +1353,232 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /facilities/{facility}/appointment-schedule:
+    parameters:
+      - $ref: '#/components/parameters/FacilityId'
+    get:
+      summary: Pola jadwal appointment fasilitas
+      description: >-
+        Pola MINGGUAN dalam jam dinding lokal `timezone` fasilitas, plus tanggal
+        tutup yang akan datang. Slot konkret dihitung dari pola ini, tidak
+        disimpan per hari.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pola jadwal.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AppointmentSchedule'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Ganti seluruh pola jadwal appointment fasilitas
+      description: >-
+        Mengganti pola secara atomik. Jam adalah jam dinding LOKAL di `timezone`
+        (WIB/WITA/WIT). Jendela pada hari yang sama tidak boleh tumpang-tindih
+        (dijaga EXCLUDE di database) dan panjangnya harus kelipatan durasi slot.
+        Appointment yang sudah ada tidak pernah divalidasi ulang -- pola hanya
+        berlaku untuk pemesanan baru. Daftar kosong = fasilitas kembali tanpa
+        pembatasan kapasitas. Butuh izin ubah fasilitas (admin fasilitas itu atau
+        operator global).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timezone:
+                  type: string
+                  enum: [Asia/Jakarta, Asia/Makassar, Asia/Jayapura]
+                windows:
+                  type: array
+                  maxItems: 50
+                  items:
+                    $ref: '#/components/schemas/AppointmentScheduleWindow'
+              required: [timezone, windows]
+      responses:
+        '200':
+          description: Pola tersimpan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AppointmentSchedule'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /facilities/{facility}/appointment-closures:
+    parameters:
+      - $ref: '#/components/parameters/FacilityId'
+    post:
+      summary: Tutup appointment fasilitas pada satu tanggal
+      description: Tanggal LOKAL fasilitas, sehari penuh. Satu baris per tanggal.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                reason:
+                  type: string
+                  maxLength: 255
+              required: [date, reason]
+      responses:
+        '201':
+          description: Tanggal ditutup.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AppointmentClosure'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /facilities/{facility}/appointment-closures/{date}:
+    parameters:
+      - $ref: '#/components/parameters/FacilityId'
+      - in: path
+        name: date
+        required: true
+        schema:
+          type: string
+          format: date
+        description: Tanggal lokal fasilitas.
+    delete:
+      summary: Buka kembali tanggal yang ditutup
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Penutupan dihapus (idempoten).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      date:
+                        type: string
+                        format: date
+                    required: [date]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /facilities/{facility}/appointment-slots:
+    parameters:
+      - $ref: '#/components/parameters/FacilityId'
+    get:
+      summary: Ketersediaan slot appointment
+      description: >-
+        Slot mendatang dari pola fasilitas, dengan offset zona waktu EKSPLISIT
+        di setiap `starts_at`/`ends_at` (mis. `2026-11-02T08:00:00+07:00`).
+        Kirim `starts_at` apa adanya sebagai `scheduled_for` saat memesan.
+        `from` adalah tanggal LOKAL fasilitas. Tanggal tutup dan slot yang sudah
+        lewat tidak muncul. `schedule_configured: false` = fasilitas belum punya
+        pola: tidak ada slot, dan pemesanan di sana belum dibatasi kapasitas --
+        klien jangan mengarang grid.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date
+          description: Tanggal lokal fasilitas; bawaan hari ini.
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 31
+            default: 7
+      responses:
+        '200':
+          description: Ketersediaan slot.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      timezone:
+                        type: string
+                      schedule_configured:
+                        type: boolean
+                      slots:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AppointmentSlot'
+                    required: [timezone, schedule_configured, slots]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /facilities/{facility}/deactivate:
     patch:
       summary: Nonaktifkan fasilitas
@@ -1811,7 +2042,10 @@ paths:
         Admin global, admin fasilitas donor tersebut, atau staf fasilitas
         donor tersebut. `scheduled_for` yang tidak dikirim berarti walk-in:
         janji temu lahir langsung berstatus `arrived` dengan `arrived_at`
-        terisi. Memesan slot tidak memeriksa kelayakan donor -- itu urusan
+        terisi, dan walk-in TIDAK PERNAH memakan slot. Janji temu terjadwal di
+        fasilitas yang punya pola jadwal harus tepat awal slot yang belum penuh
+        (`APPOINTMENT_SLOT_UNAVAILABLE`: 422 bukan slot/tutup, 409 penuh).
+        Memesan slot tidak memeriksa kelayakan donor -- itu urusan
         skrining. Satu donor hanya boleh punya satu janji temu terbuka
         (`booked`/`arrived`/`screened`) pada satu waktu.
       security:
@@ -4887,6 +5121,7 @@ components:
         - CAMPAIGN_REJECTED
         - DONOR_FLAG_REJECTED
         - PASSWORD_RESET_TOKEN_INVALID
+        - APPOINTMENT_SLOT_UNAVAILABLE
     MessageEnvelope:
       type: object
       description: Balasan sukses yang hanya membawa pesan untuk ditampilkan.
@@ -4990,6 +5225,72 @@ components:
                 donor atau operator global -- dan itu bukan kesalahan.
           required: [id, name, email, role, facility_id]
       required: [token, token_type, user]
+    AppointmentScheduleWindow:
+      type: object
+      description: Satu jendela pada satu hari, jam dinding LOKAL fasilitas.
+      properties:
+        weekday:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: ISO-8601, 1 = Senin ... 7 = Minggu.
+        opens_at:
+          type: string
+          pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'
+        closes_at:
+          type: string
+          pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$|^24:00$'
+        slot_minutes:
+          type: integer
+          minimum: 5
+          maximum: 480
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 500
+          description: Donor per slot.
+      required: [weekday, opens_at, closes_at, slot_minutes, capacity]
+    AppointmentClosure:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        reason:
+          type: string
+      required: [date, reason]
+    AppointmentSchedule:
+      type: object
+      properties:
+        timezone:
+          type: string
+          enum: [Asia/Jakarta, Asia/Makassar, Asia/Jayapura]
+        windows:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppointmentScheduleWindow'
+        closures:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppointmentClosure'
+      required: [timezone, windows, closures]
+    AppointmentSlot:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+          description: Dengan offset zona fasilitas, mis. 2026-11-02T08:00:00+07:00.
+        ends_at:
+          type: string
+          format: date-time
+        capacity:
+          type: integer
+        booked:
+          type: integer
+        available:
+          type: integer
+      required: [starts_at, ends_at, capacity, booked, available]
     StaffAssignment:
       type: object
       properties:

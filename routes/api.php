@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Donor\Http\Controllers\AppointmentController;
+use App\Modules\Donor\Http\Controllers\AppointmentScheduleController;
 use App\Modules\Donor\Http\Controllers\DeferralController;
 use App\Modules\Donor\Http\Controllers\DeferralReasonController;
 use App\Modules\Donor\Http\Controllers\DonationController;
@@ -137,6 +138,13 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::patch('/facilities/{facility}/deactivate', [FacilityController::class, 'deactivate'])->name('facilities.deactivate');
     Route::post('/facilities/{facility}/activate', [FacilityController::class, 'activate'])->name('facilities.activate');
     Route::post('/facilities/{facility}/verify', [FacilityController::class, 'verify'])->name('facilities.verify');
+
+    // Pola jadwal & kapasitas slot appointment (kartu 503).
+    Route::get('/facilities/{facility}/appointment-schedule', [AppointmentScheduleController::class, 'show'])->name('facilities.appointment-schedule.show');
+    Route::put('/facilities/{facility}/appointment-schedule', [AppointmentScheduleController::class, 'replace'])->name('facilities.appointment-schedule.replace');
+    Route::post('/facilities/{facility}/appointment-closures', [AppointmentScheduleController::class, 'addClosure'])->name('facilities.appointment-closures.store');
+    Route::delete('/facilities/{facility}/appointment-closures/{date}', [AppointmentScheduleController::class, 'removeClosure'])->where('date', '\d{4}-\d{2}-\d{2}')->name('facilities.appointment-closures.destroy');
+    Route::get('/facilities/{facility}/appointment-slots', [AppointmentScheduleController::class, 'slots'])->name('facilities.appointment-slots');
 
     // Manajemen akun staf (kartu 487). Diikat lewat public_id, tidak pernah id numerik.
     Route::get('/users', [StaffController::class, 'index'])->name('users.index');
