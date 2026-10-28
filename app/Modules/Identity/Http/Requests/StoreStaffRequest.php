@@ -1,0 +1,26 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Identity\Http\Requests;
+
+use App\Shared\Http\StrictRequest;
+
+/** Tanpa field password SAMA SEKALI (kartu 487): pemilik akun menetapkannya lewat undangan. */
+final class StoreStaffRequest extends StrictRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /** @return array<string, mixed> */
+    public function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            ...StaffAssignmentRules::rules(),
+        ];
+    }
+}

@@ -16,6 +16,7 @@ use App\Modules\Identity\Http\Controllers\AuditLogController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\FacilityController;
 use App\Modules\Identity\Http\Controllers\PasswordController;
+use App\Modules\Identity\Http\Controllers\StaffController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchBarcodeController;
 use App\Modules\Inventory\Http\Controllers\BloodBatchController;
 use App\Modules\Inventory\Http\Controllers\ComponentSeparationController;
@@ -136,6 +137,14 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::patch('/facilities/{facility}/deactivate', [FacilityController::class, 'deactivate'])->name('facilities.deactivate');
     Route::post('/facilities/{facility}/activate', [FacilityController::class, 'activate'])->name('facilities.activate');
     Route::post('/facilities/{facility}/verify', [FacilityController::class, 'verify'])->name('facilities.verify');
+
+    // Manajemen akun staf (kartu 487). Diikat lewat public_id, tidak pernah id numerik.
+    Route::get('/users', [StaffController::class, 'index'])->name('users.index');
+    Route::post('/users', [StaffController::class, 'store'])->name('users.store');
+    Route::get('/users/{user:public_id}', [StaffController::class, 'show'])->whereUuid('user')->name('users.show');
+    Route::put('/users/{user:public_id}/assignment', [StaffController::class, 'assign'])->whereUuid('user')->name('users.assignment');
+    Route::patch('/users/{user:public_id}/deactivate', [StaffController::class, 'deactivate'])->whereUuid('user')->name('users.deactivate');
+    Route::post('/users/{user:public_id}/activate', [StaffController::class, 'activate'])->whereUuid('user')->name('users.activate');
     Route::get('/donors', [DonorProfileController::class, 'index'])->name('donors.index');
     Route::post('/donors/merge', DonorMergeController::class)->name('donors.merge');
     Route::get('/deferral-reasons', DeferralReasonController::class)->name('deferral-reasons.index');

@@ -94,6 +94,12 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   `POST /eligibility/self-check` (anonim, kuesioner, `true` — tidak melihat deferral
   maupun flag) dan `GET /me/donor/eligibility` (riwayat via `DonorEligibilityService`,
   `false`). Klien yang menampilkan "boleh mendonor" untuk donor terdaftar wajib memakai yang kedua.
+- Akun staf (`/users`, kartu 487) selalu terikat satu fasilitas; peran ditulis di team
+  Spatie fasilitas **target** lewat `StaffRoles` (yang mengembalikan team aktor), tidak
+  pernah lewat `assignRole()` di team request. Akun donor dan operator global tidak
+  dikelola lewat API ini. Tidak ada password di body, respons, maupun email — akun baru
+  menerima undangan sekali pakai. Ganti peran/fasilitas dan penonaktifan mencabut semua
+  token Sanctum; menonaktifkan, tidak pernah menghapus.
 - Lupa password (`POST /auth/forgot-password`) **tidak boleh** menjawab beda untuk akun
   yang ada dan tidak — termasuk durasinya: controller hanya memvalidasi format lalu
   mengantrekan `SendPasswordResetLink` (payload terenkripsi). Jangan tambahkan

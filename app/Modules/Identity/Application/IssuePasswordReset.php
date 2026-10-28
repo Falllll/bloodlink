@@ -16,13 +16,20 @@ use Illuminate\Support\Str;
  */
 final class IssuePasswordReset
 {
-    /** @return string token polos, untuk dimasukkan ke tautan */
-    public function handle(User $user): string
+    /**
+     * @param  bool  $invitation  undangan akun staf baru (kartu 487): token yang sama
+     *                            dan endpoint penukaran yang sama, tapi umurnya lebih
+     *                            panjang dan emailnya berbeda.
+     * @return string token polos, untuk dimasukkan ke tautan
+     */
+    public function handle(User $user, bool $invitation = false): string
     {
         $token = Str::random(64);
-        $ttl = (int) config('security.password_reset_ttl_minutes');
+        $ttl = $invitation
+            ? (int) config('security.staff_invitation_ttl_hours') * 60
+            : (int) config('security.password_reset_ttl_minutes');
 
-        DB::transaction(function () use ($user, $token, $ttl): void {
+        DB::transaction(function () use ($user, $token, $ttl, $invitation): void {
             DB::table('user_password_resets')
                 ->where('user_id', $user->id)
                 ->whereNull('used_at')
@@ -41,6 +48,7 @@ final class IssuePasswordReset
                 $user->id,
                 config('app.frontend_url').'/reset-password?token='.$token,
                 $ttl,
+                $invitation,
             ));
         });
 

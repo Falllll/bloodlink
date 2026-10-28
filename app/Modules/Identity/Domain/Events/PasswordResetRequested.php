@@ -18,5 +18,7 @@ final class PasswordResetRequested
         public readonly int $userId,
         public readonly string $resetUrl,
         public readonly int $ttlMinutes,
+        // Undangan akun staf baru (kartu 487), bukan lupa password: email lain, umur lain.
+        public readonly bool $invitation = false,
     ) {}
 }

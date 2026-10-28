@@ -26,11 +26,11 @@ final class SendPasswordResetEmail
     {
         $user = User::query()->findOrFail($event->userId);
 
-        $this->dispatch->handle(
-            $user,
-            'auth.password_reset',
-            ['reset_url' => $event->resetUrl, 'ttl_minutes' => $event->ttlMinutes],
-            only: [NotificationChannel::EMAIL],
-        );
+        // Undangan staf (kartu 487) memakai token dan endpoint yang sama, emailnya beda.
+        [$template, $variables] = $event->invitation
+            ? ['auth.staff_invitation', ['set_password_url' => $event->resetUrl, 'ttl_hours' => intdiv($event->ttlMinutes, 60)]]
+            : ['auth.password_reset', ['reset_url' => $event->resetUrl, 'ttl_minutes' => $event->ttlMinutes]];
+
+        $this->dispatch->handle($user, $template, $variables, only: [NotificationChannel::EMAIL]);
     }
 }

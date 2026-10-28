@@ -916,6 +916,219 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /users:
+    get:
+      summary: Daftar akun staf
+      description: >-
+        Akun staf = akun yang terikat satu fasilitas. Akun donor dan operator
+        global tidak pernah muncul di sini. Operator global melihat staf semua
+        fasilitas; admin fasilitas hanya stafnya sendiri. Butuh `user.manage`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Daftar akun staf.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StaffAccount'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Buat akun staf
+      description: >-
+        Tanpa password sama sekali -- tidak diterima di body, tidak pernah
+        dikembalikan, tidak pernah dikirim. Pemilik akun menerima undangan email
+        berisi tautan sekali pakai untuk menetapkan passwordnya sendiri (token
+        yang sama dengan reset password, ditukar lewat `POST /auth/reset-password`).
+        Peran hanya `hospital_staff` atau `admin`, ditulis di fasilitas tujuan.
+        Admin fasilitas hanya boleh membuat akun di fasilitasnya sendiri.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/StaffAssignment'
+                - type: object
+                  properties:
+                    name:
+                      type: string
+                      maxLength: 255
+                    email:
+                      type: string
+                      format: email
+                      maxLength: 255
+                  required: [name, email]
+      responses:
+        '201':
+          description: Akun dibuat dan undangan diantrekan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StaffAccount'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /users/{user}:
+    parameters:
+      - $ref: '#/components/parameters/StaffUser'
+    get:
+      summary: Detail akun staf
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Akun staf.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StaffAccount'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /users/{user}/assignment:
+    parameters:
+      - $ref: '#/components/parameters/StaffUser'
+    put:
+      summary: Atur peran dan fasilitas akun staf
+      description: >-
+        Satu peran per akun, di fasilitas akun itu. Pindah fasilitas membersihkan
+        peran di fasilitas lama. Setiap perubahan mencabut SEMUA token akses akun
+        itu dan dicatat di audit log sebagai `role_assigned`; permintaan yang tidak
+        mengubah apa pun tidak mencabut apa pun. Admin fasilitas tidak bisa
+        memindahkan staf keluar dari fasilitasnya. Tidak ada yang boleh mengubah
+        akunnya sendiri (403).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffAssignment'
+      responses:
+        '200':
+          description: Penugasan diperbarui.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StaffAccount'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /users/{user}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/StaffUser'
+    patch:
+      summary: Nonaktifkan akun staf
+      description: >-
+        Menonaktifkan, tidak menghapus: akunnya tetap tertelusur lewat
+        `audit_logs.actor_id`. Semua token akses dan device token push akun itu
+        dicabut. Tidak ada yang boleh menonaktifkan akunnya sendiri (403).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Akun dinonaktifkan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StaffAccount'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /users/{user}/activate:
+    parameters:
+      - $ref: '#/components/parameters/StaffUser'
+    post:
+      summary: Aktifkan kembali akun staf
+      description: Tanpa sesi apa pun; pemiliknya masuk lewat login seperti biasa.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Akun aktif kembali.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StaffAccount'
+                  meta:
+                    type: object
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /facilities:
     get:
       summary: Daftar fasilitas
@@ -4523,6 +4736,14 @@ components:
         type: string
         format: uuid
       description: 'Public ID fasilitas (`public_id`). ID numerik internal tidak pernah keluar ke API.'
+    StaffUser:
+      in: path
+      name: user
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: 'Public ID akun staf (`public_id`). ID numerik internal tidak pernah keluar ke API.'
     RequestId:
       in: header
       name: X-Request-Id
@@ -4769,6 +4990,45 @@ components:
                 donor atau operator global -- dan itu bukan kesalahan.
           required: [id, name, email, role, facility_id]
       required: [token, token_type, user]
+    StaffAssignment:
+      type: object
+      properties:
+        facility_id:
+          type: string
+          format: uuid
+          description: Public ID fasilitas aktif.
+        role:
+          type: string
+          enum: [hospital_staff, admin]
+      required: [facility_id, role]
+    StaffAccount:
+      type: object
+      description: >-
+        Tanpa password, hash, token, maupun id numerik. `role` adalah peran akun
+        di fasilitasnya sendiri.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        facility_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [hospital_staff, admin]
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, name, email, facility_id, role, is_active, created_at]
     Facility:
       type: object
       properties:

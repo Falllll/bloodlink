@@ -34,9 +34,11 @@ use App\Modules\Donor\Infrastructure\Policies\DonorPolicy;
 use App\Modules\Donor\Infrastructure\RecordPermanentDeferral;
 use App\Modules\Identity\Domain\Events\PasswordResetRequested;
 use App\Modules\Identity\Domain\Events\PasswordWasReset;
+use App\Modules\Identity\Domain\Events\StaffAccountDeactivated;
 use App\Modules\Identity\Infrastructure\Auditing\AuditObserver;
 use App\Modules\Identity\Infrastructure\Policies\AuditLogPolicy;
 use App\Modules\Identity\Infrastructure\Policies\FacilityPolicy;
+use App\Modules\Identity\Infrastructure\Policies\UserPolicy;
 use App\Modules\Inventory\Application\AssignStorageProfile;
 use App\Modules\Inventory\Application\Listeners\CreateQuarantinedUnit;
 use App\Modules\Inventory\Application\Listeners\MarkUnitIssued;
@@ -49,7 +51,7 @@ use App\Modules\Inventory\Infrastructure\Policies\StockTransferPolicy;
 use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
 use App\Modules\Notification\Application\ChannelPolicy;
 use App\Modules\Notification\Application\ClaimDonorCalls;
-use App\Modules\Notification\Application\Listeners\RevokeDevicesOnPasswordReset;
+use App\Modules\Notification\Application\Listeners\RevokeUserDevices;
 use App\Modules\Notification\Application\Listeners\SendPasswordResetEmail;
 use App\Modules\Notification\Application\ResolveSender;
 use App\Modules\Notification\Infrastructure\FcmNotificationSender;
@@ -163,6 +165,8 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Gate::policy(Facility::class, FacilityPolicy::class);
+        // Manajemen akun staf (kartu 487).
+        Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Donor::class, DonorPolicy::class);
         // Wajib manual: tanpa ini SEMUA orang ditolak, termasuk admin (kartu 430).
         Gate::policy(DonorFlag::class, DonorFlagPolicy::class);
@@ -192,7 +196,9 @@ class AppServiceProvider extends ServiceProvider
         // Reset password (kartu 485): SINKRON keduanya -- event pertama membawa tautan
         // rahasia, event kedua harus mencabut perangkat di transaksi reset yang sama.
         Event::listen(PasswordResetRequested::class, SendPasswordResetEmail::class);
-        Event::listen(PasswordWasReset::class, RevokeDevicesOnPasswordReset::class);
+        Event::listen(PasswordWasReset::class, RevokeUserDevices::class);
+        // Akun staf dinonaktifkan (kartu 487): perangkatnya ikut berhenti menerima push.
+        Event::listen(StaffAccountDeactivated::class, RevokeUserDevices::class);
 
         Event::listen(Looping::class, function () {
             static $last = 0;

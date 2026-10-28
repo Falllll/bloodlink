@@ -107,6 +107,20 @@ final class NotificationTemplateSeeder extends Seeder
             'body' => "Ada permintaan untuk mengatur ulang password akun BloodLink Anda.\n\nBuka tautan berikut untuk membuat password baru. Tautan ini hanya berlaku {{ttl_minutes}} menit dan hanya bisa dipakai sekali:\n{{reset_url}}\n\nJika Anda tidak meminta ini, abaikan email ini. Password Anda tidak berubah.",
             'variables' => ['ttl_minutes', 'reset_url'],
         ],
+        // Undangan akun staf baru (kartu 487). Penerima: petugas baru. EMAIL SAJA, dan
+        // SENGAJA tanpa password: penerima menetapkan sendiri lewat tautan sekali pakai.
+        [
+            'code' => 'auth.staff_invitation',
+            'channel' => 'email',
+            'subject' => 'Undangan akun petugas BloodLink',
+            'body' => 'Sebuah akun petugas BloodLink telah dibuat untuk alamat email ini.
+
+Buka tautan berikut untuk menetapkan password Anda. Tautan ini berlaku {{ttl_hours}} jam dan hanya bisa dipakai sekali:
+{{set_password_url}}
+
+Jika Anda tidak mengenali undangan ini, abaikan email ini.',
+            'variables' => ['ttl_hours', 'set_password_url'],
+        ],
     ];
 
     public function run(): void

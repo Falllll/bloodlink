@@ -25,6 +25,11 @@ return [
     // kotak masuk yang bocor tidak boleh berguna lama. Angka OPERASIONAL.
     'password_reset_ttl_minutes' => (int) env('PASSWORD_RESET_TTL_MINUTES', 60),
 
+    // Umur tautan undangan akun staf baru (kartu 487), JAM. Lebih panjang dari reset:
+    // petugas baru belum tentu membuka email dalam satu jam. Tetap sekali pakai.
+    // Angka OPERASIONAL.
+    'staff_invitation_ttl_hours' => (int) env('STAFF_INVITATION_TTL_HOURS', 72),
+
     // Batas bucket per permintaan laporan (kartu 440). Angka OPERASIONAL: satu
     // tahun harian. Tanpa batas, granularity=day&from=2000-01-01 adalah DoS.
     'report_max_buckets' => (int) env('REPORT_MAX_BUCKETS', 366),
