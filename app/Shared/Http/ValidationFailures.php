@@ -31,6 +31,8 @@ final class ValidationFailures
         'mimes' => ['values'],
         'invalid_sort' => ['column'],
         'unsupported_filter' => ['keys'],
+        // ReportRequest: batas security.report_max_buckets, supaya klien bisa menyebut angkanya.
+        'too_many_buckets' => ['max'],
     ];
 
     /**
