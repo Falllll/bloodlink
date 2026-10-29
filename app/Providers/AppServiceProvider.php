@@ -56,7 +56,9 @@ use App\Modules\Notification\Application\Listeners\SendPasswordResetEmail;
 use App\Modules\Notification\Application\ResolveSender;
 use App\Modules\Notification\Infrastructure\FcmNotificationSender;
 use App\Modules\Notification\Infrastructure\MailNotificationSender;
+use App\Modules\Request\Application\Listeners\BroadcastRequestStatus;
 use App\Modules\Request\Domain\Events\AllocatedUnitIssued;
+use App\Modules\Request\Domain\Events\BloodRequestStatusChanged;
 use App\Modules\Request\Domain\Events\UnitReservationLifted;
 use App\Modules\Request\Domain\Events\UnitReservationPlaced;
 use App\Modules\Request\Infrastructure\Policies\BloodRequestPolicy;
@@ -193,6 +195,9 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(UnitReservationLifted::class, ReturnReservedUnitToStock::class);
         // Penerbitan bergerbang crossmatch (kartu 350): sinkron, di transaksi penerbitan.
         Event::listen(AllocatedUnitIssued::class, MarkUnitIssued::class);
+        // Kartu 490: satu-satunya listener yang menyiarkan. Sengaja tidak sinkron
+        // dengan transaksi penulisnya -- lihat ShouldDispatchAfterCommit.
+        Event::listen(BloodRequestStatusChanged::class, BroadcastRequestStatus::class);
         // Reset password (kartu 485): SINKRON keduanya -- event pertama membawa tautan
         // rahasia, event kedua harus mencabut perangkat di transaksi reset yang sama.
         Event::listen(PasswordResetRequested::class, SendPasswordResetEmail::class);

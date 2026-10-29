@@ -36,6 +36,24 @@ services:
         condition: service_healthy
     env_file: .env
 
+  # Server WebSocket (kartu 490). Satu node, akses langsung lewat jaringan Compose.
+  # Tanpa depends_on db: Reverb tidak menyentuh database. Tanpa kredensial di sini --
+  # REVERB_APP_* datang dari env_file.
+  reverb:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    volumes:
+      - .:/var/www/html
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_started
+    env_file: .env
+
   db:
     image: postgis/postgis:17-3.5
     environment:

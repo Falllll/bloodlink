@@ -6,6 +6,7 @@ namespace App\Modules\Request\Application;
 
 use App\Models\BloodRequest;
 use App\Models\BloodRequestAllocation;
+use App\Modules\Request\Domain\Events\BloodRequestStatusChanged;
 use App\Modules\Request\Domain\RequestStatus;
 
 /**
@@ -35,7 +36,12 @@ final class RecomputeRequestStatus
         };
 
         if ($target !== $request->status && $request->status->canTransitionTo($target)) {
+            $from = $request->status;
             $request->forceFill(['status' => $target])->save();
+
+            // public_id fasilitas lewat relasi: satu query tambahan HANYA saat status
+            // benar-benar berpindah, daripada memaksa setiap pemanggil mengopernya.
+            event(new BloodRequestStatusChanged($request->public_id, $request->facility->public_id, $from->value, $target->value));
         }
 
         return $request->status;

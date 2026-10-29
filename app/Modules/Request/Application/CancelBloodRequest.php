@@ -7,6 +7,7 @@ namespace App\Modules\Request\Application;
 use App\Models\BloodRequest;
 use App\Models\BloodRequestAllocation;
 use App\Modules\Request\Application\Exceptions\BloodRequestNotAllocatable;
+use App\Modules\Request\Domain\Events\BloodRequestStatusChanged;
 use App\Modules\Request\Domain\ReleaseReason;
 use App\Modules\Request\Domain\RequestStatus;
 use Illuminate\Support\Facades\DB;
@@ -72,7 +73,10 @@ final class CancelBloodRequest
                 $this->returnUnit->handle($allocation, $reason);
             }
 
+            $from = $fresh->status;
             $fresh->forceFill(['status' => $to] + $attributes)->save();
+
+            event(new BloodRequestStatusChanged($fresh->public_id, $fresh->facility->public_id, $from->value, $to->value));
 
             $request->setRawAttributes($fresh->getAttributes(), sync: true);
         });

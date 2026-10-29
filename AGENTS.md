@@ -197,6 +197,22 @@ yang sama; menambah baris di config saja tidak cukup dan memang disengaja begitu
   koneksi redis (210), dan `DeliveryResilienceTest` membandingkan keduanya: naikkan
   angka `delivery_*` di `config/notification.php` = periksa `config/queue.php`.
 
+## Realtime
+
+- Server WebSocket **Laravel Reverb** (kartu 490), service Compose `reverb` sendiri, satu node.
+  Dipasang dengan `reverb:install`, **bukan** `install:broadcasting` (yang menulis npm).
+  `REVERB_HOST/PORT` = tempat Laravel **mengirim** (nama service `reverb`);
+  `REVERB_SERVER_HOST/PORT` = tempat server **mendengar**. Tertukar = siaran hilang tanpa error.
+- `/broadcasting/auth` didaftarkan **hanya** lewat `withBroadcasting(..., ['middleware' => ['auth:sanctum']])`.
+  Jangan tambahkan `channels:` ke `withRouting()` — installer melakukannya, dan itu memasang `web`,
+  yang menolak bearer token tanpa error di server.
+- Channel privat **per fasilitas**: `facility.{facilityPublicId}`. Pengguna tanpa fasilitas ditolak.
+- Event siaran **terpisah** dari event domain: event domain tetap polos; listener menerjemahkannya
+  ke kelas `ShouldBroadcast` di `Infrastructure/Broadcasting`, yang **wajib** `ShouldDispatchAfterCommit`.
+  Payload hanya `public_id` + status. Siaran bukan notifikasi — ia hanya menyegarkan layar terbuka.
+- Test otorisasi channel memakai driver `reverb` dengan kunci dummy, bukan `null`:
+  `NullBroadcaster::auth()` kosong, jadi di bawahnya semua orang "lolos".
+
 ## Perintah yang sering dipakai
 
 ```bash
