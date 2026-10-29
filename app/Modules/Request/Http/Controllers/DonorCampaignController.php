@@ -13,6 +13,7 @@ use App\Modules\Request\Application\AdvanceDonorCampaign;
 use App\Modules\Request\Application\Exceptions\CampaignRejected;
 use App\Modules\Request\Application\StartDonorCampaign;
 use App\Modules\Request\Domain\CampaignResponse;
+use App\Modules\Request\Domain\Events\DonorResponded;
 use App\Modules\Request\Http\Requests\RespondToCampaignRequest;
 use App\Shared\Http\ApiResponse;
 use DateTimeInterface;
@@ -93,18 +94,29 @@ final class DonorCampaignController
                 throw CampaignRejected::alreadyResponded();
             }
 
-            if (! DonorCampaign::query()->findOrFail($row->donor_campaign_id)->isActive()) {
+            // Dimuat SEKALI di sini, dengan permintaan dan fasilitasnya: pancaran di bawah
+            // butuh public_id keduanya, dan balasan HTTP memakai relasi yang sama.
+            $campaign = DonorCampaign::query()->with('bloodRequest.facility')->findOrFail($row->donor_campaign_id);
+
+            if (! $campaign->isActive()) {
                 throw CampaignRejected::alreadyEnded();
             }
 
             // Hanya jawaban: tidak ada alokasi, tidak ada unit, tidak ada status permintaan
             // yang berubah. Donor yang bersedia tetap melewati alur donasi normal.
-            $row->forceFill(['response' => $request->campaignResponse(), 'responded_at' => now()])->save();
+            $response = $request->campaignResponse();
+            $row->forceFill(['response' => $response, 'responded_at' => now()])->save();
+            $row->setRelation('campaign', $campaign);
+
+            // Di dalam transaksi; siarannya sendiri menunggu commit (DonorResponseBroadcast).
+            // Sengaja dari sini, bukan observer: kontak juga ditulis saat kampanye
+            // MENGHUBUNGI donor, dan itu peristiwa lain.
+            event(new DonorResponded($campaign->public_id, $campaign->bloodRequest->public_id, $campaign->bloodRequest->facility->public_id, $response->value));
 
             return $row;
         });
 
-        return ApiResponse::success($this->invitation($answered->load('campaign.bloodRequest.facility')));
+        return ApiResponse::success($this->invitation($answered));
     }
 
     /** Sama dengan ResolveDonorForUser: baris hasil merge adalah batu nisan. */
