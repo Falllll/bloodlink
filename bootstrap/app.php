@@ -31,7 +31,13 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function () {
             Route::middleware([])->group(base_path('routes/health.php'));
         },
-    )->withMiddleware(function (Middleware $middleware): void {
+    )
+    // Argumen kedua WAJIB (kartu 490). Tanpa itu Broadcast::routes(null) memasang
+    // middleware 'web', dan bearer token Sanctum ditolak -- tanpa error di sisi server.
+    // JANGAN sekalian menambah `channels:` ke withRouting(): route-nya terdaftar dua
+    // kali, dan yang pertama dengan middleware yang salah.
+    ->withBroadcasting(__DIR__.'/../routes/channels.php', ['middleware' => ['auth:sanctum']])
+    ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(
             at: array_filter(
                 explode(',', (string) env('TRUSTED_PROXIES', ''))
