@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property string $public_id
+ * @property int $notification_dispatch_id
  * @property int $user_id
  * @property int|null $device_token_id
  * @property string $template_code
@@ -36,7 +37,7 @@ use Illuminate\Support\Carbon;
  */
 final class NotificationDelivery extends Model
 {
-    // user_id, device_token_id, status, dan variables adalah kolom milik server.
+    // notification_dispatch_id, user_id, device_token_id, status, dan variables adalah kolom milik server.
     protected $fillable = ['template_code', 'channel'];
 
     protected $hidden = ['id', 'variables'];
@@ -58,6 +59,12 @@ final class NotificationDelivery extends Model
             'attempts' => 'integer',
             'last_attempt_at' => 'datetime',
         ];
+    }
+
+    /** @return BelongsTo<NotificationDispatch, $this> */
+    public function notificationDispatch(): BelongsTo
+    {
+        return $this->belongsTo(NotificationDispatch::class, 'notification_dispatch_id');
     }
 
     /** @return BelongsTo<User, $this> */

@@ -174,6 +174,11 @@ yang sama; menambah baris di config saja tidak cukup dan memang disengaja begitu
   tanpa job, tidak pernah dilewati diam-diam. `account_security` dan `facility_operations`
   tidak bisa ditolak. Menolak `emergency_call` = keluar dari daftar panggilan
   (`DonorDirectory::reachability` false) dan wajib dikonfirmasi eksplisit di request.
+- Setiap pemanggilan `DispatchNotification` menulis satu `notification_dispatches` (kejadian)
+  sebagai induk baris-baris delivery-nya; FK komposit `(dispatch, user_id)` mencegah delivery
+  menempel pada kejadian user lain. Riwayat `GET /me/notifications` (kartu 489) memaginasi
+  kejadian, bukan delivery, dan tidak pernah mengeluarkan isi pesan, `failure_code`, maupun
+  `failure_detail`.
 - Isi pesan yang sudah dirender dan alamat penerima tidak pernah disimpan. Variabel
   template disimpan terenkripsi (`encrypted:array`) dan dikosongkan saat `sent`.
 - Queue berjalan di Redis dan dikelola **Horizon saja** (service `worker` menjalankan

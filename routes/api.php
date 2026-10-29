@@ -28,6 +28,7 @@ use App\Modules\Inventory\Http\Controllers\StorageLocationController;
 use App\Modules\Inventory\Http\Controllers\UnitReleaseController;
 use App\Modules\Notification\Domain\NotificationCategory;
 use App\Modules\Notification\Http\Controllers\DeviceTokenController;
+use App\Modules\Notification\Http\Controllers\NotificationHistoryController;
 use App\Modules\Notification\Http\Controllers\NotificationPreferenceController;
 use App\Modules\Request\Http\Controllers\BloodRequestController;
 use App\Modules\Request\Http\Controllers\CompatibilityController;
@@ -65,6 +66,8 @@ Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function ():
     Route::patch('/donor/appointments/{appointment}/status', [MeAppointmentController::class, 'cancel'])->whereUuid('appointment')->name('donor.appointments.cancel');
     Route::post('/devices', [DeviceTokenController::class, 'store'])->name('devices.store');
     Route::delete('/devices/{deviceToken}', [DeviceTokenController::class, 'destroy'])->whereUuid('deviceToken')->name('devices.destroy');
+    // Kartu 489. Tanpa id di URL: riwayat orang lain tidak punya alamat.
+    Route::get('/notifications', [NotificationHistoryController::class, 'index'])->name('notifications.index');
     // Kartu 488. Kategori wajib (account_security, facility_operations) 404 di sini.
     Route::get('/notification-preferences', [NotificationPreferenceController::class, 'index'])->name('notification-preferences.index');
     Route::patch('/notification-preferences/{category}', [NotificationPreferenceController::class, 'update'])

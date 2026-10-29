@@ -6,6 +6,7 @@ namespace App\Modules\Notification\Application;
 
 use App\Models\DeviceToken;
 use App\Models\NotificationDelivery;
+use App\Models\NotificationDispatch;
 use App\Models\NotificationPreference;
 use App\Models\NotificationTemplate;
 use App\Models\User;
@@ -50,6 +51,9 @@ final class DispatchNotification
 
         return DB::transaction(function () use ($user, $templateCode, $locale, $variablesByChannel, $channels, $suppressed): array {
             $created = [];
+            // Induk kejadian (kartu 489), dibuat saat delivery PERTAMA: kejadian tanpa satu
+            // alamat pun tidak meninggalkan baris riwayat kosong.
+            $dispatch = null;
 
             foreach ($channels as $channel) {
                 $targets = $channel === NotificationChannel::EMAIL
@@ -57,12 +61,24 @@ final class DispatchNotification
                     : DeviceToken::query()->deliverable()->where('user_id', $user->id)->orderBy('id')->pluck('id')->all();
 
                 foreach ($targets as $deviceTokenId) {
+                    if ($dispatch === null) {
+                        $dispatch = (new NotificationDispatch)->forceFill([
+                            'public_id' => (string) Str::uuid(),
+                            'user_id' => $user->id,
+                            'template_code' => $templateCode,
+                            'locale' => $locale,
+                            'dispatched_at' => now(),
+                        ]);
+                        $dispatch->save();
+                    }
+
                     // Yang ditolak tetap menjadi baris, 'suppressed' dan langsung selesai --
                     // bukan diam-diam tidak ditulis. Tanpa bahan render: tidak ada yang
                     // akan merendernya.
                     $delivery = new NotificationDelivery(['template_code' => $templateCode, 'channel' => $channel]);
                     $delivery->forceFill([
                         'public_id' => (string) Str::uuid(),
+                        'notification_dispatch_id' => $dispatch->id,
                         'user_id' => $user->id,
                         'device_token_id' => $deviceTokenId,
                         'locale' => $locale,

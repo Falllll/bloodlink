@@ -217,8 +217,12 @@ final class NotificationPreferenceTest extends TestCase
     public function test_the_database_keeps_suppressed_rows_settled_and_empty(): void
     {
         $user = User::factory()->create();
-        $base = [
+        $dispatchId = DB::table('notification_dispatches')->insertGetId([
             'public_id' => (string) Str::uuid(), 'user_id' => $user->id, 'template_code' => self::OPTIONAL_CODE, 'locale' => 'id',
+            'dispatched_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $base = [
+            'public_id' => (string) Str::uuid(), 'notification_dispatch_id' => $dispatchId, 'user_id' => $user->id, 'template_code' => self::OPTIONAL_CODE, 'locale' => 'id',
             'channel' => 'email', 'status' => 'suppressed', 'queued_at' => now(), 'settled_at' => now(), 'created_at' => now(), 'updated_at' => now(),
         ];
 

@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Illuminate\Support\Testing\Fakes\QueueFake;
 use Tests\TestCase;
 
@@ -298,8 +299,14 @@ final class SendNotificationTest extends TestCase
         $this->expectException(QueryException::class);
         $this->expectExceptionMessage('notification_deliveries_settle_shape');
 
+        $dispatchId = DB::table('notification_dispatches')->insertGetId([
+            'public_id' => (string) Str::uuid(), 'user_id' => $user->id, 'template_code' => 'x', 'locale' => 'id',
+            'dispatched_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
         DB::table('notification_deliveries')->insert([
             'public_id' => '00000000-0000-0000-0000-000000000460',
+            'notification_dispatch_id' => $dispatchId,
             'user_id' => $user->id,
             'template_code' => 'x',
             'locale' => 'id',

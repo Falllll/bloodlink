@@ -793,6 +793,57 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+  /me/notifications:
+    get:
+      summary: Riwayat notifikasi pengguna yang sedang masuk
+      description: >-
+        Satu item per KEJADIAN, bukan per kanal: email dan push dari kabar yang
+        sama ada di `deliveries` satu item. Tanpa isi pesan -- klien merender
+        teks dari katalog lokal menurut `template_code`. Tanpa kode maupun
+        detail kegagalan. `outcome` membedakan "terlewat" (`delivered`: minimal
+        satu kanal terkirim) dari "tidak pernah sampai" (`failed`). Terbaru
+        dulu; paginasi kursor, default 25, maksimum 100.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: cursor
+          schema:
+            type: string
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [dispatched_at, -dispatched_at]
+            default: -dispatched_at
+      responses:
+        '200':
+          description: Satu halaman riwayat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationHistoryItem'
+                  links:
+                    type: object
+                  meta:
+                    type: object
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /me/notification-preferences:
     get:
       summary: Preferensi notifikasi pengguna yang sedang masuk
@@ -6251,6 +6302,44 @@ components:
           format: date-time
           nullable: true
       required: [id, platform, last_seen_at, revoked_at]
+    NotificationHistoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        template_code:
+          type: string
+        locale:
+          type: string
+        dispatched_at:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum: [delivered, pending, failed, suppressed]
+          description: >-
+            `delivered` bila minimal satu kanal terkirim; `pending` bila belum ada
+            yang terkirim tapi masih ada yang diproses; `failed` bila tidak ada
+            yang terkirim maupun diproses; `suppressed` bila semuanya ditolak
+            preferensi penerima.
+        deliveries:
+          type: array
+          items:
+            type: object
+            properties:
+              channel:
+                type: string
+                enum: [email, push]
+              status:
+                type: string
+                enum: [pending, sent, failed, suppressed]
+              settled_at:
+                type: string
+                format: date-time
+                nullable: true
+            required: [channel, status, settled_at]
+      required: [id, template_code, locale, dispatched_at, outcome, deliveries]
     NotificationPreferences:
       type: object
       properties:
