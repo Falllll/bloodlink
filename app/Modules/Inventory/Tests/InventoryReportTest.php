@@ -212,7 +212,9 @@ final class InventoryReportTest extends TestCase
 
         $this->report($user, 'wastage', 'from=2000-01-01&to=2025-12-31&granularity=day')
             ->assertUnprocessable()
-            ->assertJsonPath('error.details.to.0.rule', 'too_many_buckets');
+            ->assertJsonPath('error.details.to.0.rule', 'too_many_buckets')
+            // Bernama, bukan posisional: klien menyebut batasnya di pesan.
+            ->assertJsonPath('error.details.to.0.params', ['max' => '366']);
     }
 
     public function test_dates_must_be_plain_dates_in_order_and_unknown_keys_are_rejected(): void
