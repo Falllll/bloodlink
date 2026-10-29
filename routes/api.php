@@ -33,6 +33,7 @@ use App\Modules\Notification\Http\Controllers\NotificationPreferenceController;
 use App\Modules\Request\Http\Controllers\BloodRequestController;
 use App\Modules\Request\Http\Controllers\CompatibilityController;
 use App\Modules\Request\Http\Controllers\DonorCampaignController;
+use App\Modules\Request\Http\Controllers\FacilityDashboardController;
 use App\Modules\Request\Http\Controllers\RequestReportController;
 use App\Modules\Request\Http\Controllers\TransfusionController;
 use App\Shared\Http\ApiResponse;
@@ -119,6 +120,8 @@ Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void
     Route::post('/blood-requests/{bloodRequest}/campaign', [DonorCampaignController::class, 'start'])->name('blood-requests.campaign.start');
     Route::get('/blood-requests/{bloodRequest}/campaign', [DonorCampaignController::class, 'show'])->name('blood-requests.campaign.show');
     Route::post('/campaigns/{campaign}/stop', [DonorCampaignController::class, 'stop'])->name('campaigns.stop');
+    // Kartu 500: kampanye aktif seluruh fasilitas, agregat saja.
+    Route::get('/dashboard/campaigns', FacilityDashboardController::class)->name('dashboard.campaigns');
     Route::post('/blood-requests/{bloodRequest}/allocations', [BloodRequestController::class, 'allocate'])->name('blood-requests.allocate');
     Route::delete('/allocations/{allocation}', [BloodRequestController::class, 'releaseAllocation'])->name('allocations.release');
     Route::post('/blood-requests/{bloodRequest}/reservations', [BloodRequestController::class, 'reserve'])->name('blood-requests.reserve');

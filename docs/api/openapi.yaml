@@ -3927,6 +3927,49 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /dashboard/campaigns:
+    get:
+      summary: Dashboard respons donor fasilitas
+      description: >-
+        Satu entri per kampanye AKTIF milik fasilitas pemegang token, berbentuk
+        sama persis dengan `GET /blood-requests/{bloodRequest}/campaign`
+        (`ended_at` dan `end_reason` selalu null di sini). Agregat saja, tanpa
+        identitas donor. Kampanye yang sudah berakhir tetap terbaca lewat
+        endpoint per permintaan. Pengguna tanpa fasilitas menerima daftar
+        kosong dengan `meta.reason: no_facility`. Setiap jawaban donor
+        disiarkan sebagai `campaign.donor-responded` di channel privat
+        `facility.{facilityPublicId}` dengan payload `campaign_id`,
+        `blood_request_id`, dan `response` saja; klien lalu membaca ulang
+        endpoint ini. `accepted` berarti bersedia datang, BUKAN stok darah.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Kampanye aktif fasilitas, terbaru dulu.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DonorCampaign'
+                  meta:
+                    type: object
+                    properties:
+                      scope:
+                        type: string
+                        enum: [facility]
+                      reason:
+                        type: string
+                        enum: [no_facility]
+                    required: [scope]
+                required: [data, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /blood-requests/{bloodRequest}/candidates:
     parameters:
       - in: path

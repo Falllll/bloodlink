@@ -7,6 +7,7 @@ namespace App\Modules\Request\Tests;
 use App\Models\BloodBatch;
 use App\Models\BloodRequest;
 use App\Models\BloodRequestAllocation;
+use App\Models\Donor;
 use App\Models\DonorCampaign;
 use App\Models\Facility;
 use App\Models\User;
@@ -92,6 +93,56 @@ final class QueryBudgetTest extends TestCase
         $many = $this->getCost('/api/v1/blood-requests', $headers);
 
         $this->assertSame($few, $many);
+    }
+
+    /** Satu permintaan terbuka dengan kampanye aktif dan dua kontak di dua tahap. */
+    private function requestWithActiveCampaign(): void
+    {
+        $campaignId = DB::table('donor_campaigns')->insertGetId([
+            'public_id' => (string) Str::uuid(),
+            'blood_request_id' => $this->request()->id,
+            'started_by' => User::factory()->create()->id,
+            'current_radius_meters' => 15000,
+            'stage_entered_at' => now(),
+            'started_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ([[5000, 'accepted'], [15000, null]] as [$radius, $response]) {
+            DB::table('donor_campaign_contacts')->insert([
+                'public_id' => (string) Str::uuid(),
+                'donor_campaign_id' => $campaignId,
+                'donor_id' => Donor::factory()->create()->id,
+                'radius_meters' => $radius,
+                'distance_meters' => $radius - 1000,
+                'contacted_at' => now(),
+                'responded_at' => $response === null ? null : now(),
+                'response' => $response,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * Penjaga keputusan "satu query agregat" (kartu 500): loop yang memanggil agregat
+     * per permintaan lolos review dengan tenang dan hanya ketahuan di sini.
+     */
+    public function test_the_facility_dashboard_costs_the_same_for_one_or_five_open_requests(): void
+    {
+        $headers = ['Authorization' => 'Bearer '.$this->userOf($this->facility->id)->createToken('api')->plainTextToken];
+
+        $this->requestWithActiveCampaign();
+        $one = $this->getCost('/api/v1/dashboard/campaigns', $headers);
+
+        foreach (range(1, 4) as $_) {
+            $this->requestWithActiveCampaign();
+        }
+        $five = $this->getCost('/api/v1/dashboard/campaigns', $headers);
+
+        $this->assertSame($one, $five);
+        $this->assertCount(5, $this->getJson('/api/v1/dashboard/campaigns', $headers)->json('data'));
     }
 
     /**
