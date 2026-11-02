@@ -9,6 +9,7 @@ use App\Models\BloodRequest;
 use App\Models\BloodRequestAllocation;
 use App\Models\Donor;
 use App\Models\DonorCampaign;
+use App\Models\DonorCampaignContact;
 use App\Models\Facility;
 use App\Models\User;
 use App\Modules\Request\Application\CreateBloodRequest;
@@ -143,6 +144,41 @@ final class QueryBudgetTest extends TestCase
 
         $this->assertSame($one, $five);
         $this->assertCount(5, $this->getJson('/api/v1/dashboard/campaigns', $headers)->json('data'));
+    }
+
+    /**
+     * Kursor undangan donor (kartu 538): 50 donor x 200 kampanye = 10.000 undangan.
+     * Index Cond wajib memuat donor_id, dan contacted_at datang dari index (Presorted Key),
+     * bukan dari sort penuh seluruh undangan donor itu di setiap halaman.
+     */
+    public function test_the_invitation_cursor_is_served_by_the_donor_contacted_index(): void
+    {
+        $actor = User::factory()->create()->id;
+        $request = $this->request();
+        $donorId = Donor::factory()->count(50)->create()->first()?->id;
+
+        DB::statement(<<<'SQL'
+            INSERT INTO donor_campaigns (public_id, blood_request_id, started_by, current_radius_meters, stage_entered_at,
+                                         started_at, ended_at, end_reason, created_at, updated_at)
+            SELECT gen_random_uuid(), ?, ?, 5000, now(), now(), now(), 'stopped_manually', now(), now()
+            FROM generate_series(1, 200)
+        SQL, [$request->id, $actor]);
+        DB::statement(<<<'SQL'
+            INSERT INTO donor_campaign_contacts (public_id, donor_campaign_id, donor_id, radius_meters, distance_meters,
+                                                 contacted_at, created_at, updated_at)
+            SELECT gen_random_uuid(), c.id, d.id, 5000, 1000, now() - (c.id * d.id) * INTERVAL '1 minute', now(), now()
+            FROM donor_campaigns c CROSS JOIN donors d
+        SQL);
+        DB::statement('ANALYZE donor_campaign_contacts');
+
+        $plan = $this->queryPlan(DonorCampaignContact::query()
+            ->where('donor_id', $donorId)
+            ->orderByDesc('contacted_at')
+            ->orderBy('id')
+            ->limit(26));
+
+        $this->assertStringContainsString('donor_campaign_contacts_donor_id_contacted_at_index', $plan);
+        $this->assertStringContainsString('Presorted Key: contacted_at', $plan);
     }
 
     /**

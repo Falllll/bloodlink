@@ -14,11 +14,14 @@ use App\Modules\Request\Application\Exceptions\CampaignRejected;
 use App\Modules\Request\Application\StartDonorCampaign;
 use App\Modules\Request\Domain\CampaignResponse;
 use App\Modules\Request\Domain\Events\DonorResponded;
+use App\Modules\Request\Http\Requests\MyInvitationsRequest;
 use App\Modules\Request\Http\Requests\RespondToCampaignRequest;
 use App\Shared\Http\ApiResponse;
+use App\Shared\Http\AppliesListQuery;
 use DateTimeInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -28,6 +31,8 @@ use Illuminate\Support\Facades\Gate;
  */
 final class DonorCampaignController
 {
+    use AppliesListQuery;
+
     public function start(Request $request, BloodRequest $bloodRequest, StartDonorCampaign $startDonorCampaign): JsonResponse
     {
         Gate::authorize('manageCampaign', $bloodRequest);
@@ -62,19 +67,34 @@ final class DonorCampaignController
     }
 
     /** Undangan milik donor yang sedang masuk. Tanpa facility.context: donor tidak punya fasilitas. */
-    public function myInvitations(Request $request): JsonResponse
+    public function myInvitations(MyInvitationsRequest $request): JsonResponse
     {
         $donor = $this->donorOf($request);
 
-        $contacts = $donor === null ? collect() : DonorCampaignContact::query()
-            ->where('donor_id', $donor->id)
-            ->with('campaign.bloodRequest.facility')
-            ->orderByDesc('contacted_at')
-            ->orderByDesc('id')
-            ->limit(50)
-            ->get();
+        // Akun tanpa baris donors: donor_id 0 tidak cocok apa pun -> data kosong, bukan 500.
+        /** @var CursorPaginator<int, DonorCampaignContact> $page */
+        $page = $this->listing(
+            DonorCampaignContact::query()
+                ->where('donor_id', $donor === null ? 0 : $donor->id)
+                ->with('campaign.bloodRequest.facility'),
+            $request,
+        );
 
-        return ApiResponse::success($contacts->map(fn (DonorCampaignContact $contact): array => $this->invitation($contact))->values()->all());
+        return ApiResponse::paginated($page, transform: fn (DonorCampaignContact $contact): array => $this->invitation($contact));
+    }
+
+    /** Satu undangan milik donor yang sedang masuk. Bukan miliknya -> 404, bukan 403. */
+    public function myInvitation(Request $request, string $contact): JsonResponse
+    {
+        $donor = $this->donorOf($request);
+
+        $row = DonorCampaignContact::query()
+            ->where('public_id', $contact)
+            ->where('donor_id', $donor === null ? 0 : $donor->id)
+            ->with('campaign.bloodRequest.facility')
+            ->firstOrFail();
+
+        return ApiResponse::success($this->invitation($row));
     }
 
     public function respond(RespondToCampaignRequest $request, string $contact): JsonResponse

@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property string $template_code
  * @property string $locale
  * @property array<string, string|int>|null $variables
+ * @property array<string, string>|null $data
  * @property NotificationChannel $channel
  * @property DeliveryStatus $status
  * @property string|null $failure_code
@@ -54,6 +55,7 @@ final class NotificationDelivery extends Model
             'channel' => NotificationChannel::class,
             'status' => DeliveryStatus::class,
             'variables' => 'encrypted:array',
+            'data' => 'array',
             'queued_at' => 'datetime',
             'settled_at' => 'datetime',
             'attempts' => 'integer',

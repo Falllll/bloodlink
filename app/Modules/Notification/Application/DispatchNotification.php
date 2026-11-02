@@ -17,6 +17,7 @@ use App\Modules\Notification\Domain\NotificationChannel;
 use App\Modules\Notification\Infrastructure\Jobs\SendNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 /**
  * Pintu masuk jalur kirim (kartu 460): satu baris notification_deliveries 'pending'
@@ -37,10 +38,14 @@ final class DispatchNotification
      * @param  array<string, string|int>  $variables  gabungan variabel semua kanal
      * @param  list<NotificationChannel>|null  $only  batasi ke kanal ini (mis. reset password:
      *                                                email saja, kartu 485); null = semua yang diizinkan
+     * @param  array<string, string>  $data  id untuk klien (kartu 538), jalur terpisah dari $variables:
+     *                                       variabel wajib tercetak di badan pesan, id rute tidak boleh
      * @return list<string> public_id setiap delivery yang dibuat, termasuk yang 'suppressed'
      */
-    public function handle(User $user, string $templateCode, array $variables, string $locale = 'id', ?array $only = null): array
+    public function handle(User $user, string $templateCode, array $variables, string $locale = 'id', ?array $only = null, array $data = []): array
     {
+        $this->assertStringData($data);
+
         $channels = $this->channels($only);
         [$variablesByChannel, $category] = $this->variablesByChannel($templateCode, $variables, $locale, $channels);
 
@@ -49,7 +54,7 @@ final class DispatchNotification
         // menolaknya. Sesudah validasi template: template rusak tetap gagal di pemanggil.
         $suppressed = $category !== null && $this->optedOut($user, $category);
 
-        return DB::transaction(function () use ($user, $templateCode, $locale, $variablesByChannel, $channels, $suppressed): array {
+        return DB::transaction(function () use ($user, $templateCode, $locale, $variablesByChannel, $channels, $suppressed, $data): array {
             $created = [];
             // Induk kejadian (kartu 489), dibuat saat delivery PERTAMA: kejadian tanpa satu
             // alamat pun tidak meninggalkan baris riwayat kosong.
@@ -83,6 +88,9 @@ final class DispatchNotification
                         'device_token_id' => $deviceTokenId,
                         'locale' => $locale,
                         'variables' => $suppressed ? null : $variablesByChannel[$channel->value],
+                        // NULL, bukan []: larik kosong tersimpan sebagai JSON array dan
+                        // ditolak CHECK notification_deliveries_data_shape.
+                        'data' => $data === [] ? null : $data,
                         'status' => $suppressed ? DeliveryStatus::SUPPRESSED : DeliveryStatus::PENDING,
                         'queued_at' => now(),
                         'settled_at' => $suppressed ? now() : null,
@@ -99,6 +107,21 @@ final class DispatchNotification
 
             return $created;
         });
+    }
+
+    /**
+     * FCM v1 menolak data bernilai non-string, dan kegagalannya terjadi di worker, jauh
+     * dari pemanggil. Ditolak di sini, sebelum satu baris pun tertulis.
+     *
+     * @param  array<array-key, mixed>  $data
+     */
+    private function assertStringData(array $data): void
+    {
+        foreach ($data as $key => $value) {
+            if (! is_string($key) || ! is_string($value)) {
+                throw new InvalidArgumentException("Notification data [{$key}] must be a string value under a string key.");
+            }
+        }
     }
 
     /** Kategori wajib (isOptional() false) tidak pernah ditekan, ada baris atau tidak. */
