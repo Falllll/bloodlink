@@ -328,11 +328,57 @@ final class UrgentRequestTest extends TestCase
         $this->urgent(user: $donor)->assertForbidden();
     }
 
+    /**
+     * Statistik realistis untuk pindaian stok (pola seedEventHistory()): 20 fasilitas x
+     * 1.000 kantong dengan campuran status, komponen, dan golongan, plus transfer terbuka
+     * untuk sebagian kecilnya. Di tabel kecil semua index berbiaya sama dan pilihan
+     * planner untung-untungan. ANALYZE sah di dalam transaksi RefreshDatabase.
+     */
+    private function seedStockHistory(): void
+    {
+        $actor = User::factory()->create()->id;
+
+        foreach (range(1, 20) as $i) {
+            $this->unit($this->facilityAt($i * 0.01));
+        }
+
+        DB::statement(<<<'SQL'
+            INSERT INTO blood_batches (public_id, batch_number, donor_id, facility_id, component, blood_group, rh_factor,
+                                       volume_ml, status, released_at, discard_reason, collected_at, expires_at, storage_profile_id, created_at, updated_at)
+            SELECT gen_random_uuid(), 'US-' || b.id || '-' || g, b.donor_id, b.facility_id,
+                   (ARRAY['packed_red_cells', 'whole_blood', 'platelet_concentrate', 'fresh_frozen_plasma'])[(g % 4) + 1],
+                   (ARRAY['O', 'A', 'B', 'AB'])[(g % 4) + 1],
+                   (ARRAY['negative', 'positive'])[(g % 2) + 1],
+                   b.volume_ml,
+                   (ARRAY['released', 'issued', 'expired', 'discarded', 'quarantined'])[(g % 5) + 1],
+                   CASE WHEN g % 5 IN (0, 1) THEN now() END,
+                   CASE WHEN g % 5 = 3 THEN 'seed' END,
+                   b.collected_at, now() + (g % 40 - 15) * INTERVAL '1 day', b.storage_profile_id, now(), now()
+            FROM blood_batches b CROSS JOIN generate_series(1, 1000) AS g
+        SQL);
+        DB::statement(<<<'SQL'
+            INSERT INTO stock_transfers (public_id, blood_batch_id, from_facility_id, to_facility_id, status, requested_by, created_at, updated_at)
+            SELECT gen_random_uuid(), b.id, b.facility_id, ?, 'requested', ?, now(), now()
+            FROM blood_batches b WHERE b.status = 'released' AND b.id % 20 = 0 AND b.facility_id <> ?
+        SQL, [$this->requester->id, $actor, $this->requester->id]);
+
+        DB::statement('ANALYZE blood_batches');
+        DB::statement('ANALYZE stock_transfers');
+        DB::statement('ANALYZE facilities');
+    }
+
     public function test_the_scan_uses_the_spatial_index(): void
     {
-        // Tabel test terlalu kecil: tanpa ini planner memilih seq scan (pola FefoAllocationTest).
+        $this->seedStockHistory();
+
         $plan = $this->queryPlan(app(NearbyStockQuery::class)->aggregate(self::LAT, self::LNG, 30000, 'packed_red_cells', [['group' => 'O', 'rh' => 'negative']], now()));
 
         $this->assertStringContainsString('facilities_location_gist', $plan);
+        // Subquery whereNotExists: kolomnya sendiri tidak diberi nama tabel oleh EXPLAIN, jadi
+        // "blood_batches" di baris ini adalah sisi luar stock_transfers, BUKAN scan blood_batches.
+        $this->assertMatchesRegularExpression('/Index Cond: .*blood_batches/', $plan);
+        // Join ke blood_batches -- bagian termahal. Tanpa baris ini, kehilangan index stok
+        // tidak membuat test mana pun merah: regex di atas tetap lolos lewat stock_transfers.
+        $this->assertMatchesRegularExpression('/Index Cond: .*facility_id = facilities\.id/', $plan);
     }
 }
