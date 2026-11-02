@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Chat\Http\Controllers\ConversationController;
 use App\Modules\Donor\Http\Controllers\AppointmentController;
 use App\Modules\Donor\Http\Controllers\AppointmentScheduleController;
 use App\Modules\Donor\Http\Controllers\DeferralController;
@@ -85,7 +86,26 @@ Route::post('/eligibility/self-check', EligibilitySelfCheckController::class)
     ->middleware('throttle:20,1')
     ->name('eligibility.self-check');
 
+// Kartu 495: pengunjung ANONIM. Tanpa Idempotency-Key (preseden self-check); identitas
+// lewat header X-Visitor-Token (chat.visitor), token keluar sekali di 201 store().
+Route::post('/conversations', [ConversationController::class, 'store'])
+    ->withoutMiddleware(EnsureIdempotency::class)
+    ->middleware('throttle:10,1')
+    ->name('conversations.store');
+Route::middleware(['chat.visitor', 'throttle:30,1'])->prefix('conversations/{conversation}')->whereUuid('conversation')->name('conversations.')->group(function (): void {
+    Route::get('/messages', [ConversationController::class, 'visitorMessages'])->name('messages.index');
+    Route::post('/messages', [ConversationController::class, 'visitorPostMessage'])->withoutMiddleware(EnsureIdempotency::class)->name('messages.store');
+    Route::post('/escalate', [ConversationController::class, 'escalate'])->withoutMiddleware(EnsureIdempotency::class)->name('escalate');
+});
+
 Route::middleware(['auth:sanctum', 'facility.context'])->group(function (): void {
+    // Kartu 495: kotak masuk petugas. Fasilitas dicocokkan policy -> lintas fasilitas 403.
+    Route::get('/inbox/conversations', [ConversationController::class, 'index'])->name('inbox.conversations.index');
+    Route::get('/inbox/conversations/{conversation}/messages', [ConversationController::class, 'messages'])->whereUuid('conversation')->name('inbox.conversations.messages.index');
+    Route::post('/inbox/conversations/{conversation}/messages', [ConversationController::class, 'postMessage'])->whereUuid('conversation')->name('inbox.conversations.messages.store');
+    Route::post('/inbox/conversations/{conversation}/assign', [ConversationController::class, 'assign'])->whereUuid('conversation')->name('inbox.conversations.assign');
+    Route::post('/inbox/conversations/{conversation}/close', [ConversationController::class, 'close'])->whereUuid('conversation')->name('inbox.conversations.close');
+
     Route::get('/blood-batches', [BloodBatchController::class, 'index'])->name('blood-batches.index');
     Route::post('/blood-batches', [BloodBatchController::class, 'store'])->name('blood-batches.store');
     Route::get('/blood-batches/{bloodBatch}', [BloodBatchController::class, 'show'])->name('blood-batches.show');

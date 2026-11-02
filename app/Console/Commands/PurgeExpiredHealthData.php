@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Donor;
+use App\Models\Message;
 use Illuminate\Console\Command;
 
 class PurgeExpiredHealthData extends Command
@@ -40,8 +41,16 @@ class PurgeExpiredHealthData extends Command
 
         $count = (clone $query)->count();
 
+        // Isi pesan percakapan (kartu 495) adalah data kesehatan dengan retensi yang sama.
+        // Baris (siapa, kapan) dipertahankan; hanya body yang dikosongkan.
+        $messages = Message::query()
+            ->whereNotNull('body')
+            ->where('created_at', '<', now()->subYears($years));
+        $messageCount = (clone $messages)->count();
+
         if (! $this->option('force')) {
             $this->info("Dry run: {$count} donor melewati retensi {$years} tahun. Jalankan dengan --force untuk mengosongkan.");
+            $this->info("Dry run: {$messageCount} pesan percakapan melewati retensi {$years} tahun.");
 
             return self::SUCCESS;
         }
@@ -58,6 +67,15 @@ class PurgeExpiredHealthData extends Command
         });
 
         $this->info("Mengosongkan data kesehatan {$count} donor.");
+
+        // Sama: per model supaya tercatat di audit log (tanpa nilai body -- Message::auditExcept()).
+        $messages->chunkById(200, function ($rows): void {
+            foreach ($rows as $message) {
+                $message->forceFill(['body' => null])->save();
+            }
+        });
+
+        $this->info("Mengosongkan isi {$messageCount} pesan percakapan.");
 
         return self::SUCCESS;
     }

@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\BloodBatch;
 use App\Models\BloodRequest;
 use App\Models\BloodRequestAllocation;
+use App\Models\Conversation;
 use App\Models\Crossmatch;
 use App\Models\Deferral;
 use App\Models\DeferralReason;
@@ -17,12 +18,17 @@ use App\Models\DonorConsent;
 use App\Models\DonorFlag;
 use App\Models\DonorScreening;
 use App\Models\Facility;
+use App\Models\Message;
 use App\Models\StockTransfer;
 use App\Models\StorageLocation;
 use App\Models\Transfusion;
 use App\Models\TransfusionReaction;
 use App\Models\TtiTestResult;
 use App\Models\User;
+use App\Modules\Chat\Application\Listeners\BroadcastConversationActivity;
+use App\Modules\Chat\Domain\Events\ConversationEscalated;
+use App\Modules\Chat\Domain\Events\MessagePosted;
+use App\Modules\Chat\Infrastructure\Policies\ConversationPolicy;
 use App\Modules\Donor\Application\Listeners\SyncDonorGeoIndex;
 use App\Modules\Donor\Domain\EligibilityEngine;
 use App\Modules\Donor\Domain\Events\DonationCompleted;
@@ -180,8 +186,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(StorageLocation::class, StorageLocationPolicy::class);
         Gate::policy(StockTransfer::class, StockTransferPolicy::class);
         Gate::policy(BloodRequest::class, BloodRequestPolicy::class);
+        Gate::policy(Conversation::class, ConversationPolicy::class);
 
-        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DonorFlag::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class, BloodRequestAllocation::class, Crossmatch::class, Transfusion::class, TransfusionReaction::class] as $model) {
+        foreach ([Facility::class, Donor::class, BloodBatch::class, User::class, DonorConsent::class, Deferral::class, DonorFlag::class, DeferralReason::class, DonorScreening::class, Appointment::class, Donation::class, TtiTestResult::class, AboRhDetermination::class, StorageLocation::class, StockTransfer::class, BloodRequest::class, BloodRequestAllocation::class, Crossmatch::class, Transfusion::class, TransfusionReaction::class, Conversation::class, Message::class] as $model) {
             $model::observe(AuditObserver::class);
         }
 
@@ -202,6 +209,9 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(BloodRequestStatusChanged::class, BroadcastRequestStatus::class);
         // Kartu 500: agregat saja, tanpa identitas donor.
         Event::listen(DonorResponded::class, BroadcastDonorResponse::class);
+        // Kartu 495: aktivitas percakapan, TANPA isi pesan.
+        Event::listen(MessagePosted::class, [BroadcastConversationActivity::class, 'handleMessagePosted']);
+        Event::listen(ConversationEscalated::class, [BroadcastConversationActivity::class, 'handleEscalated']);
         // Reset password (kartu 485): SINKRON keduanya -- event pertama membawa tautan
         // rahasia, event kedua harus mencabut perangkat di transaksi reset yang sama.
         Event::listen(PasswordResetRequested::class, SendPasswordResetEmail::class);

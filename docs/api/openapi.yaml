@@ -3927,6 +3927,242 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /conversations:
+    post:
+      summary: Pengunjung anonim membuka percakapan
+      description: >-
+        Tanpa login dan tanpa Idempotency-Key. `visitor_token` dikembalikan SEKALI
+        di sini dan tidak pernah muncul lagi; server hanya menyimpan HMAC-nya.
+        Token berumur 24 jam; habis = percakapan baru. Kirim sebagai header
+        `X-Visitor-Token` di rute pengunjung lain. Dibatasi 10/menit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  maxLength: 2000
+                facility_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Opsional, fasilitas aktif yang sudah diketahui pengunjung.
+              required: [message]
+      responses:
+        '201':
+          description: Percakapan dibuka bersama pesan pertamanya.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      conversation:
+                        $ref: '#/components/schemas/Conversation'
+                      message:
+                        $ref: '#/components/schemas/ChatMessage'
+                      visitor_token:
+                        type: string
+                      visitor_expires_at:
+                        type: string
+                        format: date-time
+                    required: [conversation, message, visitor_token, visitor_expires_at]
+                  meta:
+                    type: object
+                required: [data, meta]
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /conversations/{conversation}/messages:
+    parameters:
+      - $ref: '#/components/parameters/VisitorToken'
+      - in: path
+        name: conversation
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Riwayat pesan, untuk pengunjung
+      description: Token tidak ada, salah, atau kedaluwarsa dijawab sama -- 422 `CONVERSATION_REJECTED`.
+      responses:
+        '200':
+          $ref: '#/components/responses/ChatMessagePage'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    post:
+      summary: Pengunjung mengirim pesan
+      description: Tanpa Idempotency-Key. Percakapan tertutup dijawab 409. Dibatasi 30/menit.
+      requestBody:
+        $ref: '#/components/requestBodies/ChatMessageBody'
+      responses:
+        '201':
+          $ref: '#/components/responses/ChatMessageCreated'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /conversations/{conversation}/escalate:
+    parameters:
+      - $ref: '#/components/parameters/VisitorToken'
+      - in: path
+        name: conversation
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Pengunjung meminta dihubungkan ke petugas
+      description: >-
+        Menulis status, alasan terstruktur, DAN fasilitas sekaligus -- eskalasi
+        tanpa fasilitas ditolak (validasi dan CHECK database). Sekali jalan: 409
+        bila sudah dieskalasi. Disiarkan sebagai `conversation.escalated` di
+        channel `facility.{facilityPublicId}`, tanpa isi percakapan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  enum: [personal_medical_question, lab_result_question, complaint, other]
+                facility_id:
+                  type: string
+                  format: uuid
+              required: [reason, facility_id]
+      responses:
+        '200':
+          $ref: '#/components/responses/ConversationResult'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /inbox/conversations:
+    get:
+      summary: Kotak masuk percakapan petugas
+      description: >-
+        Hanya percakapan yang sudah dieskalasi ke fasilitas petugas. Butuh izin
+        `chat.view`. Filter `filter[status]`; urut `escalated_at`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Satu halaman percakapan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+                  links:
+                    type: object
+                  meta:
+                    type: object
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /inbox/conversations/{conversation}/messages:
+    parameters:
+      - in: path
+        name: conversation
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Riwayat pesan, untuk petugas
+      description: Percakapan fasilitas lain dijawab 403, bukan 404.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/ChatMessagePage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Petugas membalas
+      description: >-
+        Hanya petugas yang memegang percakapan (`assign`). Disiarkan sebagai
+        `conversation.message-posted` berisi `conversation_id`, `message_id`,
+        `sender_kind` -- tidak pernah isi pesan.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        $ref: '#/components/requestBodies/ChatMessageBody'
+      responses:
+        '201':
+          $ref: '#/components/responses/ChatMessageCreated'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /inbox/conversations/{conversation}/assign:
+    parameters:
+      - in: path
+        name: conversation
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Petugas mengambil alih percakapan yang dieskalasi
+      description: Riwayat pesan sebelumnya tidak diubah. Fasilitas lain 403.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          $ref: '#/components/responses/ConversationResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /inbox/conversations/{conversation}/close:
+    parameters:
+      - in: path
+        name: conversation
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Petugas menutup percakapan
+      description: Sekali jalan; menutup lagi 409. Sesudahnya tidak ada pesan yang diterima.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          $ref: '#/components/responses/ConversationResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /dashboard/campaigns:
     get:
       summary: Dashboard respons donor fasilitas
@@ -5125,6 +5361,15 @@ components:
         Nama kolom untuk mengurutkan hasil. Awali dengan `-` untuk urutan
         descending, mis. `-created_at`. Hanya kolom di allowlist endpoint yang
         diterima; kolom lain menghasilkan `VALIDATION_FAILED`.
+    VisitorToken:
+      in: header
+      name: X-Visitor-Token
+      required: true
+      schema:
+        type: string
+      description: >-
+        Token pengunjung dari respons 201 `POST /conversations`. Tidak ada, salah,
+        atau kedaluwarsa dijawab sama: 422 `CONVERSATION_REJECTED`.
     IdempotencyKey:
       in: header
       name: Idempotency-Key
@@ -5296,6 +5541,7 @@ components:
         - DONOR_FLAG_REJECTED
         - PASSWORD_RESET_TOKEN_INVALID
         - APPOINTMENT_SLOT_UNAVAILABLE
+        - CONVERSATION_REJECTED
     MessageEnvelope:
       type: object
       description: Balasan sukses yang hanya membawa pesan untuk ditampilkan.
@@ -6383,6 +6629,61 @@ components:
                 nullable: true
             required: [channel, status, settled_at]
       required: [id, template_code, locale, dispatched_at, outcome, deliveries]
+    Conversation:
+      type: object
+      description: >-
+        Satu percakapan (kartu 495). Tanpa token maupun hash token pengunjung,
+        tanpa id numerik. `facility_id` null sampai dieskalasi.
+      properties:
+        id:
+          type: string
+          format: uuid
+        facility_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [open, escalated, assigned, closed]
+        escalated_at:
+          type: string
+          format: date-time
+          nullable: true
+        escalation_reason:
+          type: string
+          enum: [personal_medical_question, lab_result_question, complaint, other]
+          nullable: true
+        assigned_user_id:
+          type: string
+          format: uuid
+          nullable: true
+        closed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required: [id, facility_id, status, escalated_at, escalation_reason, assigned_user_id, closed_at, created_at]
+    ChatMessage:
+      type: object
+      description: >-
+        Satu pesan. `body` terenkripsi di database dan null setelah masa retensi
+        (`privacy:purge-expired`). `sender_kind` `ai` disiapkan untuk jalur AI.
+      properties:
+        id:
+          type: string
+          format: uuid
+        sender_kind:
+          type: string
+          enum: [visitor, ai, staff]
+        body:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required: [id, sender_kind, body, created_at]
     NotificationPreferences:
       type: object
       properties:
@@ -6736,3 +7037,55 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    ChatMessagePage:
+      description: Satu halaman pesan, urut tulis.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatMessage'
+              links:
+                type: object
+              meta:
+                type: object
+            required: [data, links, meta]
+    ChatMessageCreated:
+      description: Pesan tersimpan.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/components/schemas/ChatMessage'
+              meta:
+                type: object
+            required: [data, meta]
+    ConversationResult:
+      description: Percakapan sesudah perubahan.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/components/schemas/Conversation'
+              meta:
+                type: object
+            required: [data, meta]
+  requestBodies:
+    ChatMessageBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              body:
+                type: string
+                maxLength: 2000
+            required: [body]
