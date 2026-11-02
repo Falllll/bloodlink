@@ -102,7 +102,9 @@ Jangan usulkan alternatifnya kecuali diminta eksplisit.
   dibuktikan `AppointmentSlotRaceTest` — jalur pemesanan baru wajib lewat `BookAppointment`.
   Walk-in tidak memakan slot; fasilitas tanpa pola tidak dibatasi; appointment lama tidak
   divalidasi ulang.
-- Akun staf (`/users`, kartu 487) selalu terikat satu fasilitas; peran ditulis di team
+- Akun staf (`/users`, kartu 487) = ber-`facility_id` **dan** berperan staf di team fasilitas
+  itu (`StaffDirectory` untuk daftar, `UserPolicy::view()` untuk mutasi); `facility_id` saja bukan
+  bukti, donor ber-`facility_id` pernah bisa dijadikan admin. Selalu terikat satu fasilitas; peran ditulis di team
   Spatie fasilitas **target** lewat `StaffRoles` (yang mengembalikan team aktor), tidak
   pernah lewat `assignRole()` di team request. Akun donor dan operator global tidak
   dikelola lewat API ini. Tidak ada password di body, respons, maupun email — akun baru

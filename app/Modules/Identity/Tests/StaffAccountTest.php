@@ -258,6 +258,60 @@ final class StaffAccountTest extends TestCase
         $this->assertNull($otherGlobal->refresh()->facilityId());
     }
 
+    /**
+     * facility_id bukan bukti staf: donor ber-facility_id pernah bisa dijadikan admin lewat
+     * endpoint ini. Yang diuji memang jalur eskalasinya -- role=admin, oleh operator global.
+     */
+    public function test_a_donor_with_a_facility_cannot_be_promoted(): void
+    {
+        $global = $this->account(Role::ADMIN, null);
+        $donor = $this->account(Role::DONOR, $this->rsA);
+        $donor->createToken('sesi-donor');
+
+        $this->putJson("/api/v1/users/{$donor->public_id}/assignment", ['facility_id' => $this->rsA->public_id, 'role' => 'admin'], $this->as($global))
+            ->assertForbidden();
+
+        $this->assertSame('donor', $this->roleIn($donor, $this->rsA->id));
+        $this->assertSame($this->rsA->id, $donor->refresh()->facilityId());
+        $this->assertSame(1, $donor->tokens()->count());
+    }
+
+    public function test_a_facility_admin_cannot_promote_a_donor_of_their_own_facility(): void
+    {
+        $admin = $this->account(Role::ADMIN, $this->rsA);
+        $donor = $this->account(Role::DONOR, $this->rsA);
+
+        $this->putJson("/api/v1/users/{$donor->public_id}/assignment", ['facility_id' => $this->rsA->public_id, 'role' => 'admin'], $this->as($admin))
+            ->assertForbidden();
+
+        $this->assertSame('donor', $this->roleIn($donor, $this->rsA->id));
+    }
+
+    public function test_a_donor_with_a_facility_cannot_be_read_or_deactivated(): void
+    {
+        $global = $this->account(Role::ADMIN, null);
+        $donor = $this->account(Role::DONOR, $this->rsA);
+        $headers = $this->as($global);
+
+        $this->getJson("/api/v1/users/{$donor->public_id}", $headers)->assertForbidden();
+        $this->patchJson("/api/v1/users/{$donor->public_id}/deactivate", [], $headers)->assertForbidden();
+
+        $this->assertTrue((bool) $donor->refresh()->is_active);
+    }
+
+    /** Perannya dicek di team fasilitas akun itu, bukan team mana pun. */
+    public function test_an_account_with_no_role_in_its_own_facility_is_not_staff(): void
+    {
+        $global = $this->account(Role::ADMIN, null);
+        $elsewhere = User::factory()->create(['facility_id' => $this->rsA->id, 'is_active' => true]);
+        $elsewhere->forceFill(['public_id' => (string) Str::uuid()])->save();
+        app(PermissionRegistrar::class)->setPermissionsTeamId(FacilityScope::of($this->rsB->id));
+        $elsewhere->assignRole(Role::ADMIN->value);
+        app(PermissionRegistrar::class)->setPermissionsTeamId(-1);
+
+        $this->getJson("/api/v1/users/{$elsewhere->public_id}", $this->as($global))->assertForbidden();
+    }
+
     // ------------------------------------------------------------ deactivate
 
     public function test_deactivating_keeps_the_row_and_kills_sessions_and_devices(): void
@@ -300,6 +354,8 @@ final class StaffAccountTest extends TestCase
         $mine = $this->account(Role::HOSPITAL_STAFF, $this->rsA);
         $this->account(Role::HOSPITAL_STAFF, $this->rsB);
         $this->account(Role::DONOR, null);
+        // Donor ber-facility_id di fasilitas yang sama: penyaringnya peran, bukan facility_id.
+        $this->account(Role::DONOR, $this->rsA);
 
         /** @var list<array<string, mixed>> $data */
         $data = $this->getJson('/api/v1/users', $this->as($admin))->assertOk()->json('data');

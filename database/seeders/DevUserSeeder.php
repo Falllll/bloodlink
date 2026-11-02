@@ -41,13 +41,15 @@ class DevUserSeeder extends Seeder
             ['role' => Role::ADMIN->value, 'email' => 'admin@bloodlink.test', 'facilityId' => null],
             ['role' => Role::ADMIN->value, 'email' => 'admin-rs@bloodlink.test', 'facilityId' => $facilityId],
             ['role' => Role::HOSPITAL_STAFF->value, 'email' => 'staff@bloodlink.test', 'facilityId' => $facilityId],
-            ['role' => Role::DONOR->value, 'email' => 'donor@bloodlink.test', 'facilityId' => $facilityId],
+            // Donor tidak punya fasilitas, sama dengan jalur register (kartu 255).
+            ['role' => Role::DONOR->value, 'email' => 'donor@bloodlink.test', 'facilityId' => null],
         ];
     }
 
     private function upsertUser(string $role, string $email, ?int $facilityId): void
     {
         $user = User::withTrashed()->firstOrNew(['email' => $email]);
+        $previousFacilityId = $user->exists ? $user->facilityId() : $facilityId;
 
         $user->name = Str::headline(explode('@', $email)[0]);
         $user->password = Hash::make((string) config('dev.seed_password'));
@@ -60,6 +62,14 @@ class DevUserSeeder extends Seeder
         ]);
 
         $user->save();
+
+        // DB dev lama: peran di team fasilitas sebelumnya tidak boleh tertinggal.
+        if ($previousFacilityId !== $facilityId) {
+            app(PermissionRegistrar::class)->setPermissionsTeamId(FacilityScope::of($previousFacilityId));
+            $user->unsetRelation('roles');
+            $user->syncRoles([]);
+            $user->unsetRelation('roles');
+        }
 
         app(PermissionRegistrar::class)->setPermissionsTeamId(
             FacilityScope::of($facilityId)
