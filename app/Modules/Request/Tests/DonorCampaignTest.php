@@ -25,6 +25,7 @@ use App\Shared\Blood\RhFactor;
 use Database\Seeders\CompatibilityRuleSeeder;
 use Database\Seeders\ComponentTypeSeeder;
 use Database\Seeders\DeferralReasonSeeder;
+use Database\Seeders\NotificationTemplateSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use DateTimeImmutable;
 use Illuminate\Database\QueryException;
@@ -58,6 +59,8 @@ final class DonorCampaignTest extends TestCase
         $this->seed(ComponentTypeSeeder::class);
         $this->seed(CompatibilityRuleSeeder::class);
         $this->seed(DeferralReasonSeeder::class);
+        // Kartu 540: kampanye kini mengirim sungguhan; dunia test sama dengan produksi.
+        $this->seed(NotificationTemplateSeeder::class);
 
         $this->freezeSecond();
         $this->facility = Facility::factory()->create();

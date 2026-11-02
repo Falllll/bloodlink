@@ -111,6 +111,25 @@ final class NotificationTemplateSeeder extends Seeder
             'body' => 'Reaksi pasca-transfusi dilaporkan di {{facility_name}}.',
             'variables' => ['facility_name'],
         ],
+        // CampaignDonorsContacted (kartu 540). Penerima: donor yang bukan bagian dari fasilitas
+        // mana pun -- tanpa referensi pasien, dan push tanpa nama orang. Id undangan lewat jalur
+        // data (kartu 538), bukan variabel.
+        [
+            'code' => 'campaign.donors_contacted',
+            'channel' => 'email',
+            'category' => 'emergency_call',
+            'subject' => 'Panggilan donor darah dari {{facility_name}}',
+            'body' => "{{facility_name}} sedang membutuhkan donor darah.\n\nBuka aplikasi BloodLink untuk melihat undangan ini dan menjawab apakah Anda bersedia datang. Kesediaan Anda belum berarti Anda langsung boleh mendonor; petugas tetap akan memeriksa Anda.\n\nTerima kasih atas kesediaan Anda mendonorkan darah.",
+            'variables' => ['facility_name'],
+        ],
+        [
+            'code' => 'campaign.donors_contacted',
+            'channel' => 'push',
+            'category' => 'emergency_call',
+            'subject' => null,
+            'body' => '{{facility_name}} membutuhkan donor darah. Buka untuk menjawab undangan.',
+            'variables' => ['facility_name'],
+        ],
         // PasswordResetRequested (kartu 485). Penerima: pemilik akun. EMAIL SAJA, sengaja
         // tanpa baris push: tautan reset tidak boleh tampil di layar kunci.
         [
