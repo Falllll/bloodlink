@@ -6,6 +6,7 @@ namespace App\Modules\Identity\Infrastructure\Policies;
 
 use App\Models\Facility;
 use App\Models\User;
+use App\Modules\Identity\Application\StaffRoles;
 
 /**
  * Manajemen akun STAF (kartu 487). Siapa boleh apa, eksplisit:
@@ -15,9 +16,11 @@ use App\Models\User;
  *   ke fasilitasnya sendiri -- tidak bisa memindahkan petugas keluar atau masuk.
  * - Petugas biasa: tidak sama sekali (tidak punya user.manage).
  *
- * "Akun staf" = akun ber-facility_id. Akun donor dan operator global (keduanya
- * facility_id NULL) TIDAK pernah dikelola lewat sini: donor mendaftar sendiri, dan
+ * "Akun staf" = akun ber-facility_id YANG berperan staf di team fasilitas itu. Akun donor
+ * dan operator global TIDAK pernah dikelola lewat sini: donor mendaftar sendiri, dan
  * operator global dibuat di luar API supaya tidak ada jalur eskalasi lewat endpoint.
+ * facility_id saja bukan bukti: donor ber-facility_id pernah bisa dijadikan admin lewat
+ * PUT /users/{user}/assignment. Semua mutasi melewati view(), jadi penjaganya di sana.
  *
  * Tidak ada yang boleh mengubah peran/fasilitas atau menonaktifkan AKUNNYA SENDIRI:
  * admin terakhir sebuah fasilitas tidak boleh bisa mengunci dirinya keluar.
@@ -27,6 +30,8 @@ use App\Models\User;
  */
 final class UserPolicy
 {
+    public function __construct(private readonly StaffRoles $roles) {}
+
     public function viewAny(User $actor): bool
     {
         return $this->canManage($actor);
@@ -34,7 +39,7 @@ final class UserPolicy
 
     public function view(User $actor, User $target): bool
     {
-        if (! $this->canManage($actor) || $target->facilityId() === null) {
+        if (! $this->canManage($actor) || $target->facilityId() === null || ! $this->isStaff($target)) {
             return false;
         }
 
@@ -72,6 +77,12 @@ final class UserPolicy
     private function canManage(User $actor): bool
     {
         return $actor->hasPermissionTo('user.manage');
+    }
+
+    /** Dibaca di team fasilitas target (StaffRoles), bukan team aktor yang terikat di request. */
+    private function isStaff(User $target): bool
+    {
+        return in_array($this->roles->roleOf($target), StaffRoles::ASSIGNABLE, true);
     }
 
     private function mayUseFacility(User $actor, Facility $facility): bool

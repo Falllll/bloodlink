@@ -37,7 +37,7 @@ final class DevUserSeederTest extends TestCase
             'admin@bloodlink.test' => [Role::ADMIN, null],
             'admin-rs@bloodlink.test' => [Role::ADMIN, 'set'],
             'staff@bloodlink.test' => [Role::HOSPITAL_STAFF, 'set'],
-            'donor@bloodlink.test' => [Role::DONOR, 'set'],
+            'donor@bloodlink.test' => [Role::DONOR, null],
         ];
 
         $this->assertSame(4, User::query()->whereIn('email', array_keys($accounts))->count());
@@ -71,6 +71,24 @@ final class DevUserSeederTest extends TestCase
         $this->assertSame(
             1,
             DB::table('model_has_roles')->where('model_id', $user->id)->count()
+        );
+    }
+
+    /** DB dev lama: donor pernah di-seed ber-facility_id, dengan peran di team fasilitas itu. */
+    public function test_rerunning_it_moves_an_old_donor_out_of_its_facility_without_a_stale_role(): void
+    {
+        $this->seed(DevUserSeeder::class);
+        $donor = User::query()->where('email', 'donor@bloodlink.test')->firstOrFail();
+        $facilityId = (int) Facility::query()->value('id');
+        $donor->forceFill(['facility_id' => $facilityId])->save();
+        DB::table('model_has_roles')->where('model_id', $donor->id)->where('model_type', User::class)->update(['facility_id' => $facilityId]);
+
+        $this->seed(DevUserSeeder::class);
+
+        $this->assertNull($donor->refresh()->facility_id);
+        $this->assertSame(
+            [FacilityScope::of(null)],
+            DB::table('model_has_roles')->where('model_id', $donor->id)->where('model_type', User::class)->pluck('facility_id')->map(fn ($id): int => (int) $id)->all(),
         );
     }
 
