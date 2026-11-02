@@ -58,6 +58,7 @@ use App\Modules\Inventory\Infrastructure\Policies\StorageLocationPolicy;
 use App\Modules\Notification\Application\ChannelPolicy;
 use App\Modules\Notification\Application\ClaimDonorCalls;
 use App\Modules\Notification\Application\Listeners\RevokeUserDevices;
+use App\Modules\Notification\Application\Listeners\SendCampaignCallNotifications;
 use App\Modules\Notification\Application\Listeners\SendPasswordResetEmail;
 use App\Modules\Notification\Application\ResolveSender;
 use App\Modules\Notification\Infrastructure\FcmNotificationSender;
@@ -66,6 +67,7 @@ use App\Modules\Request\Application\Listeners\BroadcastDonorResponse;
 use App\Modules\Request\Application\Listeners\BroadcastRequestStatus;
 use App\Modules\Request\Domain\Events\AllocatedUnitIssued;
 use App\Modules\Request\Domain\Events\BloodRequestStatusChanged;
+use App\Modules\Request\Domain\Events\CampaignDonorsContacted;
 use App\Modules\Request\Domain\Events\DonorResponded;
 use App\Modules\Request\Domain\Events\UnitReservationLifted;
 use App\Modules\Request\Domain\Events\UnitReservationPlaced;
@@ -209,6 +211,8 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(BloodRequestStatusChanged::class, BroadcastRequestStatus::class);
         // Kartu 500: agregat saja, tanpa identitas donor.
         Event::listen(DonorResponded::class, BroadcastDonorResponse::class);
+        // Kartu 540: kampanye -> jalur kirim. DIANTRE: pemancarnya di dalam transaksi kampanye.
+        Event::listen(CampaignDonorsContacted::class, SendCampaignCallNotifications::class);
         // Kartu 495: aktivitas percakapan, TANPA isi pesan.
         Event::listen(MessagePosted::class, [BroadcastConversationActivity::class, 'handleMessagePosted']);
         Event::listen(ConversationEscalated::class, [BroadcastConversationActivity::class, 'handleEscalated']);

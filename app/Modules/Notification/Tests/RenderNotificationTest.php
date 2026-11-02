@@ -45,11 +45,11 @@ final class RenderNotificationTest extends TestCase
         ]);
     }
 
-    public function test_the_seed_holds_five_codes_times_two_channels_plus_the_email_only_auth_mails(): void
+    public function test_the_seed_holds_six_codes_times_two_channels_plus_the_email_only_auth_mails(): void
     {
-        $this->assertSame(12, NotificationTemplate::query()->count());
+        $this->assertSame(14, NotificationTemplate::query()->count());
 
-        foreach (['donor.permanently_deferred', 'storage.temperature_out_of_range', 'inventory.units_nearing_expiry', 'stock_transfer.requested', 'transfusion.reaction_reported'] as $code) {
+        foreach (['donor.permanently_deferred', 'storage.temperature_out_of_range', 'inventory.units_nearing_expiry', 'stock_transfer.requested', 'transfusion.reaction_reported', 'campaign.donors_contacted'] as $code) {
             $this->assertEqualsCanonicalizing(['email', 'push'], NotificationTemplate::query()->where('code', $code)->pluck('channel')->map->value->all(), $code);
         }
 
