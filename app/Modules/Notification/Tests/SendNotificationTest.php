@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Support\Testing\Fakes\QueueFake;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 /**
@@ -175,8 +176,9 @@ final class SendNotificationTest extends TestCase
         $this->fakeFcm();
         $user = User::factory()->create();
         $this->device($user, 'device-token-xyz');
+        $invitationId = (string) Str::uuid();
 
-        $this->dispatch($user);
+        app(DispatchNotification::class)->handle($user, self::CODE, $this->variables(), data: ['invitation_id' => $invitationId]);
         $this->runQueuedJobs();
 
         $this->assertSame(2, NotificationDelivery::query()->where('status', 'sent')->count());
@@ -201,8 +203,73 @@ final class SendNotificationTest extends TestCase
         Http::assertSent(fn (Request $request): bool => $request->url() === self::FCM_SEND_URL
             && $request->hasHeader('Authorization', 'Bearer ya29.test')
             && $request['message']['token'] === 'device-token-xyz'
+            // Id rute untuk klien (kartu 538), lewat jalur terpisah dari variabel template.
+            && $request['message']['data']['invitation_id'] === $invitationId
             // Push memakai template push: tanpa nama donor.
             && $request['message']['notification']['body'] === 'Ada informasi penting tentang status donor Anda. Mohon hubungi UDD Bandung.');
+    }
+
+    /** Key `data` tidak boleh ada sama sekali: [] terkodekan sebagai JSON array, FCM menuntut objek. */
+    public function test_a_push_without_data_carries_no_data_key(): void
+    {
+        Queue::fake();
+        $this->fakeFcm();
+        $user = User::factory()->create();
+        $this->device($user, 'device-token-xyz');
+
+        $this->dispatch($user);
+        $this->runQueuedJobs();
+
+        $this->assertSame(0, NotificationDelivery::query()->whereNotNull('data')->count());
+        Http::assertSent(fn (Request $request): bool => $request->url() === self::FCM_SEND_URL
+            && ! array_key_exists('data', $request['message']));
+    }
+
+    public function test_the_email_is_unchanged_when_data_is_set(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create(['email' => 'donor@example.test']);
+        $invitationId = (string) Str::uuid();
+
+        [$id] = app(DispatchNotification::class)->handle($user, self::CODE, $this->variables(), data: ['invitation_id' => $invitationId]);
+        $this->runQueuedJobs();
+
+        Mail::assertSent(RenderedNotificationMail::class, fn (RenderedNotificationMail $mail): bool => $mail->hasTo('donor@example.test')
+            && str_contains((string) $mail->render(), 'Siti &lt;Aminah&gt;')
+            && ! str_contains((string) $mail->render(), $invitationId));
+
+        // Bahan render dibuang saat terkirim; data tetap, karena isinya hanya public id.
+        $delivery = NotificationDelivery::query()->where('public_id', $id)->sole();
+        $this->assertNull($delivery->variables);
+        $this->assertSame(['invitation_id' => $invitationId], $delivery->data);
+    }
+
+    public function test_non_string_data_is_refused_before_any_row_is_written(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+
+        foreach ([['invitation_id' => 123], ['123']] as $data) {
+            try {
+                app(DispatchNotification::class)->handle($user, self::CODE, $this->variables(), data: $data); // @phpstan-ignore argument.type
+                $this->fail('InvalidArgumentException was not thrown.');
+            } catch (InvalidArgumentException) {
+            }
+        }
+
+        $this->assertSame(0, NotificationDelivery::query()->count());
+        Queue::assertNothingPushed();
+    }
+
+    public function test_the_database_requires_data_to_be_an_object(): void
+    {
+        Queue::fake();
+        [$id] = $this->dispatch(User::factory()->create());
+
+        $this->expectException(QueryException::class);
+        $this->expectExceptionMessage('notification_deliveries_data_shape');
+
+        DB::table('notification_deliveries')->where('public_id', $id)->update(['data' => '[]']);
     }
 
     public function test_a_failed_send_leaves_the_row_pending_and_rethrows(): void

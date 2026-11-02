@@ -85,6 +85,9 @@ final class FcmNotificationSender implements NotificationSender
                             'title' => $this->title,
                             'body' => $message->body,
                         ],
+                        // Tanpa key sama sekali saat kosong: `data: []` terkodekan sebagai
+                        // JSON array, sedangkan FCM v1 menuntut objek.
+                        ...($message->data === [] ? [] : ['data' => $message->data]),
                     ],
                 ]);
         } catch (ConnectionException) {

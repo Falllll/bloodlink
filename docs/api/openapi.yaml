@@ -927,9 +927,16 @@ paths:
   /me/campaign-invitations:
     get:
       summary: Undangan kampanye milik donor yang sedang masuk
-      description: 50 terbaru. Tanpa data pasien apa pun. Tidak menuntut fasilitas.
+      description: >-
+        Paginasi kursor, default 25 per halaman dan maksimum 100; terbaru dulu.
+        Akun tanpa profil donor menerima daftar kosong. Tanpa data pasien apa
+        pun. Tidak menuntut fasilitas.
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
       responses:
         '200':
           description: Undangan donor.
@@ -942,11 +949,46 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/CampaignInvitation'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+                required: [data, links, meta]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /me/campaign-invitations/{contact}:
+    parameters:
+      - in: path
+        name: contact
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Public ID undangan.
+    get:
+      summary: Satu undangan kampanye milik donor yang sedang masuk
+      description: >-
+        Bentuknya identik dengan satu elemen daftar. Undangan milik orang lain
+        404 (bukan 403), sama dengan yang tidak ada. Segmen non-UUID juga 404.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Undangan donor.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CampaignInvitation'
                   meta:
                     type: object
                 required: [data, meta]
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /me/campaign-invitations/{contact}/respond:
     parameters:
       - in: path

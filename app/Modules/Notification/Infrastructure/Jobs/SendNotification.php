@@ -168,7 +168,7 @@ final class SendNotification implements ShouldQueue
             $address = $this->addressFor($delivery)
                 ?? throw DeliveryFailed::permanent('recipient_unreachable', 'The recipient account or device is no longer deliverable.');
 
-            $message = $render->handle($delivery->template_code, $delivery->channel, $delivery->variables ?? [], $delivery->locale);
+            $message = $render->handle($delivery->template_code, $delivery->channel, $delivery->variables ?? [], $delivery->locale, $delivery->data ?? []);
 
             $sender->send($address, $message);
 

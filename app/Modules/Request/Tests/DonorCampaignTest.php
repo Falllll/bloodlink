@@ -360,6 +360,122 @@ final class DonorCampaignTest extends TestCase
         $this->assertSame(RequestStatus::OPEN, $request->fresh()?->status);
     }
 
+    /**
+     * $count undangan untuk satu donor, satu kampanye selesai per undangan: unique
+     * (donor_campaign_id, donor_id) melarang dua undangan dalam satu kampanye.
+     *
+     * @return list<string> public_id undangan
+     */
+    private function invitationsFor(Donor $donor, int $count): array
+    {
+        $request = $this->request();
+        $ids = [];
+
+        foreach (range(1, $count) as $i) {
+            $campaignId = DB::table('donor_campaigns')->insertGetId([
+                'public_id' => (string) Str::uuid(),
+                'blood_request_id' => $request->id,
+                'started_by' => User::factory()->create()->id,
+                'current_radius_meters' => 5000,
+                'stage_entered_at' => now(),
+                'started_at' => now(),
+                'ended_at' => now(),
+                'end_reason' => 'stopped_manually',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $ids[] = $publicId = (string) Str::uuid();
+            DB::table('donor_campaign_contacts')->insert([
+                'public_id' => $publicId,
+                'donor_campaign_id' => $campaignId,
+                'donor_id' => $donor->id,
+                'radius_meters' => 5000,
+                'distance_meters' => 1000,
+                // Dua pasang berwaktu sama: kursor harus tetap memakai tie-breaker id.
+                'contacted_at' => now()->subHours(intdiv($i, 2)),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return $ids;
+    }
+
+    private function accountOf(Donor $donor): User
+    {
+        $account = User::factory()->create(['facility_id' => null]);
+        $donor->forceFill(['user_id' => $account->id])->save();
+
+        return $account;
+    }
+
+    public function test_the_invitation_detail_has_the_same_shape_as_a_list_element(): void
+    {
+        $donor = $this->donorAt(3);
+        [$id] = $this->invitationsFor($donor, 1);
+        $headers = $this->headers($this->accountOf($donor));
+
+        $element = $this->getJson('/api/v1/me/campaign-invitations', $headers)->assertOk()->json('data.0');
+        $detail = $this->getJson("/api/v1/me/campaign-invitations/{$id}", $headers)->assertOk()->json('data');
+
+        $this->assertSame($id, $detail['id']);
+        $this->assertSame($element, $detail);
+    }
+
+    /** Bukan miliknya: 404, sama dengan yang tidak ada -- bukan 403, bukan 200. */
+    public function test_a_donor_cannot_read_someone_elses_invitation(): void
+    {
+        [$theirs] = $this->invitationsFor($this->donorAt(3), 1);
+        $headers = $this->headers($this->accountOf($this->donorAt(50)));
+
+        $this->getJson("/api/v1/me/campaign-invitations/{$theirs}", $headers)->assertNotFound();
+        $this->getJson('/api/v1/me/campaign-invitations/'.Str::uuid(), $headers)->assertNotFound();
+        $this->assertSame([], $this->getJson('/api/v1/me/campaign-invitations', $headers)->assertOk()->json('data'));
+    }
+
+    public function test_an_account_without_a_donor_profile_gets_an_empty_list_and_404(): void
+    {
+        [$someone] = $this->invitationsFor($this->donorAt(3), 1);
+        $headers = $this->headers(User::factory()->create(['facility_id' => null]));
+
+        $this->getJson('/api/v1/me/campaign-invitations', $headers)->assertOk()->assertJsonPath('data', []);
+        $this->getJson("/api/v1/me/campaign-invitations/{$someone}", $headers)->assertNotFound();
+    }
+
+    public function test_a_non_uuid_invitation_segment_is_404(): void
+    {
+        $headers = $this->headers($this->accountOf($this->donorAt(3)));
+
+        $this->getJson('/api/v1/me/campaign-invitations/bukan-uuid', $headers)->assertNotFound();
+    }
+
+    public function test_the_invitation_cursor_walks_every_row_once_newest_first(): void
+    {
+        $donor = $this->donorAt(3);
+        $this->invitationsFor($donor, 5);
+        $expected = DonorCampaignContact::query()->where('donor_id', $donor->id)
+            ->orderByDesc('contacted_at')->orderBy('id')->pluck('public_id')->all();
+        $headers = $this->headers($this->accountOf($donor));
+
+        $seen = [];
+        $cursor = null;
+        do {
+            $page = $this->getJson('/api/v1/me/campaign-invitations?per_page=2'.($cursor === null ? '' : '&cursor='.$cursor), $headers)->assertOk();
+            $seen = [...$seen, ...array_column($page->json('data'), 'id')];
+            $cursor = $page->json('meta.next_cursor');
+        } while ($cursor !== null);
+
+        $this->assertCount(5, $seen);
+        $this->assertSame($expected, $seen);
+    }
+
+    public function test_the_invitation_page_size_is_capped_at_one_hundred(): void
+    {
+        $this->getJson('/api/v1/me/campaign-invitations?per_page=500', $this->headers($this->accountOf($this->donorAt(3))))
+            ->assertOk()
+            ->assertJsonPath('meta.per_page', 100);
+    }
+
     /** Undangan orang lain: 404, bukan 403 -- keberadaannya tidak dibocorkan. */
     public function test_a_donor_cannot_answer_someone_elses_invitation(): void
     {

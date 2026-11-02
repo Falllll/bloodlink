@@ -76,6 +76,8 @@ Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function ():
         ->whereIn('category', array_map(fn (NotificationCategory $c): string => $c->value, NotificationCategory::optional()))
         ->name('notification-preferences.update');
     Route::get('/campaign-invitations', [DonorCampaignController::class, 'myInvitations'])->name('campaign-invitations.index');
+    // Kartu 538. whereUuid wajib: segmen non-UUID harus 404 di router, bukan masuk controller.
+    Route::get('/campaign-invitations/{contact}', [DonorCampaignController::class, 'myInvitation'])->whereUuid('contact')->name('campaign-invitations.show');
     Route::post('/campaign-invitations/{contact}/respond', [DonorCampaignController::class, 'respond'])->whereUuid('contact')->name('campaign-invitations.respond');
 });
 

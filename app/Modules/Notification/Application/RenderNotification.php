@@ -23,12 +23,16 @@ final class RenderNotification
 {
     private const string PLACEHOLDER = '/\{\{([a-z][a-z0-9_]*)\}\}/';
 
-    /** @param  array<string, string|int>  $variables */
+    /**
+     * @param  array<string, string|int>  $variables
+     * @param  array<string, string>  $data  diteruskan apa adanya; TIDAK ikut validasi placeholder
+     */
     public function handle(
         string $code,
         NotificationChannel $channel,
         array $variables,
         string $locale = 'id',
+        array $data = [],
     ): RenderedNotification {
         $template = NotificationTemplate::query()
             ->where('code', $code)
@@ -90,6 +94,7 @@ final class RenderNotification
         return new RenderedNotification(
             $template->subject === null ? null : $render($template->subject),
             $render($template->body),
+            $data,
         );
     }
 }
