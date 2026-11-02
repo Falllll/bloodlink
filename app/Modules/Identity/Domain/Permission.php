@@ -19,4 +19,7 @@ enum Permission: string
     case USER_MANAGE = 'user.manage';
     case AUDIT_VIEW = 'audit.view';
     case REPORT_VIEW = 'report.view';
+    // Kartu 495: kotak masuk percakapan (membaca) dan membalas/mengambil alih/menutup.
+    case CHAT_VIEW = 'chat.view';
+    case CHAT_RESPOND = 'chat.respond';
 }

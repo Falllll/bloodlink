@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Chat\Http\Middleware\BindVisitorConversation;
 use App\Shared\Errors\ErrorCode;
 use App\Shared\Exceptions\DomainException;
 use App\Shared\Http\ApiResponse;
@@ -58,6 +59,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'facility.context' => BindFacilityContext::class,
+            // Kartu 495: pengunjung anonim percakapan, lewat X-Visitor-Token.
+            'chat.visitor' => BindVisitorConversation::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

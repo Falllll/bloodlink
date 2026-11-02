@@ -213,6 +213,20 @@ yang sama; menambah baris di config saja tidak cukup dan memang disengaja begitu
 - Test otorisasi channel memakai driver `reverb` dengan kunci dummy, bukan `null`:
   `NullBroadcaster::auth()` kosong, jadi di bawahnya semua orang "lolos".
 
+## Percakapan & eskalasi (modul Chat)
+
+- Modul `app/Modules/Chat` (kartu 495), tiga layer deptrac sendiri. Pengunjung anonim di
+  `/conversations` dikenali header `X-Visitor-Token` (middleware `chat.visitor`); petugas di
+  `/inbox/conversations` lewat `auth:sanctum` + `facility.context` + `ConversationPolicy`.
+- Token pengunjung keluar **sekali** (respons 201), disimpan hanya sebagai HMAC, dan berumur
+  24 jam — sengaja bukan token Sanctum, yang di repo ini tidak pernah kedaluwarsa.
+- Eskalasi menulis status, alasan enum, **dan** `facility_id` sekaligus; CHECK
+  `conversations_escalation_shape` menolak eskalasi tanpa fasilitas di database.
+- `messages.body` adalah data kesehatan: cast `encrypted`, dikecualikan dari `audit_logs`,
+  dikosongkan `privacy:purge-expired`, dan tidak pernah masuk payload siaran.
+- `Auditable` sendiri tidak mencatat apa pun: model baru wajib masuk daftar `AuditObserver`
+  di `AppServiceProvider::boot()`, kalau tidak audit-nya diam-diam kosong.
+
 ## Perintah yang sering dipakai
 
 ```bash

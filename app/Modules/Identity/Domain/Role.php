@@ -29,6 +29,8 @@ enum Role: string
                 Permission::INVENTORY_RELEASE,
                 Permission::REQUEST_VIEW,
                 Permission::REQUEST_CREATE,
+                Permission::CHAT_VIEW,
+                Permission::CHAT_RESPOND,
             ],
             self::ADMIN => Permission::cases(),
         };

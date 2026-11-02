@@ -141,25 +141,46 @@ deptrac:
         - type: directory
           value: app/Modules/Notification/(Application|Http|Infrastructure|Database|Tests)/.*
 
+    - name: EvtChat
+      collectors:
+        - type: directory
+          value: app/Modules/Chat/Domain/Events/.*
+    - name: DomChat
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Modules/Chat/Domain/.*
+          must_not:
+            - type: directory
+              value: app/Modules/Chat/Domain/Events/.*
+    - name: ModChat
+      collectors:
+        - type: directory
+          value: app/Modules/Chat/(Application|Http|Infrastructure|Database|Tests)/.*
+
   ruleset:
     BloodKernel: ~
     Shared: [Framework, BloodKernel]
-    Models: [Framework, Shared, BloodKernel, DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification]
+    Models: [Framework, Shared, BloodKernel, DomIdentity, DomDonor, DomInventory, DomRequest, DomNotification, DomChat]
 
-    ModIdentity:     [Framework, Shared, BloodKernel, Models, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModDonor:        [Framework, Shared, BloodKernel, Models, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModInventory:    [Framework, Shared, BloodKernel, Models, DomInventory, Barcode, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModRequest:      [Framework, Shared, BloodKernel, Models, DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
-    ModNotification: [Framework, Shared, BloodKernel, Models, DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification]
+    ModIdentity:     [Framework, Shared, BloodKernel, Models, DomIdentity, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification, EvtChat]
+    ModDonor:        [Framework, Shared, BloodKernel, Models, DomDonor, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification, EvtChat]
+    ModInventory:    [Framework, Shared, BloodKernel, Models, DomInventory, Barcode, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification, EvtChat]
+    ModRequest:      [Framework, Shared, BloodKernel, Models, DomRequest, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification, EvtChat]
+    ModNotification: [Framework, Shared, BloodKernel, Models, DomNotification, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification, EvtChat]
+    ModChat:         [Framework, Shared, BloodKernel, Models, DomChat, EvtIdentity, EvtDonor, EvtInventory, EvtRequest, EvtNotification, EvtChat]
 
     DomIdentity: [BloodKernel]
     DomDonor: [BloodKernel]
     DomInventory: [BloodKernel]
     DomRequest: [BloodKernel]
     DomNotification: [BloodKernel]
+    DomChat: [BloodKernel]
 
     EvtIdentity: ~
     EvtDonor: ~
     EvtInventory: ~
     EvtRequest: ~
     EvtNotification: ~
+    EvtChat: ~
