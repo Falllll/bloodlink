@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Schema;
  *   alokasi per kantong (200k baris):  Seq Scan cost 5531   -> Index Scan cost 8.44
  *   kampanye terbaru per permintaan
  *   (DonorCampaignController::show, 100k): Seq Scan cost 2975 -> Index Scan cost 11.33
- * Dijaga QueryPlanTest di modul Request dan ForeignKeyIndexTest.
+ * Dijaga QueryBudgetTest di modul Request dan ForeignKeyIndexTest.
  */
 return new class extends Migration
 {

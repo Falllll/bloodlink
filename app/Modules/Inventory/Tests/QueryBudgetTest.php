@@ -154,6 +154,33 @@ final class QueryBudgetTest extends TestCase
         $this->assertSame($few, $many);
     }
 
+    /**
+     * Ketiadaan with() di StorageLocationController::index() DISENGAJA: serializer-nya
+     * skalar. Test ini yang merah begitu toApiArray() mulai membaca relasi.
+     */
+    public function test_listing_storage_locations_costs_the_same_for_two_or_eight_rows(): void
+    {
+        $facility = Facility::factory()->create();
+        $user = $this->userOf($facility->id);
+        $seed = function () use ($facility): void {
+            $location = new StorageLocation([
+                'code' => 'LOC-'.Str::random(8),
+                'label' => 'Lemari',
+                'kind' => 'refrigerator',
+                'purpose' => 'release_ready',
+                'temp_min_celsius' => '2.0',
+                'temp_max_celsius' => '6.0',
+            ]);
+            $location->forceFill(['public_id' => (string) Str::uuid()])->assignFacility($facility->id)->save();
+        };
+
+        $few = $this->listCost('/api/v1/storage-locations', $user, 2, $seed);
+        $many = $this->listCost('/api/v1/storage-locations', $user, 6, $seed);
+
+        $this->assertSame($few, $many);
+        $this->assertCount(8, $this->getJson('/api/v1/storage-locations', $this->bearer($user))->json('data'));
+    }
+
     public function test_listing_temperature_readings_costs_the_same_for_two_or_eight_rows(): void
     {
         $facility = Facility::factory()->create();
