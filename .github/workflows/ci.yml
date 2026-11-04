@@ -65,12 +65,15 @@ jobs:
           path: ~/.cache/composer/files
           key: composer-${{ hashFiles('composer.lock') }}
 
+      # .env SEBELUM composer install: package:discover mem-boot aplikasi, routes/channels.php
+      # membuat broadcaster reverb, dan tanpa .env REVERB_APP_KEY bernilai null -- Pusher menolaknya.
+      - name: Prepare env
+        run: cp .env.example .env
+
       - run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Prepare env
-        run: |
-          cp .env.example .env
-          php artisan key:generate
+      - name: Generate app key
+        run: php artisan key:generate
 
       - name: No duplicate env keys
         run: |

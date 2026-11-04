@@ -120,23 +120,24 @@ final class UnitReleaseRejectionTest extends TestCase
     }
 
     /**
-     * Celah 4, status reserved. CACAT YANG DIKETAHUI, dipaku supaya terlihat.
-     * YANG BENAR: 409 notReleasableFrom("reserved"). Hari ini RESERVED -> RELEASED sah di graf
-     * (jalur pelepasan reservasi), jadi walkToReleased meloloskannya: unit pesanan kembali
-     * "released" dan released_at-nya tertimpa, tanpa melepas alokasinya. Saat cacatnya
-     * diperbaiki di kartunya sendiri, test ini merah dan harus dibalik.
+     * Celah 4, status reserved. RESERVED -> RELEASED sah di graf (jalur pelepasan reservasi),
+     * tapi gerbang rilis lab tidak boleh menempuhnya: unit pesanan akan kembali "released" dengan
+     * released_at tertimpa, tanpa melepas alokasinya.
      */
-    public function test_known_defect_the_gate_releases_a_reserved_unit(): void
+    public function test_a_reserved_unit_is_rejected_by_the_gate(): void
     {
         $unit = $this->clearedUnitIn(BatchStatus::RESERVED);
         $before = $unit->fresh()?->released_at;
         $this->travel(1)->hours();
 
-        $this->postRelease($unit, $this->headersFor($unit))->assertOk();
+        $this->postRelease($unit, $this->headersFor($unit))
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'INVENTORY_RELEASE_REJECTED')
+            ->assertJsonPath('error.message', 'A blood batch cannot be released from "reserved".');
 
         $fresh = $unit->fresh();
-        $this->assertSame(BatchStatus::RELEASED, $fresh?->status);
-        $this->assertNotEquals($before, $fresh->released_at);
+        $this->assertSame(BatchStatus::RESERVED, $fresh?->status);
+        $this->assertEquals($before, $fresh->released_at);
     }
 
     /**
