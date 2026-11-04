@@ -54,20 +54,34 @@ final class ReserveAllocatedUnits
                 throw ReservationRejected::nothingToReserve();
             }
 
+            $reserved = [];
+
             foreach ($allocations as $allocation) {
                 // Listener Inventory: lockForUpdate + graf. Penolakan graf
                 // (BloodBatchTransitionRejected, 409) naik apa adanya dan
                 // membatalkan SELURUH reservasi ini -- tidak ada pemesanan setengah.
                 event(new UnitReservationPlaced($allocation->blood_batch_id));
 
-                $allocation->forceFill([
+                // Baca ulang SESUDAH kunci unit didapat (urutan kunci tetap: unit, lalu alokasi).
+                // $allocation dimuat SEBELUM menunggu: ReturnAllocatedUnit yang commit selama
+                // penantian sudah melepasnya, dan menulis lewat model lama meninggalkan unit
+                // reserved tanpa alokasi aktif -- tak terlihat timeout, keluar dari stok diam-diam.
+                $fresh = BloodRequestAllocation::query()->whereKey($allocation->getKey())->lockForUpdate()->firstOrFail();
+
+                if ($fresh->released_at !== null || $fresh->reserved_at !== null) {
+                    throw ReservationRejected::allocationChangedWhileWaiting();
+                }
+
+                $fresh->forceFill([
                     'reserved_at' => now(),
                     'reservation_expires_at' => $expiresAt,
                     'reservation_release_reason' => null,
                 ])->save();
+
+                $reserved[] = $fresh;
             }
 
-            return $allocations->all();
+            return $reserved;
         });
     }
 
