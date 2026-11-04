@@ -14,7 +14,7 @@ namespace App\Modules\Inventory\Domain;
  */
 enum TtiPanelVerdict: string
 {
-    /** Masih ada uji panel yang belum punya hasil skrining. */
+    /** Masih ada uji panel yang belum punya hasil skrining, atau panelnya kosong. */
     case INCOMPLETE = 'incomplete';
 
     /** Setiap uji panel punya hasil skrining, dan semuanya non-reaktif. */
@@ -38,6 +38,13 @@ enum TtiPanelVerdict: string
 
         if (in_array(TtiResult::INDETERMINATE, $screeningResults, true)) {
             return self::INDETERMINATE;
+        }
+
+        // Panel kosong berarti tidak ada uji yang diwajibkan TERBACA -- bukan bahwa semuanya
+        // bersih. foreach di bawah lolos begitu saja atas daftar kosong (vacuous truth), dan
+        // master uji yang hilang (ResolveTtiPanel kosong) jatuh ke jalur yang sama.
+        if ($panel === []) {
+            return self::INCOMPLETE;
         }
 
         foreach ($panel as $code) {

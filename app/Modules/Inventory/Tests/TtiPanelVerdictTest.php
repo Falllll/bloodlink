@@ -46,15 +46,14 @@ final class TtiPanelVerdictTest extends TestCase
         ]));
     }
 
-    /**
-     * Celah 3. CACAT YANG DIKETAHUI, dipaku supaya terlihat -- bukan perilaku yang benar.
-     * YANG BENAR: panel kosong berarti tidak ada yang teruji, jadi vonisnya INCOMPLETE dan
-     * unit tidak boleh rilis. Hari ini foreach atas panel kosong lolos begitu saja. Saat
-     * cacatnya diperbaiki di kartunya sendiri, test ini merah dan harus dibalik.
-     */
-    public function test_known_defect_an_empty_panel_with_no_results_counts_as_all_non_reactive(): void
+    // Celah 3. Panel kosong tidak pernah berarti bersih: tidak ada yang terbukti diuji.
+    public function test_an_empty_panel_is_incomplete(): void
     {
-        $this->assertSame(TtiPanelVerdict::ALL_NON_REACTIVE, TtiPanelVerdict::decide([], []));
+        $this->assertSame(TtiPanelVerdict::INCOMPLETE, TtiPanelVerdict::decide([], []));
+        // Hasil non-reaktif di luar panel tidak menambal panel yang kosong.
+        $this->assertSame(TtiPanelVerdict::INCOMPLETE, TtiPanelVerdict::decide([], [TtiTestCode::HIV->value => TtiResult::NON_REACTIVE]));
+        // Reaktif tetap menang atas panel kosong.
+        $this->assertSame(TtiPanelVerdict::REACTIVE, TtiPanelVerdict::decide([], [TtiTestCode::HIV->value => TtiResult::REACTIVE]));
     }
 
     // Celah 5. Skrining reaktif memusnahkan unit, padahal konfirmasi baru dicatat sesudahnya.
