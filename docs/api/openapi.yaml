@@ -2954,7 +2954,7 @@ paths:
         semuanya non-reaktif; hasil konfirmasi tidak ikut dihitung. Komponen
         turunan membaca hasil dari unit induknya. Panel yang belum lengkap,
         reaktif, atau indeterminate, serta unit yang tidak bisa dirilis dari
-        statusnya (mis. `separated`, `released`), ditolak 409
+        statusnya (mis. `separated`, `released`, `reserved`), ditolak 409
         `INVENTORY_RELEASE_REJECTED` dan statusnya tidak berubah. Badan
         permintaan kosong.
       security:

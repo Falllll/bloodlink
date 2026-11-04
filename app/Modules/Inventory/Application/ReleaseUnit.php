@@ -78,6 +78,14 @@ final class ReleaseUnit
     {
         $from = $fresh->status;
 
+        // Gerbang ini untuk unit yang BELUM PERNAH dirilis. RESERVED -> RELEASED sah di graf,
+        // tapi itu jalur pelepasan reservasi (modul Request) yang ikut melepas alokasinya.
+        // Lewat sini, unit pesanan kembali "tersedia" sambil tetap terikat ke permintaan lain,
+        // dan released_at aslinya tertimpa. Status lain (released, issued, ...) sudah ditolak graf.
+        if (! in_array($from, [BatchStatus::QUARANTINED, BatchStatus::TESTING], true)) {
+            throw UnitReleaseRejected::notReleasableFrom($from);
+        }
+
         if ($fresh->status === BatchStatus::QUARANTINED) {
             if (! $fresh->status->canTransitionTo(BatchStatus::TESTING)) {
                 throw UnitReleaseRejected::notReleasableFrom($from);
