@@ -290,4 +290,15 @@ final class EligibilityEngineGapsTest extends TestCase
             );
         }
     }
+
+    // Celah 11. Dua batas Dikutip yang belum dipakai mesin (§3.1 batas bawah mutlak,
+    // §3.2 minimum apheresis). Dipaku RELASIONAL terhadap batas yang dipakai, supaya tidak
+    // ada angka medis yang ditulis ulang di test. Yang dijaga hubungannya, bukan nilainya:
+    // batas mutlak yang melewati batas lazim, atau minimum apheresis yang berbeda dari
+    // minimum 450 ml, membuat test ini merah; menghapus salah satunya juga.
+    public function test_the_unused_who_limits_stay_consistent_with_the_used_ones(): void
+    {
+        $this->assertLessThan(WhoEligibilityLimits::AGE_MIN_USUAL_YEARS, WhoEligibilityLimits::AGE_MIN_ABSOLUTE_YEARS);
+        $this->assertSame(WhoEligibilityLimits::WEIGHT_MIN_450ML_KG, WhoEligibilityLimits::WEIGHT_MIN_APHERESIS_KG);
+    }
 }
