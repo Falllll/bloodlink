@@ -175,20 +175,22 @@ final class UnitReleaseRejectionTest extends TestCase
     }
 
     /**
-     * Celah 3 sampai ke gerbang. CACAT YANG DIKETAHUI, dipaku supaya terlihat.
-     * YANG BENAR: 409. Fasilitas tidak bisa mencapai ini (uji wajib selalu ikut panel), dan
-     * CHECK tti_test_types_quality_and_mandate melarang uji wajib dinonaktifkan. Yang tersisa:
-     * baris master datanya tidak ada, mis. TtiTestTypeSeeder belum dijalankan di lingkungan
-     * baru -- unit tanpa hasil apa pun lolos rilis.
+     * Celah 3 sampai ke gerbang. Fasilitas tidak bisa mencapai ini (uji wajib selalu ikut panel),
+     * dan CHECK tti_test_types_quality_and_mandate melarang uji wajib dinonaktifkan. Yang tersisa:
+     * baris master datanya tidak ada, mis. TtiTestTypeSeeder belum dijalankan di lingkungan baru.
      */
-    public function test_known_defect_a_missing_test_master_releases_an_untested_unit(): void
+    public function test_a_missing_test_master_never_releases_an_untested_unit(): void
     {
         TtiTestType::query()->delete();
         $unit = $this->quarantinedUnit();
 
-        $this->postRelease($unit, $this->headersFor($unit))->assertOk();
+        $this->postRelease($unit, $this->headersFor($unit))
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'INVENTORY_RELEASE_REJECTED')
+            ->assertJsonPath('error.message', 'A unit can only be released when its full TTI screening panel is non-reactive; the panel verdict is "incomplete".');
 
-        $this->assertSame(BatchStatus::RELEASED, $unit->fresh()?->status);
-        $this->assertSame(0, $unit->ttiTestResults()->count());
+        $fresh = $unit->fresh();
+        $this->assertSame(BatchStatus::QUARANTINED, $fresh?->status);
+        $this->assertNull($fresh->released_at);
     }
 }
