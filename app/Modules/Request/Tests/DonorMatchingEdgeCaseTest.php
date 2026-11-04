@@ -215,30 +215,44 @@ final class DonorMatchingEdgeCaseTest extends TestCase
     }
 
     /**
-     * Celah 6, jawaban atas pertanyaan kartu. CACAT YANG DIKETAHUI, dipaku supaya terlihat.
-     * YANG BENAR: donor layak muncul, karena itulah alasan overfetch ada ("sebagian gugur di
-     * lapis kelayakan"). Hari ini array_slice memotong SEBELUM menyaring: bila $max terdekat
-     * semuanya tidak layak, donor layak di belakangnya terbuang dan kampanye tidak menghubungi
-     * siapa pun. Saat cacatnya diperbaiki di kartunya sendiri, test ini merah dan harus dibalik.
+     * Celah 6, jawaban atas pertanyaan kartu: donor layak di belakang donor tak layak yang lebih
+     * dekat tetap masuk kuota, karena itulah alasan overfetch ada. Kuota diisi yang bisa dipanggil
+     * dulu; urutan keluaran tetap jarak.
      */
-    public function test_known_defect_ineligible_nearest_donors_crowd_out_the_eligible_ones(): void
+    public function test_ineligible_nearest_donors_never_crowd_out_the_eligible_ones(): void
     {
         config(['notification.max_recipients_per_campaign' => 2]);
         $recently = now()->subDays(10)->toDateString();
-        $blockedA = $this->donorAt(0.001, lastDonation: $recently);
-        $blockedB = $this->donorAt(0.002, lastDonation: $recently);
-        $this->donorAt(0.003);
-        $this->donorAt(0.004);
+        $this->donorAt(0.001, lastDonation: $recently);
+        $this->donorAt(0.002, lastDonation: $recently);
+        $eligibleC = $this->donorAt(0.003);
+        $eligibleD = $this->donorAt(0.004);
         $request = $this->request();
 
         $candidates = app(SelectDonorCandidates::class)->handle($request, $this->facility, 5000);
 
-        $this->assertSame([$blockedA->public_id, $blockedB->public_id], array_map(fn ($c): string => $c->donorPublicId, $candidates));
-        $this->assertSame([false, false], array_map(fn ($c): bool => $c->isEligible, $candidates));
+        $this->assertSame([$eligibleC->public_id, $eligibleD->public_id], array_map(fn ($c): string => $c->donorPublicId, $candidates));
+        $this->assertSame([true, true], array_map(fn ($c): bool => $c->isEligible, $candidates));
 
-        // Akibatnya di hulu: dua donor layak dalam radius, kampanye menghubungi nol.
+        // Di hulu: dua donor layak dalam radius, kampanye menghubungi keduanya.
         app(StartDonorCampaign::class)->handle($request, User::factory()->create());
-        $this->assertSame(0, DonorCampaignContact::query()->count());
+        $this->assertSame(2, DonorCampaignContact::query()->count());
+    }
+
+    // Kuota yang tidak habis oleh donor layak tetap diisi yang terdekat lainnya, urut jarak --
+    // pratinjau tidak kehilangan alasan ketidaklayakan.
+    public function test_leftover_slots_are_filled_by_the_nearest_others_in_distance_order(): void
+    {
+        config(['notification.max_recipients_per_campaign' => 2]);
+        $recently = now()->subDays(10)->toDateString();
+        $blockedA = $this->donorAt(0.001, lastDonation: $recently);
+        $this->donorAt(0.002, lastDonation: $recently);
+        $eligibleC = $this->donorAt(0.003);
+
+        $candidates = app(SelectDonorCandidates::class)->handle($this->request(), $this->facility, 5000);
+
+        $this->assertSame([$blockedA->public_id, $eligibleC->public_id], array_map(fn ($c): string => $c->donorPublicId, $candidates));
+        $this->assertSame('DONATION_INTERVAL_NOT_MET', $candidates[0]->ineligibleReasonCode);
     }
 
     // Celah 7. Donor yang tidak ada di peta keterjangkauan dianggap tidak terjangkau.

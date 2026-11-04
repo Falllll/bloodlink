@@ -71,7 +71,7 @@ final class SelectDonorCandidates
 
         $max = (int) config('notification.max_recipients_per_campaign');
 
-        // Batas diterapkan SEBELUM penilaian kelayakan: N terdekat dulu, baru dinilai.
+        // Overfetch: N x faktor terdekat diambil dulu, dinilai, BARU dipotong ke $max di bawah.
         $nearby = $this->donors->nearest(
             (float) $point->latitude,
             (float) $point->longitude,
@@ -101,6 +101,44 @@ final class SelectDonorCandidates
             );
         }
 
-        return array_slice($candidates, 0, $max);
+        return $this->capFillingCallableFirst($candidates, $max);
+    }
+
+    /**
+     * Potong ke $max SESUDAH kelayakan diketahui (kartu 703). Kuota diisi lebih dulu oleh
+     * kandidat yang akan dipanggil kampanye (layak DAN terjangkau), sisanya oleh yang terdekat
+     * lainnya -- pratinjau tetap menampilkan yang tidak layak beserta alasannya. Urutan keluaran
+     * tetap murni jarak: kunci array = posisi di $candidates, yang sudah terurut jarak.
+     *
+     * @param  list<DonorCandidate>  $candidates  terurut jarak
+     * @return list<DonorCandidate>
+     */
+    private function capFillingCallableFirst(array $candidates, int $max): array
+    {
+        $kept = [];
+
+        foreach ($candidates as $position => $candidate) {
+            if (count($kept) >= $max) {
+                break;
+            }
+
+            if ($candidate->isEligible && $candidate->isReachable) {
+                $kept[$position] = $candidate;
+            }
+        }
+
+        foreach ($candidates as $position => $candidate) {
+            if (count($kept) >= $max) {
+                break;
+            }
+
+            if (! isset($kept[$position])) {
+                $kept[$position] = $candidate;
+            }
+        }
+
+        ksort($kept);
+
+        return array_values($kept);
     }
 }
