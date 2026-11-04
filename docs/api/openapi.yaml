@@ -3817,7 +3817,9 @@ paths:
         -- tanpa skor. Donor yang tidak layak TETAP dikembalikan dengan
         `is_eligible` false dan kodenya; donor tanpa kanal (device token aktif
         atau email) dikembalikan dengan `is_reachable` false. Paling banyak
-        `max_recipients_per_campaign` baris. TIDAK pernah memuat nama,
+        `max_recipients_per_campaign` baris; kuota itu diisi lebih dulu oleh
+        donor yang layak dan terjangkau, sisanya oleh donor terdekat lainnya,
+        dan hasilnya tetap terurut jarak. TIDAK pernah memuat nama,
         telepon, email, alamat, atau golongan donor. Berbeda dari
         `/candidates` (kandidat UNIT). Tidak menulis apa pun. Butuh
         `request.approve` di fasilitas peminta.
