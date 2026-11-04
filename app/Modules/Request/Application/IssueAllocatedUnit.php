@@ -64,11 +64,16 @@ final class IssueAllocatedUnit
 
             // Reservasi selesai karena diterbitkan: kosongkan supaya timeout reservasi
             // (kartu 330) tidak kelak "melepas" kantong yang sudah ditransfusikan.
-            $allocation->forceFill([
+            // Lewat $fresh (dibaca SESUDAH kunci), bukan $allocation: di model pemanggil
+            // reserved_at bisa masih null dari sebelum reservasi commit, jadi mengosongkannya
+            // tidak tercatat dirty dan tidak pernah tersimpan.
+            $fresh->forceFill([
                 'reserved_at' => null,
                 'reservation_expires_at' => null,
                 'reservation_release_reason' => 'issued',
             ])->save();
+
+            $allocation->setRawAttributes($fresh->getAttributes(), sync: true);
         });
 
         return $allocation;

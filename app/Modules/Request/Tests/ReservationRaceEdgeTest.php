@@ -290,14 +290,9 @@ final class ReservationRaceEdgeTest extends TestCase
         $this->assertNull($this->allocationOf($request)->reserved_at);
     }
 
-    /**
-     * Celah 3. CACAT YANG DIKETAHUI, dipaku supaya terlihat.
-     * YANG BENAR: reserved_at dan reservation_expires_at kosong sesudah terbit. Hari ini
-     * IssueAllocatedUnit menulis lewat model yang dibaca SEBELUM menunggu kunci: di model itu
-     * keduanya sudah null, jadi tidak ikut tersimpan. Kantongnya aman (timeout tidak mengubah
-     * unit issued), tapi alasan "issued" tertimpa. Saat diperbaiki, test ini merah dan dibalik.
-     */
-    public function test_known_defect_an_issue_waiting_on_a_reservation_leaves_it_recorded(): void
+    // Celah 3. Penerbitan yang menunggu di belakang reservasi menulis lewat baris yang dibaca
+    // sesudah kunci: reservasinya benar-benar dikosongkan, dan sweeper tidak menimpa alasan "issued".
+    public function test_an_issue_waiting_on_a_reservation_clears_it(): void
     {
         $request = $this->allocatedRequest();
         $allocation = $this->allocationOf($request);
@@ -323,15 +318,14 @@ final class ReservationRaceEdgeTest extends TestCase
         $this->assertStringContainsString('RESULT:WON', $output);
         $this->assertSame('issued', $this->unitStatus((int) $allocation->blood_batch_id));
         $fresh = $this->allocationOf($request);
-        $this->assertNotNull($fresh->reserved_at);
-        $this->assertNotNull($fresh->reservation_expires_at);
+        $this->assertNull($fresh->reserved_at);
+        $this->assertNull($fresh->reservation_expires_at);
         $this->assertSame('issued', $fresh->reservation_release_reason);
 
-        // Akibatnya saat timeout: kantong tetap issued, tapi catatan alasannya tertimpa.
-        DB::table('blood_request_allocations')->where('id', $allocation->id)->update(['reservation_expires_at' => now()->subMinute()]);
+        // Sweeper tidak lagi melihat baris ini, jadi alasannya tetap "issued".
         Artisan::call('request:expire-reservations', ['--force' => true]);
         $this->assertSame('issued', $this->unitStatus((int) $allocation->blood_batch_id));
-        $this->assertSame('reservation timeout', $this->allocationOf($request)->reservation_release_reason);
+        $this->assertSame('issued', $this->allocationOf($request)->reservation_release_reason);
     }
 
     public function test_a_return_waiting_on_a_reservation_undoes_it_completely(): void
@@ -354,15 +348,9 @@ final class ReservationRaceEdgeTest extends TestCase
         $this->assertNull($fresh->reserved_at);
     }
 
-    /**
-     * Celah 3, arah sebaliknya. CACAT YANG DIKETAHUI, dipaku supaya terlihat.
-     * YANG BENAR: penantang ditolak, unit tetap released, alokasi tidak dipesan. Hari ini
-     * ReserveAllocatedUnits membaca alokasinya SEBELUM menunggu kunci unit dan tidak membaca
-     * ulang: unit jadi reserved tanpa alokasi aktif. Tidak ada CHECK yang menolaknya, dan timeout
-     * reservasi menyaring released_at, jadi kantong keluar dari stok sampai kedaluwarsa, tanpa
-     * satu pun error. Saat diperbaiki di kartunya sendiri, test ini merah dan harus dibalik.
-     */
-    public function test_known_defect_a_reservation_waiting_on_a_return_strands_the_unit(): void
+    // Celah 3, arah sebaliknya. Reservasi yang menunggu di belakang pengembalian membaca ulang
+    // alokasinya sesudah kunci: sudah dilepas, jadi seluruh reservasi ditolak dan unit tetap released.
+    public function test_a_reservation_waiting_on_a_return_is_rejected_and_the_unit_stays_released(): void
     {
         $request = $this->allocatedRequest();
         $allocation = $this->allocationOf($request);
@@ -371,19 +359,16 @@ final class ReservationRaceEdgeTest extends TestCase
         $challenger = $this->reserveChallenger($request);
         $this->waitUntilBlocked();
         DB::connection('race')->commit();
-        $this->assertStringContainsString('RESULT:WON', $this->finish($challenger));
+        $output = $this->finish($challenger);
+
+        $this->assertStringContainsString('RESULT:BLOOD_BATCH_TRANSITION_REJECTED|', $output);
+        $this->assertStringContainsString('ReservationRejected', $output);
 
         $unitId = (int) $allocation->blood_batch_id;
         $fresh = $this->allocationOf($request);
         $this->assertNotNull($fresh->released_at);
-        $this->assertNotNull($fresh->reserved_at);
-        $this->assertSame('reserved', $this->unitStatus($unitId));
-        $this->assertSame(0, BloodRequestAllocation::query()->where('blood_batch_id', $unitId)->whereNull('released_at')->count());
-
-        // Timeout reservasi tidak menyelamatkannya: unit tetap tertahan.
-        DB::table('blood_request_allocations')->where('id', $allocation->id)->update(['reservation_expires_at' => now()->subMinute()]);
-        Artisan::call('request:expire-reservations', ['--force' => true]);
-        $this->assertSame('reserved', $this->unitStatus($unitId));
+        $this->assertNull($fresh->reserved_at);
+        $this->assertSame('released', $this->unitStatus($unitId));
     }
 
     public function test_expiry_waiting_on_a_reservation_still_expires_the_overdue_unit(): void
