@@ -6,8 +6,10 @@ Blood bank management API for Indonesian blood services: donor registry, eligibi
 
 This repository is the backend only. It is headless — there are no Blade views and `routes/web.php` is permanently empty. The clients live in their own repositories and consume this API over `/api/v1`:
 
-- [`Falllll/bloodlink-web`](https://github.com/Falllll/bloodlink-web) — Next.js
-- [`Falllll/bloodlink-mobile`](https://github.com/Falllll/bloodlink-mobile) — Expo
+- [`Falllll/bloodlink-web`](https://github.com/Falllll/bloodlink-web) — Next.js: staff dashboard and admin panel ([screenshots](https://github.com/Falllll/bloodlink-web#screenshots))
+- [`Falllll/bloodlink-mobile`](https://github.com/Falllll/bloodlink-mobile) — Expo: donor app ([screenshots](https://github.com/Falllll/bloodlink-mobile#screenshots))
+
+This repository has no user interface to show. What the system looks like is in those two READMEs.
 
 The API is specified in [`docs/api/openapi.yaml`](docs/api/openapi.yaml), served at `GET /api/v1/openapi.yaml` and rendered at `/docs/`.
 
@@ -16,8 +18,16 @@ The API is specified in [`docs/api/openapi.yaml`](docs/api/openapi.yaml), served
 | Phase | Scope | State |
 |---|---|---|
 | F0–F5 | Foundations, auth & RBAC, donors & eligibility, inventory & lab, requests & matching, notifications & realtime | Done |
-| F6–F7 | Web and mobile clients, in their own repositories | In progress |
-| F8–F9 | Testing and documentation | In progress |
+| F6 | Web client — staff dashboard and admin panel, in its own repository | Done |
+| F7 | Mobile client — donor app, in its own repository | Done, bar on-device Android verification |
+| F8 | Testing & hardening | Done |
+| F9 | Documentation | In progress |
+| — | Deployment | Deliberately out of scope for now |
+
+There is no hosted demo. The stack runs locally under Docker Compose, and the
+deployment work was cancelled rather than left open: a live instance holding
+donor records — encrypted NIKs, phone numbers, addresses — is a liability a
+portfolio does not need to carry. The reproduction steps below are the demo.
 
 ## Stack
 
